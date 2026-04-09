@@ -229,7 +229,15 @@ extension UIFont {
         AppTypography.uiFont(for: role, isEmphasized: emphasized)
     }
 
+    static func appAppearance(_ role: AppTextRole, emphasized: Bool = false) -> UIFont {
+        AppTypography.uiFont(for: role, isEmphasized: emphasized, scalesWithDynamicType: false)
+    }
+
     static func lora(forTextStyle textStyle: UIFont.TextStyle, pointSize: CGFloat? = nil, weight: Font.Weight = .regular) -> UIFont {
+        lora(forTextStyle: textStyle, pointSize: pointSize, weight: weight, scalesWithDynamicType: true)
+    }
+
+    static func lora(forTextStyle textStyle: UIFont.TextStyle, pointSize: CGFloat? = nil, weight: Font.Weight = .regular, scalesWithDynamicType: Bool) -> UIFont {
         let pointSize = pointSize ?? UIFontDescriptor.preferredFontDescriptor(withTextStyle: textStyle).pointSize
         let axisValue = AppTypography.variableFontAxisValue(for: weight)
         let variationAttributeName = UIFontDescriptor.AttributeName(rawValue: kCTFontVariationAttribute as String)
@@ -238,10 +246,18 @@ extension UIFont {
             variationAttributeName: [AppTypography.loraWeightAxisIdentifier: axisValue]
         ])
         let font = UIFont(descriptor: descriptor, size: pointSize)
+        guard scalesWithDynamicType else {
+            return font
+        }
+
         return UIFontMetrics(forTextStyle: textStyle).scaledFont(for: font)
     }
 
     static func nunito(forTextStyle textStyle: UIFont.TextStyle, pointSize: CGFloat? = nil, weight: Font.Weight = .regular) -> UIFont {
+        nunito(forTextStyle: textStyle, pointSize: pointSize, weight: weight, scalesWithDynamicType: true)
+    }
+
+    static func nunito(forTextStyle textStyle: UIFont.TextStyle, pointSize: CGFloat? = nil, weight: Font.Weight = .regular, scalesWithDynamicType: Bool) -> UIFont {
         let pointSize = pointSize ?? UIFontDescriptor.preferredFontDescriptor(withTextStyle: textStyle).pointSize
         let axisValue = AppTypography.variableFontAxisValue(for: weight)
         let variationAttributeName = UIFontDescriptor.AttributeName(rawValue: kCTFontVariationAttribute as String)
@@ -250,18 +266,36 @@ extension UIFont {
             variationAttributeName: [AppTypography.nunitoWeightAxisIdentifier: axisValue]
         ])
         let font = UIFont(descriptor: descriptor, size: pointSize)
+        guard scalesWithDynamicType else {
+            return font
+        }
+
         return UIFontMetrics(forTextStyle: textStyle).scaledFont(for: font)
     }
 }
 
 extension AppTypography {
     static func uiFont(for role: AppTextRole, isEmphasized: Bool = false) -> UIFont {
+        uiFont(for: role, isEmphasized: isEmphasized, scalesWithDynamicType: true)
+    }
+
+    static func uiFont(for role: AppTextRole, isEmphasized: Bool = false, scalesWithDynamicType: Bool) -> UIFont {
         let weight = resolvedWeight(for: role, isEmphasized: isEmphasized)
         switch role.family {
         case .lora:
-            return UIFont.lora(forTextStyle: role.textStyle.uiTextStyle, pointSize: role.basePointSize, weight: weight)
+            return UIFont.lora(
+                forTextStyle: role.textStyle.uiTextStyle,
+                pointSize: role.basePointSize,
+                weight: weight,
+                scalesWithDynamicType: scalesWithDynamicType
+            )
         case .nunito:
-            return UIFont.nunito(forTextStyle: role.textStyle.uiTextStyle, pointSize: role.basePointSize, weight: weight)
+            return UIFont.nunito(
+                forTextStyle: role.textStyle.uiTextStyle,
+                pointSize: role.basePointSize,
+                weight: weight,
+                scalesWithDynamicType: scalesWithDynamicType
+            )
         case .system:
             return UIFont.preferredFont(forTextStyle: role.textStyle.uiTextStyle)
         }

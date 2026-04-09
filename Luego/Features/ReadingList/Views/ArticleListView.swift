@@ -152,10 +152,10 @@ struct ArticleListContent: View {
     let onDiscover: () -> Void
     let shouldAnimateEmptyStateOnFirstAppearance: Bool
     let onEmptyStateAnimationConsumed: () -> Void
-    @Environment(SyncStatusObserver.self) private var syncStatusObserver: SyncStatusObserver?
+    @Environment(SyncStatusObserver.self) private var syncStatusObserver
 
     private var restoreStatusText: String? {
-        guard filter == .readingList, syncStatusObserver?.state == .restoring else { return nil }
+        guard filter == .readingList, syncStatusObserver.state == .restoring else { return nil }
         return "Restoring articles from iCloud."
     }
 

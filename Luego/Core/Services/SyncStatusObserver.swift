@@ -27,7 +27,7 @@ protocol SyncStatusObservable: AnyObject {
 
 @Observable
 @MainActor
-final class SyncStatusObserver: SyncStatusObservable {
+final class SyncStatusObserver: NSObject, SyncStatusObservable {
     private(set) var state: SyncState = .idle
     private(set) var lastSyncTime: Date?
     private(set) var accountStatusDescription: String?
@@ -44,25 +44,18 @@ final class SyncStatusObserver: SyncStatusObservable {
     @ObservationIgnored
     private let recentFailedRecordDetailLimit = 5
 
-    @ObservationIgnored
-    private var observationTask: Task<Void, Never>?
-
-    init() {
-        observationTask = Task { [weak self] in
-            let notifications = NotificationCenter.default.notifications(
-                named: .luegoSyncEngineStatusDidChange
-            )
-
-            for await notification in notifications {
-                guard let payload = Self.payload(from: notification.userInfo) else { continue }
-                guard let self else { break }
-                self.apply(payload)
-            }
-        }
+    override init() {
+        super.init()
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleStatusChange(_:)),
+            name: .luegoSyncEngineStatusDidChange,
+            object: nil
+        )
     }
 
     deinit {
-        observationTask?.cancel()
+        NotificationCenter.default.removeObserver(self)
     }
 
     func dismissError() {
@@ -71,7 +64,7 @@ final class SyncStatusObserver: SyncStatusObservable {
         }
     }
 
-    private func apply(_ payload: Payload) {
+    func apply(_ payload: Payload) {
         if let newState = payload.state {
             state = newState
             if case .error(let message, _) = newState {
@@ -83,9 +76,7 @@ final class SyncStatusObserver: SyncStatusObservable {
             self.lastSyncTime = lastSyncTime
         }
 
-        if let accountStatus = payload.accountStatus {
-            accountStatusDescription = accountStatus
-        }
+        accountStatusDescription = payload.accountStatus
 
         if let diagnosticHint = payload.diagnosticHint {
             cloudKitDiagnosticHint = diagnosticHint
@@ -113,6 +104,11 @@ final class SyncStatusObserver: SyncStatusObservable {
         }
     }
 
+    @objc private func handleStatusChange(_ notification: Notification) {
+        guard let payload = Self.payload(from: notification.userInfo) else { return }
+        apply(payload)
+    }
+
     private func appendRecentError(_ message: String) {
         guard !message.isEmpty else { return }
         recentErrors.removeAll { $0 == message }
@@ -137,7 +133,7 @@ final class SyncStatusObserver: SyncStatusObservable {
         )
     }
 
-    private struct Payload: Sendable {
+    struct Payload: Sendable {
         let state: SyncState?
         let lastSyncTime: Date?
         let errorMessage: String?

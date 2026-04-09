@@ -22,6 +22,7 @@ struct LuegoApp: App {
             let database = try AppDatabase.makeDefault()
             self.database = database
             let container = DIContainer(database: database)
+            _ = container.syncObserver
             try container.syncEngineManager.start()
             let legacyMigration = LegacySwiftDataArticleMigration(
                 database: database,

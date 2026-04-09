@@ -6,6 +6,7 @@ final class DIContainer {
     let database: AppDatabase
     let articleStore: ArticleStoreProtocol
     let syncEngineManager: SyncEngineManager
+    let syncObserver = SyncStatusObserver()
 
     private lazy var userDefaultsDataSource: UserDefaultsDataSourceProtocol = {
         UserDefaultsDataSource(sharedStorage: SharedStorage.shared)
@@ -125,11 +126,6 @@ final class DIContainer {
         SavedArticleExportService(articleStore: articleStore)
     }()
 
-    private lazy var _syncObserver: SyncStatusObserver = {
-        SyncStatusObserver()
-    }()
-
-    var syncObserver: SyncStatusObserver { _syncObserver }
     var savedArticleImportService: SavedArticleImportServiceProtocol { _savedArticleImportService }
     var savedArticleExportService: SavedArticleExportServiceProtocol { _savedArticleExportService }
 
@@ -145,6 +141,7 @@ final class DIContainer {
             container: CKContainer(identifier: AppConfiguration.cloudKitContainerIdentifier)
         )
         self.syncEngineManager = syncEngineManager
+        syncEngineManager.statusObserver = syncObserver
         coreArticleStore.syncEngineManager = syncEngineManager
     }
 

@@ -5,19 +5,19 @@ import UniformTypeIdentifiers
 struct SettingsView: View {
     @Bindable var viewModel: SettingsViewModel
     var syncStatusObserver: SyncStatusObserver?
-    @Environment(SyncStatusObserver.self) private var envSyncStatusObserver: SyncStatusObserver?
+    @Environment(SyncStatusObserver.self) private var envSyncStatusObserver
     @Environment(\.dismiss) private var dismiss
     @State private var isShowingFileImporter = false
 
-    private var resolvedObserver: SyncStatusObserver? {
+    private var resolvedObserver: SyncStatusObserver {
         syncStatusObserver ?? envSyncStatusObserver
     }
 
     var body: some View {
         Form {
             SyncStatusSection(
-                state: resolvedObserver?.state ?? .idle,
-                lastSyncTime: resolvedObserver?.lastSyncTime,
+                state: resolvedObserver.state,
+                lastSyncTime: resolvedObserver.lastSyncTime,
                 syncStatusObserver: resolvedObserver,
                 isSyncing: viewModel.isForceSyncing,
                 didSync: viewModel.didForceSync,
@@ -551,74 +551,51 @@ struct SyncStatusSection: View {
     let repairErrorMessage: String?
     let onSync: () -> Void
 
-    private var statusText: String {
-        switch state {
-        case .idle: "Up to date"
-        case .syncing: "Syncing..."
-        case .restoring: "Restoring..."
-        case .success: "Just synced"
-        case .error(let message, _): message
-        }
-    }
-
-    private var statusColor: Color {
-        switch state {
-        case .idle, .success: .secondary
-        case .syncing, .restoring: .blue
-        case .error: .red
-        }
-    }
-
-    private var formattedTime: String? {
-        guard let time = lastSyncTime else { return nil }
-        return DateFormatters.time.string(from: time)
-    }
-
-    private var accessibilityStatusValue: String {
-        if let timeText = formattedTime {
-            return "\(statusText). Last synced at \(timeText)"
-        }
-        return statusText
-    }
-
-    private var statusSubtitle: String {
-        if state == .restoring {
-            return "Downloading your reading list from iCloud."
-        }
-        if let timeText = formattedTime {
-            return "Last synced at \(timeText)"
-        }
-        return "Your sync status will appear after the first successful update."
+    private var presentation: SyncStatusPresentation {
+        SyncStatusPresentation(
+            state: state,
+            accountStatusDescription: syncStatusObserver?.accountStatusDescription,
+            cloudKitIdentityTokenState: syncStatusObserver?.cloudKitIdentityTokenState,
+            cloudKitUserRecordID: syncStatusObserver?.cloudKitUserRecordID,
+            cloudKitNeedsAttention: syncStatusObserver?.cloudKitNeedsAttention == true,
+            lastSyncTime: lastSyncTime
+        )
     }
 
     var body: some View {
         Section {
             IOSSettingsRow(
                 title: "iCloud Sync",
-                subtitle: statusSubtitle,
+                subtitle: presentation.settingsSubtitle,
                 systemImage: "icloud",
                 showsIcon: false
             ) {
-                Text(statusText)
+                Text(presentation.settingsStatusText)
                     .font(.subheadline)
-                    .foregroundStyle(statusColor)
+                    .foregroundStyle(presentation.settingsStatusColor)
                     .multilineTextAlignment(.trailing)
             }
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("iCloud Sync")
-            .accessibilityValue(accessibilityStatusValue)
+            .accessibilityValue(presentation.accessibilityValue)
 
-            ForceReSyncButton(
-                isSyncing: isSyncing,
-                didSync: didSync,
-                onSync: onSync
-            )
+            if presentation.showsAttentionNotice {
+                SyncAttentionNoticeCard(
+                    presentation: presentation
+                )
+            }
+
+            if presentation.showsRepairAction {
+                ForceReSyncButton(
+                    isSyncing: isSyncing,
+                    didSync: didSync,
+                    onSync: onSync
+                )
+            }
         } header: {
             settingsSectionHeader("Sync")
         } footer: {
             SyncSectionFooter(
-                diagnosticSummary: syncStatusObserver?.cloudKitNeedsAttention == true ? syncStatusObserver?.cloudKitDiagnosticSummary : nil,
-                diagnosticHint: syncStatusObserver?.cloudKitNeedsAttention == true ? syncStatusObserver?.cloudKitDiagnosticHint : nil,
                 repairErrorMessage: repairErrorMessage
             )
         }
@@ -718,23 +695,56 @@ struct ForceReSyncButton: View {
 }
 
 private struct SyncSectionFooter: View {
-    let diagnosticSummary: String?
-    let diagnosticHint: String?
     let repairErrorMessage: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            if let diagnosticSummary {
-                Text(diagnosticSummary)
-            }
-            if let diagnosticHint {
-                Text(diagnosticHint)
-            }
             if let repairErrorMessage {
                 Text(repairErrorMessage)
                     .foregroundStyle(.red)
             }
         }
+    }
+}
+
+private struct SyncAttentionNoticeCard: View {
+    let presentation: SyncStatusPresentation
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: presentation.noticeIconName)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(.orange)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(presentation.noticeTitle)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+
+                    Text(presentation.noticeBody)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+
+                    if let noticeFootnote = presentation.noticeFootnote {
+                        Text(noticeFootnote)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(Color.orange.opacity(0.12))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(Color.orange.opacity(0.22), lineWidth: 1)
+        )
+        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+        .accessibilityElement(children: .contain)
     }
 }
 

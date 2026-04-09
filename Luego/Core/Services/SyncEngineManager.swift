@@ -80,6 +80,24 @@ final class SyncEngineManager: SyncEngineManagerProtocol {
     @ObservationIgnored
     private var automaticSendTask: Task<Void, Never>?
 
+    @ObservationIgnored
+    private var currentAccountStatus: String?
+
+    @ObservationIgnored
+    private var currentDiagnosticHint: String?
+
+    @ObservationIgnored
+    private var currentCloudKitContainerIdentifier: String?
+
+    @ObservationIgnored
+    private var currentCloudKitIdentityTokenState: String?
+
+    @ObservationIgnored
+    private var currentCloudKitUserRecordID: String?
+
+    @ObservationIgnored
+    var statusObserver: SyncStatusObserver?
+
     init(
         database: AppDatabase,
         store: ArticleStoreProtocol? = nil,
@@ -172,7 +190,7 @@ final class SyncEngineManager: SyncEngineManagerProtocol {
         syncEngine?.state.add(
             pendingRecordZoneChanges: [.saveRecord(recordID)]
         )
-        publishStatus(.syncing, lastSyncTime: lastSyncTime, errorMessage: nil, needsSignIn: false, accountStatus: nil)
+        publishStatus(.syncing, lastSyncTime: lastSyncTime, errorMessage: nil, needsSignIn: false, accountStatus: nil, preserveExistingDiagnostics: true)
         scheduleAutomaticSend(trigger: "enqueueSave", recordID: recordID)
     }
 
@@ -180,7 +198,7 @@ final class SyncEngineManager: SyncEngineManagerProtocol {
         syncEngine?.state.add(
             pendingRecordZoneChanges: [.deleteRecord(recordID)]
         )
-        publishStatus(.syncing, lastSyncTime: lastSyncTime, errorMessage: nil, needsSignIn: false, accountStatus: nil)
+        publishStatus(.syncing, lastSyncTime: lastSyncTime, errorMessage: nil, needsSignIn: false, accountStatus: nil, preserveExistingDiagnostics: true)
         scheduleAutomaticSend(trigger: "enqueueDelete", recordID: recordID)
     }
 
@@ -208,7 +226,7 @@ final class SyncEngineManager: SyncEngineManagerProtocol {
     func sendChanges() async throws {
         guard let syncEngine else { return }
 
-        publishStatus(.syncing, lastSyncTime: lastSyncTime, errorMessage: nil, needsSignIn: false, accountStatus: nil)
+        publishStatus(.syncing, lastSyncTime: lastSyncTime, errorMessage: nil, needsSignIn: false, accountStatus: nil, preserveExistingDiagnostics: true)
         defer {
             endRepairSyncRecoveryIfPossible()
         }
@@ -387,7 +405,7 @@ private extension SyncEngineManager {
         }
 
         if didFail {
-            publishStatus(.error(message: "Unable to apply changes from iCloud", needsSignIn: false), lastSyncTime: lastSyncTime, errorMessage: "Unable to apply changes from iCloud", needsSignIn: false, accountStatus: nil)
+            publishStatus(.error(message: "Unable to apply changes from iCloud", needsSignIn: false), lastSyncTime: lastSyncTime, errorMessage: "Unable to apply changes from iCloud", needsSignIn: false, accountStatus: nil, preserveExistingDiagnostics: true)
         } else {
             markSyncSuccess()
         }
@@ -423,7 +441,7 @@ private extension SyncEngineManager {
         }
 
         if didFail {
-            publishStatus(.error(message: "Unable to sync with iCloud", needsSignIn: false), lastSyncTime: lastSyncTime, errorMessage: "Unable to sync with iCloud", needsSignIn: false, accountStatus: nil)
+            publishStatus(.error(message: "Unable to sync with iCloud", needsSignIn: false), lastSyncTime: lastSyncTime, errorMessage: "Unable to sync with iCloud", needsSignIn: false, accountStatus: nil, preserveExistingDiagnostics: true)
         } else {
             markSyncSuccess()
         }
@@ -628,7 +646,7 @@ private extension SyncEngineManager {
     }
 
     func updateState(_ newState: SyncState) {
-        publishStatus(newState, lastSyncTime: lastSyncTime, errorMessage: nil, needsSignIn: false, accountStatus: nil)
+        publishStatus(newState, lastSyncTime: lastSyncTime, errorMessage: nil, needsSignIn: false, accountStatus: nil, preserveExistingDiagnostics: true)
     }
 
     func publishStatus(
@@ -640,9 +658,33 @@ private extension SyncEngineManager {
         diagnosticHint: String? = nil,
         cloudKitContainerIdentifier: String? = nil,
         cloudKitIdentityTokenState: String? = nil,
-        cloudKitUserRecordID: String? = nil
+        cloudKitUserRecordID: String? = nil,
+        preserveExistingDiagnostics: Bool = false
     ) {
         state = newState
+        let publishedAccountStatus = preserveExistingDiagnostics ? (accountStatus ?? currentAccountStatus) : accountStatus
+        let publishedDiagnosticHint = preserveExistingDiagnostics ? (diagnosticHint ?? currentDiagnosticHint) : diagnosticHint
+        let publishedCloudKitContainerIdentifier = preserveExistingDiagnostics ? (cloudKitContainerIdentifier ?? currentCloudKitContainerIdentifier) : cloudKitContainerIdentifier
+        let publishedCloudKitIdentityTokenState = preserveExistingDiagnostics ? (cloudKitIdentityTokenState ?? currentCloudKitIdentityTokenState) : cloudKitIdentityTokenState
+        let publishedCloudKitUserRecordID = preserveExistingDiagnostics ? (cloudKitUserRecordID ?? currentCloudKitUserRecordID) : cloudKitUserRecordID
+        currentAccountStatus = publishedAccountStatus
+        currentDiagnosticHint = publishedDiagnosticHint
+        currentCloudKitContainerIdentifier = publishedCloudKitContainerIdentifier
+        currentCloudKitIdentityTokenState = publishedCloudKitIdentityTokenState
+        currentCloudKitUserRecordID = publishedCloudKitUserRecordID
+        let payload = SyncStatusObserver.Payload(
+            state: newState,
+            lastSyncTime: lastSyncTime,
+            errorMessage: errorMessage,
+            accountStatus: publishedAccountStatus,
+            diagnosticHint: publishedDiagnosticHint,
+            cloudKitContainerIdentifier: publishedCloudKitContainerIdentifier,
+            cloudKitIdentityTokenState: publishedCloudKitIdentityTokenState,
+            cloudKitUserRecordID: publishedCloudKitUserRecordID,
+            recentFailedSaveDetails: recentFailedSaveDetails
+        )
+        statusObserver?.apply(payload)
+        guard statusObserver == nil else { return }
         NotificationCenter.default.post(
             name: .luegoSyncEngineStatusDidChange,
             object: self,
@@ -651,11 +693,11 @@ private extension SyncEngineManager {
                 SyncEngineStatusPayloadKey.lastSyncTime: lastSyncTime as Any,
                 SyncEngineStatusPayloadKey.errorMessage: errorMessage as Any,
                 SyncEngineStatusPayloadKey.needsSignIn: needsSignIn,
-                SyncEngineStatusPayloadKey.accountStatus: accountStatus as Any,
-                SyncEngineStatusPayloadKey.diagnosticHint: diagnosticHint as Any,
-                SyncEngineStatusPayloadKey.cloudKitContainerIdentifier: cloudKitContainerIdentifier as Any,
-                SyncEngineStatusPayloadKey.cloudKitIdentityTokenState: cloudKitIdentityTokenState as Any,
-                SyncEngineStatusPayloadKey.cloudKitUserRecordID: cloudKitUserRecordID as Any,
+                SyncEngineStatusPayloadKey.accountStatus: publishedAccountStatus as Any,
+                SyncEngineStatusPayloadKey.diagnosticHint: publishedDiagnosticHint as Any,
+                SyncEngineStatusPayloadKey.cloudKitContainerIdentifier: publishedCloudKitContainerIdentifier as Any,
+                SyncEngineStatusPayloadKey.cloudKitIdentityTokenState: publishedCloudKitIdentityTokenState as Any,
+                SyncEngineStatusPayloadKey.cloudKitUserRecordID: publishedCloudKitUserRecordID as Any,
                 SyncEngineStatusPayloadKey.recentFailedSaveDetails: recentFailedSaveDetails as Any
             ]
         )
@@ -896,7 +938,8 @@ private extension SyncEngineManager {
                 lastSyncTime: lastSyncTime,
                 errorMessage: message,
                 needsSignIn: needsSignIn,
-                accountStatus: nil
+                accountStatus: nil,
+                preserveExistingDiagnostics: true
             )
         default:
             publishStatus(
@@ -904,7 +947,8 @@ private extension SyncEngineManager {
                 lastSyncTime: lastSyncTime,
                 errorMessage: nil,
                 needsSignIn: false,
-                accountStatus: nil
+                accountStatus: nil,
+                preserveExistingDiagnostics: true
             )
         }
     }
@@ -1005,7 +1049,7 @@ private extension SyncEngineManager {
 
     func publishRefreshStartState(isRestoring: Bool) {
         let refreshState: SyncState = isRestoring ? .restoring : .syncing
-        publishStatus(refreshState, lastSyncTime: lastSyncTime, errorMessage: nil, needsSignIn: false, accountStatus: nil)
+        publishStatus(refreshState, lastSyncTime: lastSyncTime, errorMessage: nil, needsSignIn: false, accountStatus: nil, preserveExistingDiagnostics: true)
     }
 
     func publishSyncFailure(_ error: Error, prefix: String) async {

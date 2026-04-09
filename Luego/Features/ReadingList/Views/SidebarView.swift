@@ -3,7 +3,7 @@ import SwiftUI
 struct SidebarView: View {
     @Binding var selection: ArticleFilter
     let onAddArticle: (() -> Void)?
-    @Environment(SyncStatusObserver.self) private var syncStatusObserver: SyncStatusObserver?
+    @Environment(SyncStatusObserver.self) private var syncStatusObserver
 
     init(selection: Binding<ArticleFilter>, onAddArticle: (() -> Void)? = nil) {
         _selection = selection
@@ -26,8 +26,12 @@ struct SidebarView: View {
         .appNavigationStyle(.sidebarPanel)
         .safeAreaInset(edge: .bottom) {
             SidebarSyncFooter(
-                state: syncStatusObserver?.state ?? .idle,
-                lastSyncTime: syncStatusObserver?.lastSyncTime
+                state: syncStatusObserver.state,
+                lastSyncTime: syncStatusObserver.lastSyncTime,
+                accountStatusDescription: syncStatusObserver.accountStatusDescription,
+                cloudKitIdentityTokenState: syncStatusObserver.cloudKitIdentityTokenState,
+                cloudKitUserRecordID: syncStatusObserver.cloudKitUserRecordID,
+                cloudKitNeedsAttention: syncStatusObserver.cloudKitNeedsAttention
             )
         }
     }
@@ -67,20 +71,21 @@ struct SidebarView: View {
 struct SyncStatusRow: View {
     let state: SyncState
     let lastSyncTime: Date?
+    let accountStatusDescription: String?
+    let cloudKitIdentityTokenState: String?
+    let cloudKitUserRecordID: String?
+    let cloudKitNeedsAttention: Bool
     var verticalPadding: Edge.Set = .vertical
 
-    private var statusText: String? {
-        switch state {
-        case .idle, .success:
-            guard let lastSyncTime else { return nil }
-            return "Synced at \(DateFormatters.time.string(from: lastSyncTime))"
-        case .syncing:
-            return "Syncing with iCloud"
-        case .restoring:
-            return "Restoring from iCloud"
-        case .error:
-            return nil
-        }
+    private var presentation: SyncStatusPresentation {
+        SyncStatusPresentation(
+            state: state,
+            accountStatusDescription: accountStatusDescription,
+            cloudKitIdentityTokenState: cloudKitIdentityTokenState,
+            cloudKitUserRecordID: cloudKitUserRecordID,
+            cloudKitNeedsAttention: cloudKitNeedsAttention,
+            lastSyncTime: lastSyncTime
+        )
     }
 
     var body: some View {
@@ -88,10 +93,10 @@ struct SyncStatusRow: View {
             SyncStatusIndicator(state: state, onErrorTap: nil)
                 .font(.app(.auxiliaryStatus))
 
-            if let statusText {
+            if let statusText = presentation.compactText {
                 Text(statusText)
                     .font(.app(.auxiliaryStatus))
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(presentation.compactTextColor)
             }
 
             Spacer()
@@ -104,13 +109,24 @@ struct SyncStatusRow: View {
 struct SidebarSyncFooter: View {
     let state: SyncState
     let lastSyncTime: Date?
+    let accountStatusDescription: String?
+    let cloudKitIdentityTokenState: String?
+    let cloudKitUserRecordID: String?
+    let cloudKitNeedsAttention: Bool
 
     var body: some View {
         VStack(spacing: 0) {
             Divider()
                 .opacity(0.5)
 
-            SyncStatusRow(state: state, lastSyncTime: lastSyncTime)
+            SyncStatusRow(
+                state: state,
+                lastSyncTime: lastSyncTime,
+                accountStatusDescription: accountStatusDescription,
+                cloudKitIdentityTokenState: cloudKitIdentityTokenState,
+                cloudKitUserRecordID: cloudKitUserRecordID,
+                cloudKitNeedsAttention: cloudKitNeedsAttention
+            )
         }
         .background(Color.regularPanelBackground)
     }

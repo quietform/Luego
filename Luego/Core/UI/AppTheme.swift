@@ -104,11 +104,11 @@ enum AppNavigationAppearance {
         appearance.backgroundColor = AppUIColor.regularPanelBackground
         appearance.shadowColor = .clear
         appearance.titleTextAttributes = [
-            .font: UIFont.app(.navigationInlineTitle),
+            .font: UIFont.appAppearance(.navigationInlineTitle),
             .foregroundColor: UIColor.label
         ]
         appearance.largeTitleTextAttributes = [
-            .font: UIFont.app(.navigationLargeTitle),
+            .font: UIFont.appAppearance(.navigationLargeTitle),
             .foregroundColor: UIColor.label
         ]
 

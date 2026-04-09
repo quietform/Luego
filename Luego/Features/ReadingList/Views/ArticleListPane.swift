@@ -8,7 +8,7 @@ struct ArticleListPane: View {
     let shouldAnimateEmptyStateOnFirstAppearance: Bool
     let onEmptyStateAnimationConsumed: () -> Void
     @Environment(\.diContainer) private var diContainer
-    @Environment(SyncStatusObserver.self) private var syncStatusObserver: SyncStatusObserver?
+    @Environment(SyncStatusObserver.self) private var syncStatusObserver
     @State private var showingAddArticle = false
     @State private var showingSettings = false
 
@@ -21,7 +21,7 @@ struct ArticleListPane: View {
     }
 
     private var restoreStatusText: String? {
-        guard filter == .readingList, syncStatusObserver?.state == .restoring else { return nil }
+        guard filter == .readingList, syncStatusObserver.state == .restoring else { return nil }
         return "Restoring articles from iCloud."
     }
 
