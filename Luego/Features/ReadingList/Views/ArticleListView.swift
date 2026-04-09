@@ -4,7 +4,6 @@ struct ArticleListView: View {
     @Environment(\.diContainer) private var diContainer
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var discoveryViewModel: DiscoveryViewModel?
-    @State private var showingAddArticle = false
     @State private var showingDiscovery = false
     @State private var showingSettings = false
     let viewModel: ArticleListViewModel
@@ -29,7 +28,7 @@ struct ArticleListView: View {
     }
 
     var body: some View {
-        presentingAddArticle(
+        AddArticlePresenter(viewModel: viewModel) { addArticleButton in
             ArticleListContent(
                 articles: filteredArticles,
                 viewModel: viewModel,
@@ -52,21 +51,9 @@ struct ArticleListView: View {
                         .accessibilityIdentifier(ReadingListAccessibilityID.discoverButton)
                         .accessibilityLabel("Inspire Me")
                     }
-                    Button {
-                        presentAddArticle()
-                    } label: {
-                        Image(systemName: "plus")
-                    }
-                    .accessibilityIdentifier(ReadingListAccessibilityID.addButton)
-                    #if os(iOS)
-                    .popover(
-                        isPresented: compactAddArticlePopoverBinding,
-                        attachmentAnchor: .rect(.bounds),
-                        arrowEdge: .top
-                    ) {
-                        compactAddArticleDestination
-                    }
-                    #endif
+
+                    addArticleButton
+
                     Button {
                         showingSettings = true
                     } label: {
@@ -75,7 +62,7 @@ struct ArticleListView: View {
                     .accessibilityIdentifier(ReadingListAccessibilityID.settingsButton)
                 }
             }
-        )
+        }
         .sheet(isPresented: $showingSettings) {
             if let container = diContainer {
                 NavigationStack {
@@ -95,44 +82,6 @@ struct ArticleListView: View {
                 discoveryViewModel = nil
             }
         }
-    }
-
-    private func presentAddArticle() {
-        showingAddArticle = true
-    }
-
-    @ViewBuilder
-    private func presentingAddArticle<Content: View>(_ content: Content) -> some View {
-        if horizontalSizeClass == .compact {
-            content
-        } else {
-            content
-                .sheet(isPresented: $showingAddArticle) {
-                    addArticleDestination
-                }
-        }
-    }
-
-    @ViewBuilder
-    private var addArticleDestination: some View {
-        AddArticleView(viewModel: viewModel)
-    }
-
-    private var compactAddArticlePopoverBinding: Binding<Bool> {
-        Binding(
-            get: {
-                horizontalSizeClass == .compact && showingAddArticle
-            },
-            set: { newValue in
-                showingAddArticle = newValue
-            }
-        )
-    }
-
-    @ViewBuilder
-    private var compactAddArticleDestination: some View {
-        addArticleDestination
-            .presentationCompactAdaptation(.popover)
     }
 
     private var navigationTitle: String {

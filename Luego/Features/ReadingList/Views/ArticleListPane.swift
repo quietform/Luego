@@ -9,7 +9,6 @@ struct ArticleListPane: View {
     let onEmptyStateAnimationConsumed: () -> Void
     @Environment(\.diContainer) private var diContainer
     @Environment(SyncStatusObserver.self) private var syncStatusObserver
-    @State private var showingAddArticle = false
     @State private var showingSettings = false
 
     private var filteredArticles: [Article] {
@@ -26,49 +25,43 @@ struct ArticleListPane: View {
     }
 
     var body: some View {
-        Group {
-            if filteredArticles.isEmpty {
-                emptyState(for: viewModel)
-            } else {
-                SelectableArticleList(
-                    articles: filteredArticles,
-                    viewModel: viewModel,
-                    selection: $selectedArticle,
-                    filter: filter,
-                    onRefresh: { await viewModel.refreshArticles() }
-                )
+        AddArticlePresenter(viewModel: viewModel) { addArticleButton in
+            Group {
+                if filteredArticles.isEmpty {
+                    emptyState(for: viewModel)
+                } else {
+                    SelectableArticleList(
+                        articles: filteredArticles,
+                        viewModel: viewModel,
+                        selection: $selectedArticle,
+                        filter: filter,
+                        onRefresh: { await viewModel.refreshArticles() }
+                    )
+                }
             }
-        }
-        .background(Color.regularPanelBackground)
-        .appNavigationStyle(.contentLargeTitle)
-        .navigationTitle(filter.navigationTitle)
-        .toolbar {
-            ToolbarItemGroup(placement: .primaryAction) {
-                if filter == .readingList {
-                    Button(action: onDiscover) {
-                        Image(systemName: "die.face.5")
+            .background(Color.regularPanelBackground)
+            .appNavigationStyle(.contentLargeTitle)
+            .navigationTitle(filter.navigationTitle)
+            .toolbar {
+                ToolbarItemGroup(placement: .primaryAction) {
+                    if filter == .readingList {
+                        Button(action: onDiscover) {
+                            Image(systemName: "die.face.5")
+                        }
+                        .accessibilityIdentifier(ReadingListAccessibilityID.discoverButton)
+                        .accessibilityLabel("Inspire Me")
                     }
-                    .accessibilityIdentifier(ReadingListAccessibilityID.discoverButton)
-                    .accessibilityLabel("Inspire Me")
-                }
 
-                Button {
-                    showingAddArticle = true
-                } label: {
-                    Image(systemName: "plus")
-                }
-                .accessibilityIdentifier(ReadingListAccessibilityID.addButton)
+                    addArticleButton
 
-                Button {
-                    showingSettings = true
-                } label: {
-                    Image(systemName: "gearshape")
+                    Button {
+                        showingSettings = true
+                    } label: {
+                        Image(systemName: "gearshape")
+                    }
+                    .accessibilityIdentifier(ReadingListAccessibilityID.settingsButton)
                 }
-                .accessibilityIdentifier(ReadingListAccessibilityID.settingsButton)
             }
-        }
-        .sheet(isPresented: $showingAddArticle) {
-            AddArticleView(viewModel: viewModel)
         }
         .sheet(isPresented: $showingSettings) {
             if let container = diContainer {
