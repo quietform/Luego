@@ -5,14 +5,29 @@ struct SharedURL: Codable, Sendable {
     let timestamp: Date
 }
 
+enum SharedStorageError: LocalizedError, Sendable {
+    case appGroupUnavailable
+    case sharedQueueDecodeFailed
+    case sharedQueueEncodeFailed
+
+    var errorDescription: String? {
+        switch self {
+        case .appGroupUnavailable:
+            return "Shared storage is unavailable"
+        case .sharedQueueDecodeFailed:
+            return "Failed to read shared items"
+        case .sharedQueueEncodeFailed:
+            return "Failed to save shared items"
+        }
+    }
+}
+
 @MainActor
 protocol SharedStorageDataSourceProtocol: Sendable {
-    func saveSharedURL(_ url: URL)
-    func getSharedURLs() -> [SharedURL]
-    func getSharedURLs(after timestamp: Date) -> [SharedURL]
-    func clearSharedURLs()
-    func getLastSyncTimestamp() -> Date?
-    func setLastSyncTimestamp(_ timestamp: Date)
+    func saveSharedURL(_ url: URL) throws
+    func getSharedURLs() throws -> [SharedURL]
+    func replaceSharedURLs(_ sharedURLs: [SharedURL]) throws
+    func clearSharedURLs() throws
 }
 
 @MainActor
@@ -22,70 +37,57 @@ final class SharedStorage: SharedStorageDataSourceProtocol {
     #if os(iOS)
     private let appGroupIdentifier = "group.com.esoxjem.Luego"
     private let sharedURLsKey = "sharedURLs"
-    private let lastSyncTimestampKey = "lastSyncTimestamp"
     #endif
 
     private init() {}
 
-    func saveSharedURL(_ url: URL) {
+    func saveSharedURL(_ url: URL) throws {
         #if os(iOS)
-        guard let userDefaults = UserDefaults(suiteName: appGroupIdentifier) else {
-            return
-        }
-
-        var sharedURLs = getSharedURLs()
+        var sharedURLs = try getSharedURLs()
         let sharedURL = SharedURL(url: url, timestamp: Date())
         sharedURLs.append(sharedURL)
-
-        if let encoded = try? JSONEncoder().encode(sharedURLs) {
-            userDefaults.set(encoded, forKey: sharedURLsKey)
-        }
+        try replaceSharedURLs(sharedURLs)
         #endif
     }
 
-    func getSharedURLs() -> [SharedURL] {
+    func getSharedURLs() throws -> [SharedURL] {
         #if os(iOS)
         guard let userDefaults = UserDefaults(suiteName: appGroupIdentifier),
-              let data = userDefaults.data(forKey: sharedURLsKey),
-              let sharedURLs = try? JSONDecoder().decode([SharedURL].self, from: data) else {
+              let data = userDefaults.data(forKey: sharedURLsKey) else {
             return []
         }
+
+        guard let sharedURLs = try? JSONDecoder().decode([SharedURL].self, from: data) else {
+            throw SharedStorageError.sharedQueueDecodeFailed
+        }
+
         return sharedURLs
         #else
         return []
         #endif
     }
 
-    func getSharedURLs(after timestamp: Date) -> [SharedURL] {
-        getSharedURLs().filter { $0.timestamp > timestamp }
-    }
-
-    func clearSharedURLs() {
+    func replaceSharedURLs(_ sharedURLs: [SharedURL]) throws {
         #if os(iOS)
         guard let userDefaults = UserDefaults(suiteName: appGroupIdentifier) else {
-            return
+            throw SharedStorageError.appGroupUnavailable
         }
+
+        guard let encoded = try? JSONEncoder().encode(sharedURLs) else {
+            throw SharedStorageError.sharedQueueEncodeFailed
+        }
+
+        userDefaults.set(encoded, forKey: sharedURLsKey)
+        #endif
+    }
+
+    func clearSharedURLs() throws {
+        #if os(iOS)
+        guard let userDefaults = UserDefaults(suiteName: appGroupIdentifier) else {
+            throw SharedStorageError.appGroupUnavailable
+        }
+
         userDefaults.removeObject(forKey: sharedURLsKey)
-        #endif
-    }
-
-    func getLastSyncTimestamp() -> Date? {
-        #if os(iOS)
-        guard let userDefaults = UserDefaults(suiteName: appGroupIdentifier) else {
-            return nil
-        }
-        return userDefaults.object(forKey: lastSyncTimestampKey) as? Date
-        #else
-        return nil
-        #endif
-    }
-
-    func setLastSyncTimestamp(_ timestamp: Date) {
-        #if os(iOS)
-        guard let userDefaults = UserDefaults(suiteName: appGroupIdentifier) else {
-            return
-        }
-        userDefaults.set(timestamp, forKey: lastSyncTimestampKey)
         #endif
     }
 }
