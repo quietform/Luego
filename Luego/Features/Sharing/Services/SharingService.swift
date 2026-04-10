@@ -22,15 +22,14 @@ final class SharingService: SharingServiceProtocol {
     }
 
     func syncSharedArticles() async throws -> [Article] {
-        let lastSyncTimestamp = userDefaultsDataSource.getLastSyncTimestamp() ?? Date.distantPast
-        let sharedURLs = userDefaultsDataSource.getSharedURLs(after: lastSyncTimestamp)
+        let sharedURLs = try userDefaultsDataSource.getSharedURLs()
 
         guard !sharedURLs.isEmpty else {
             return []
         }
 
         var newArticles: [Article] = []
-        var latestProcessedTimestamp: Date = lastSyncTimestamp
+        var remainingSharedURLs: [SharedURL] = []
 
         for sharedURL in sharedURLs {
             do {
@@ -38,7 +37,6 @@ final class SharingService: SharingServiceProtocol {
 
                 if (try articleStore.fetchArticle(url: validatedURL)) != nil {
                     Logger.sharing.debug("Skipping duplicate URL: \(validatedURL.absoluteString)")
-                    latestProcessedTimestamp = max(latestProcessedTimestamp, sharedURL.timestamp)
                     continue
                 }
 
@@ -58,25 +56,23 @@ final class SharingService: SharingServiceProtocol {
                 do {
                     let savedArticle = try articleStore.saveArticle(article)
                     newArticles.append(savedArticle)
-                    latestProcessedTimestamp = max(latestProcessedTimestamp, sharedURL.timestamp)
                 } catch {
                     if let existingArticle = try articleStore.fetchArticle(url: validatedURL) {
                         Logger.sharing.debug("Duplicate detected via constraint: \(validatedURL.absoluteString)")
-                        latestProcessedTimestamp = max(latestProcessedTimestamp, sharedURL.timestamp)
                         newArticles.append(existingArticle)
                     } else {
                         Logger.sharing.error("Failed to save article and no existing article found: \(error.localizedDescription)")
+                        remainingSharedURLs.append(sharedURL)
                     }
                 }
             } catch {
                 Logger.sharing.error("Failed to sync shared article from \(sharedURL.url.absoluteString): \(error.localizedDescription)")
+                remainingSharedURLs.append(sharedURL)
                 continue
             }
         }
 
-        if latestProcessedTimestamp > lastSyncTimestamp {
-            userDefaultsDataSource.setLastSyncTimestamp(latestProcessedTimestamp)
-        }
+        try userDefaultsDataSource.replaceSharedURLs(remainingSharedURLs)
 
         return newArticles
     }

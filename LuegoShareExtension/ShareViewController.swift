@@ -28,7 +28,6 @@ class ShareViewController: UIViewController, UIAdaptivePresentationControllerDel
     private var pendingCandidates: [SharedItemCandidate] = []
     private var nextCandidateIndex = 0
     private var lastProcessingError: String?
-    private var savedURL: URL?
     private var isCompletingRequest = false
 
     override func viewDidLoad() {
@@ -50,8 +49,8 @@ class ShareViewController: UIViewController, UIAdaptivePresentationControllerDel
         successView.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(successView)
 
-        successView.onOpenInLuego = { [weak self] in
-            self?.openSavedArticle()
+        successView.onDismiss = { [weak self] in
+            self?.dismissExtension()
         }
 
         NSLayoutConstraint.activate([
@@ -185,38 +184,20 @@ class ShareViewController: UIViewController, UIAdaptivePresentationControllerDel
     }
 
     private func saveURL(_ url: URL) {
-        savedURL = url
-        Self.logger.info("Share extension saved article URL: \(url.absoluteString, privacy: .public)")
-        SharedStorage.shared.saveSharedURL(url)
-        completeWithSuccess()
+        do {
+            try SharedStorage.shared.saveSharedURL(url)
+            Self.logger.info("Share extension saved article URL: \(url.absoluteString, privacy: .public)")
+            completeWithSuccess()
+        } catch {
+            Self.logger.error("Share extension failed to save article URL: \(error.localizedDescription, privacy: .public)")
+            completeWithError(message: error.localizedDescription)
+        }
     }
 
     private func completeWithSuccess() {
         UIView.animate(withDuration: 0.3, delay: 0, usingSpringWithDamping: 0.7, initialSpringVelocity: 0.5) {
             self.successView.alpha = 1
             self.successView.transform = .identity
-        }
-    }
-
-    private func openSavedArticle() {
-        guard let savedURL else {
-            Self.logger.error("Share extension could not open article because no saved URL was available")
-            dismissExtension()
-            return
-        }
-
-        guard let deepLinkURL = ArticleDeepLinkBuilder.makeArticleURL(for: savedURL) else {
-            Self.logger.error("Share extension could not build deep link for saved URL: \(savedURL.absoluteString, privacy: .public)")
-            dismissExtension()
-            return
-        }
-
-        Self.logger.info("Share extension attempting to open deep link: \(deepLinkURL.absoluteString, privacy: .public)")
-        extensionContext?.open(deepLinkURL) { [weak self] success in
-            Task { @MainActor [weak self] in
-                Self.logger.info("Share extension deep link open completed with success=\(success, privacy: .public)")
-                self?.dismissExtension()
-            }
         }
     }
 
@@ -249,7 +230,7 @@ class SuccessView: UIView {
     private let subtitleLabel = UILabel()
     private let actionButton = UIButton(type: .system)
 
-    var onOpenInLuego: (() -> Void)?
+    var onDismiss: (() -> Void)?
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -279,7 +260,7 @@ class SuccessView: UIView {
         subtitleLabel.translatesAutoresizingMaskIntoConstraints = false
         addSubview(subtitleLabel)
 
-        actionButton.setTitle("Open in Luego", for: .normal)
+        actionButton.setTitle("Dismiss", for: .normal)
         actionButton.titleLabel?.font = .systemFont(ofSize: 17, weight: .semibold)
         actionButton.backgroundColor = .systemBlue
         actionButton.setTitleColor(.white, for: .normal)
@@ -310,7 +291,7 @@ class SuccessView: UIView {
     }
 
     @objc private func actionTapped() {
-        onOpenInLuego?()
+        onDismiss?()
     }
 }
 

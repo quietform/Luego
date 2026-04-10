@@ -2,11 +2,8 @@ import Foundation
 
 @MainActor
 protocol UserDefaultsDataSourceProtocol: Sendable {
-    func getSharedURLs() -> [URL]
-    func getSharedURLs(after timestamp: Date) -> [SharedURL]
-    func clearSharedURLs()
-    func getLastSyncTimestamp() -> Date?
-    func setLastSyncTimestamp(_ timestamp: Date)
+    func getSharedURLs() throws -> [SharedURL]
+    func replaceSharedURLs(_ sharedURLs: [SharedURL]) throws
 }
 
 @MainActor
@@ -17,23 +14,11 @@ final class UserDefaultsDataSource: UserDefaultsDataSourceProtocol {
         self.sharedStorage = sharedStorage
     }
 
-    func getSharedURLs() -> [URL] {
-        sharedStorage.getSharedURLs().map { $0.url }
+    func getSharedURLs() throws -> [SharedURL] {
+        try sharedStorage.getSharedURLs()
     }
 
-    func getSharedURLs(after timestamp: Date) -> [SharedURL] {
-        sharedStorage.getSharedURLs(after: timestamp)
-    }
-
-    func clearSharedURLs() {
-        sharedStorage.clearSharedURLs()
-    }
-
-    func getLastSyncTimestamp() -> Date? {
-        sharedStorage.getLastSyncTimestamp()
-    }
-
-    func setLastSyncTimestamp(_ timestamp: Date) {
-        sharedStorage.setLastSyncTimestamp(timestamp)
+    func replaceSharedURLs(_ sharedURLs: [SharedURL]) throws {
+        try sharedStorage.replaceSharedURLs(sharedURLs)
     }
 }
