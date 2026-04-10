@@ -1,7 +1,7 @@
 import Foundation
 
 enum SharedTextURLExtractor {
-    static func isSupportedWebURL(_ url: URL) -> Bool {
+    nonisolated static func isSupportedWebURL(_ url: URL) -> Bool {
         guard let scheme = url.scheme?.lowercased() else {
             return false
         }
@@ -9,7 +9,7 @@ enum SharedTextURLExtractor {
         return scheme == "http" || scheme == "https"
     }
 
-    static func extractSupportedWebURLs(from text: String) -> [URL] {
+    nonisolated static func extractSupportedWebURLs(from text: String) -> [URL] {
         guard let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue) else {
             return []
         }
@@ -20,7 +20,7 @@ enum SharedTextURLExtractor {
             .filter(isSupportedWebURL)
     }
 
-    static func extractFirstSupportedWebURL(from text: String) -> URL? {
+    nonisolated static func extractFirstSupportedWebURL(from text: String) -> URL? {
         extractSupportedWebURLs(from: text).first
     }
 }
