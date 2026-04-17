@@ -108,6 +108,7 @@ final class GRDBArticleStore: ArticleStoreProtocol {
 
             var revivedRecord = ArticleRecord(article)
             revivedRecord.id = existingRecord.id
+            revivedRecord.author = existingRecord.author
             revivedRecord.cloudKitSystemFields = existingRecord.cloudKitSystemFields
             revivedRecord.deletedAt = nil
             try saveRecord(revivedRecord)
@@ -118,6 +119,7 @@ final class GRDBArticleStore: ArticleStoreProtocol {
 
         var record = ArticleRecord(article)
         if let existingRecord = try fetchRecord(id: article.id) {
+            record.author = existingRecord.author
             record.cloudKitSystemFields = existingRecord.cloudKitSystemFields
         }
         record.deletedAt = nil
@@ -286,7 +288,6 @@ final class GRDBArticleStore: ArticleStoreProtocol {
             readPosition: record.readPosition,
             isFavorite: record.isFavorite,
             isArchived: record.isArchived,
-            author: record.author,
             wordCount: record.wordCount
         )
 
@@ -307,7 +308,6 @@ final class GRDBArticleStore: ArticleStoreProtocol {
             readPosition: record.readPosition,
             isFavorite: record.isFavorite,
             isArchived: record.isArchived,
-            author: record.author,
             wordCount: record.wordCount
         )
     }
@@ -343,9 +343,6 @@ final class GRDBArticleStore: ArticleStoreProtocol {
         }
         if article.isArchived != record.isArchived {
             article.isArchived = record.isArchived
-        }
-        if article.author != record.author {
-            article.author = record.author
         }
         if article.wordCount != record.wordCount {
             article.wordCount = record.wordCount

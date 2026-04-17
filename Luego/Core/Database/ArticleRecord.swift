@@ -72,7 +72,6 @@ struct ArticleRecord: Codable, FetchableRecord, PersistableRecord, Sendable {
             readPosition: article.readPosition,
             isFavorite: membership.isFavorite,
             isArchived: membership.isArchived,
-            author: article.author,
             wordCount: article.wordCount,
             cloudKitSystemFields: cloudKitSystemFields,
             deletedAt: nil
@@ -121,7 +120,6 @@ struct ArticleRecord: Codable, FetchableRecord, PersistableRecord, Sendable {
             readPosition: readPosition,
             isFavorite: membership.isFavorite,
             isArchived: membership.isArchived,
-            author: author,
             wordCount: wordCount
         )
     }

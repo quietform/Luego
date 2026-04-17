@@ -23,7 +23,6 @@ struct ParserResult: Sendable {
 
 struct ParserMetadata: Sendable {
     let title: String?
-    let author: String?
     let publishedDate: String?
     let excerpt: String?
     let siteName: String?

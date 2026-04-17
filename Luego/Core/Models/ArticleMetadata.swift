@@ -12,7 +12,6 @@ struct ArticleMetadata {
     let thumbnailURL: URL?
     let description: String?
     let publishedDate: Date?
-    let author: String?
     let wordCount: Int?
 
     init(
@@ -20,14 +19,12 @@ struct ArticleMetadata {
         thumbnailURL: URL? = nil,
         description: String? = nil,
         publishedDate: Date? = nil,
-        author: String? = nil,
         wordCount: Int? = nil
     ) {
         self.title = title
         self.thumbnailURL = thumbnailURL
         self.description = description
         self.publishedDate = publishedDate
-        self.author = author
         self.wordCount = wordCount
     }
 }

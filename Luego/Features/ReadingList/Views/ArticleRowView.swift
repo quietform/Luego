@@ -25,7 +25,6 @@ struct ArticleRowView: View {
                 ArticleMetadataRow(
                     article: article,
                     domain: article.domain,
-                    author: article.author,
                     readPercentage: Int(article.readPosition * 100),
                     formattedDate: formatDisplayDate(article),
                     estimatedReadingTime: article.estimatedReadingTime,
@@ -127,7 +126,6 @@ private struct ArticleTitleHeightPreferenceKey: PreferenceKey {
 struct ArticleMetadataRow: View {
     let article: Article
     let domain: String
-    let author: String?
     let readPercentage: Int
     let formattedDate: String
     var estimatedReadingTime: String? = nil
@@ -138,13 +136,6 @@ struct ArticleMetadataRow: View {
             HStack(spacing: 0) {
                 Text(domain)
                     .lineLimit(1)
-
-                if let author, !author.isEmpty {
-                    Text(" · ")
-                        .foregroundStyle(.quaternary)
-                    Text(author)
-                        .lineLimit(1)
-                }
 
                 Spacer()
             }

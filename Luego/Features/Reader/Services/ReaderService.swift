@@ -52,9 +52,6 @@ final class ReaderService: ReaderServiceProtocol {
             freshArticle.content = content.content
         }
 
-        if forceRefresh || freshArticle.author == nil, let author = content.author {
-            freshArticle.author = author
-        }
         if forceRefresh || freshArticle.wordCount == nil, let wordCount = content.wordCount {
             freshArticle.wordCount = wordCount
         }

@@ -6,7 +6,6 @@ struct ArticleContent: Codable {
     let description: String?
     let content: String
     let publishedDate: Date?
-    let author: String?
     let wordCount: Int?
 
     init(
@@ -15,7 +14,6 @@ struct ArticleContent: Codable {
         description: String? = nil,
         content: String,
         publishedDate: Date? = nil,
-        author: String? = nil,
         wordCount: Int? = nil
     ) {
         self.title = title
@@ -23,7 +21,6 @@ struct ArticleContent: Codable {
         self.description = description
         self.content = content
         self.publishedDate = publishedDate
-        self.author = author
         self.wordCount = wordCount
     }
 }
@@ -36,7 +33,6 @@ extension ArticleContent {
             description: result.metadata?.excerpt,
             content: result.content ?? "",
             publishedDate: Self.parseDate(result.metadata?.publishedDate),
-            author: result.metadata?.author,
             wordCount: Self.calculateWordCount(result.content)
         )
     }

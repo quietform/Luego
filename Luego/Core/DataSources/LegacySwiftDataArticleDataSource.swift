@@ -106,7 +106,6 @@ final class LegacySwiftDataArticleDataSource: LegacySwiftDataArticleDataSourcePr
             let readPosition = double(from: statement, column: 7) ?? 0
             let isFavorite = bool(from: statement, column: 8)
             let isArchived = bool(from: statement, column: 9)
-            let author = string(from: statement, column: 10)
             let wordCount = int(from: statement, column: 11)
 
             articles.append(
@@ -121,7 +120,6 @@ final class LegacySwiftDataArticleDataSource: LegacySwiftDataArticleDataSourcePr
                     readPosition: readPosition,
                     isFavorite: isFavorite,
                     isArchived: isArchived,
-                    author: author,
                     wordCount: wordCount
                 )
             )

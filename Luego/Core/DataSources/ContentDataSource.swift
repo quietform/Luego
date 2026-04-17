@@ -110,7 +110,6 @@ final class ContentDataSource: MetadataDataSourceProtocol {
             description: nil,
             content: response.content,
             publishedDate: publishedDate,
-            author: response.metadata.author,
             wordCount: response.metadata.wordCount
         )
     }
@@ -143,7 +142,6 @@ final class ContentDataSource: MetadataDataSourceProtocol {
             thumbnailURL: thumbnailURL,
             description: nil,
             publishedDate: publishedDate,
-            author: response.metadata.author,
             wordCount: response.metadata.wordCount
         )
     }
@@ -158,8 +156,7 @@ final class ContentDataSource: MetadataDataSourceProtocol {
             title: metadata.title ?? url.host() ?? url.absoluteString,
             thumbnailURL: thumbnailURL,
             description: metadata.excerpt,
-            publishedDate: publishedDate,
-            author: metadata.author
+            publishedDate: publishedDate
         )
     }
 
