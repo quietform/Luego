@@ -7,7 +7,7 @@ struct ArticleListMembership: Equatable, Sendable {
     let isArchived: Bool
 
     nonisolated init(isFavorite: Bool, isArchived: Bool) {
-        self.isFavorite = isFavorite
+        self.isFavorite = isArchived ? false : isFavorite
         self.isArchived = isArchived
     }
 

@@ -166,9 +166,20 @@ struct ArticleRecord: Codable, FetchableRecord, PersistableRecord, Sendable {
         ArticleListMembership(isFavorite: isFavorite, isArchived: isArchived)
     }
 
-    mutating func normalizeListMembership() {
-        let membership = listMembership
+    mutating func applyListMembership(_ membership: ArticleListMembership) {
         isFavorite = membership.isFavorite
         isArchived = membership.isArchived
+    }
+
+    mutating func toggleFavoriteMembership() {
+        applyListMembership(listMembership.togglingFavorite())
+    }
+
+    mutating func toggleArchiveMembership() {
+        applyListMembership(listMembership.togglingArchive())
+    }
+
+    mutating func normalizeListMembership() {
+        applyListMembership(listMembership)
     }
 }

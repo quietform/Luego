@@ -190,10 +190,7 @@ final class GRDBArticleStore: ArticleStoreProtocol {
                 return
             }
 
-            record.isFavorite.toggle()
-            if record.isFavorite {
-                record.isArchived = false
-            }
+            record.toggleFavoriteMembership()
             try record.save(db)
             didUpdate = true
         }
@@ -213,10 +210,7 @@ final class GRDBArticleStore: ArticleStoreProtocol {
                 return
             }
 
-            record.isArchived.toggle()
-            if record.isArchived {
-                record.isFavorite = false
-            }
+            record.toggleArchiveMembership()
             try record.save(db)
             didUpdate = true
         }
@@ -338,16 +332,10 @@ final class GRDBArticleStore: ArticleStoreProtocol {
         if article.readPosition != record.readPosition {
             article.readPosition = record.readPosition
         }
-        if article.isFavorite != record.isFavorite {
-            article.isFavorite = record.isFavorite
-        }
-        if article.isArchived != record.isArchived {
-            article.isArchived = record.isArchived
-        }
+        article.applyListMembership(record.listMembership)
         if article.wordCount != record.wordCount {
             article.wordCount = record.wordCount
         }
-        article.normalizeListMembership()
     }
 
     private func normalizedRecord(from record: ArticleRecord) -> ArticleRecord {

@@ -44,19 +44,13 @@ extension ArticleStoreProtocol {
 
     func toggleFavorite(id: UUID) throws {
         guard let article = try fetchArticle(id: id) else { return }
-        article.isFavorite.toggle()
-        if article.isFavorite {
-            article.isArchived = false
-        }
+        article.toggleFavoriteMembership()
         _ = try saveArticle(article)
     }
 
     func toggleArchive(id: UUID) throws {
         guard let article = try fetchArticle(id: id) else { return }
-        article.isArchived.toggle()
-        if article.isArchived {
-            article.isFavorite = false
-        }
+        article.toggleArchiveMembership()
         _ = try saveArticle(article)
     }
 

@@ -96,10 +96,7 @@ final class ArticleService: ArticleServiceProtocol {
             return
         }
 
-        article.isFavorite.toggle()
-        if article.isFavorite {
-            article.isArchived = false
-        }
+        article.toggleFavoriteMembership()
 
         _ = try articleStore.saveArticle(article)
     }
@@ -109,10 +106,7 @@ final class ArticleService: ArticleServiceProtocol {
             return
         }
 
-        article.isArchived.toggle()
-        if article.isArchived {
-            article.isFavorite = false
-        }
+        article.toggleArchiveMembership()
 
         _ = try articleStore.saveArticle(article)
     }

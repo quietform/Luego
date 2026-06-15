@@ -86,6 +86,14 @@ extension Article {
         }
     }
 
+    func toggleFavoriteMembership() {
+        applyListMembership(listMembership.togglingFavorite())
+    }
+
+    func toggleArchiveMembership() {
+        applyListMembership(listMembership.togglingArchive())
+    }
+
     func normalizeListMembership() {
         applyListMembership(listMembership)
     }
