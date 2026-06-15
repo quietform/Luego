@@ -5,6 +5,7 @@ protocol ArticleServiceProtocol: Sendable {
     func getAllArticles() async throws -> [Article]
     func observeArticles() -> AsyncThrowingStream<[Article], Error>
     func refreshArticles() async throws
+    func isArticleSaved(url: URL) async throws -> Bool
     func addArticle(url: URL) async throws -> Article
     func deleteArticle(id: UUID) async throws
     func updateArticle(_ article: Article) async throws
@@ -40,6 +41,11 @@ final class ArticleService: ArticleServiceProtocol {
 
     func refreshArticles() async throws {
         _ = try await syncEngineManager.refresh(mode: .smart)
+    }
+
+    func isArticleSaved(url: URL) async throws -> Bool {
+        let validatedURL = try await metadataDataSource.validateURL(url)
+        return try articleStore.fetchArticle(url: validatedURL) != nil
     }
 
     func addArticle(url: URL) async throws -> Article {

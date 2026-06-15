@@ -93,8 +93,7 @@ final class DiscoveryViewModel {
 
     private func checkIfAlreadySaved(url: URL) async {
         do {
-            let articles = try await articleService.getAllArticles()
-            isSaved = articles.contains { $0.url == url }
+            isSaved = try await articleService.isArticleSaved(url: url)
         } catch {
             isSaved = false
         }

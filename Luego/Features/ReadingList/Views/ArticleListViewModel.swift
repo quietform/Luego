@@ -72,9 +72,7 @@ final class ArticleListViewModel {
             return
         }
 
-        let currentArticles = articles.isEmpty ? (try? await articleService.getAllArticles()) ?? [] : articles
-
-        if currentArticles.contains(where: { $0.url == url }) {
+        if (try? await articleService.isArticleSaved(url: url)) == true {
             errorMessage = "This article has already been saved"
             return
         }
