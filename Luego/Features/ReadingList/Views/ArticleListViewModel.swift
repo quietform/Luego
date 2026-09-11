@@ -81,7 +81,7 @@ final class ArticleListViewModel {
         defer { isLoading = false }
 
         do {
-            _ = try await articleService.addArticle(url: url)
+            _ = try await articleService.addArticle(url: url, savedDate: Date())
         } catch let error as ArticleMetadataError {
             errorMessage = error.localizedDescription
         } catch {
@@ -90,7 +90,7 @@ final class ArticleListViewModel {
     }
 
     func openOrImportArticle(from url: URL) async throws -> Article {
-        try await articleService.addArticle(url: url)
+        try await articleService.addArticle(url: url, savedDate: Date()).article
     }
 
     func deleteArticle(_ article: Article) async {

@@ -20,14 +20,14 @@ protocol ReaderServiceProtocol: Sendable {
 @MainActor
 final class ReaderService: ReaderServiceProtocol {
     private let articleStore: ArticleStoreProtocol
-    private let metadataDataSource: MetadataDataSourceProtocol
+    private let contentDataSource: ContentDataSourceProtocol
 
     init(
         articleStore: ArticleStoreProtocol,
-        metadataDataSource: MetadataDataSourceProtocol
+        contentDataSource: ContentDataSourceProtocol
     ) {
         self.articleStore = articleStore
-        self.metadataDataSource = metadataDataSource
+        self.contentDataSource = contentDataSource
     }
 
     func fetchContent(for article: Article, forceRefresh: Bool = false) async throws -> Article {
@@ -40,8 +40,8 @@ final class ReaderService: ReaderServiceProtocol {
             return article
         }
 
-        Logger.reader.debug("Fetching content from metadata source")
-        let content = try await metadataDataSource.fetchContent(for: article.url, timeout: nil, forceRefresh: forceRefresh)
+        Logger.reader.debug("Fetching article content")
+        let content = try await contentDataSource.fetchContent(for: article.url, timeout: nil, forceRefresh: forceRefresh)
 
         guard let freshArticle = try articleStore.fetchArticle(id: articleId) else {
             Logger.reader.error("Article \(articleId) not found after fetch")

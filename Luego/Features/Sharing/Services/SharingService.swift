@@ -7,72 +7,38 @@ protocol SharingServiceProtocol: Sendable {
 
 @MainActor
 final class SharingService: SharingServiceProtocol {
-    private let articleStore: ArticleStoreProtocol
-    private let metadataDataSource: MetadataDataSourceProtocol
-    private let userDefaultsDataSource: UserDefaultsDataSourceProtocol
+    private let articleService: ArticleServiceProtocol
+    private let sharedStorage: SharedStorageDataSourceProtocol
 
     init(
-        articleStore: ArticleStoreProtocol,
-        metadataDataSource: MetadataDataSourceProtocol,
-        userDefaultsDataSource: UserDefaultsDataSourceProtocol
+        articleService: ArticleServiceProtocol,
+        sharedStorage: SharedStorageDataSourceProtocol
     ) {
-        self.articleStore = articleStore
-        self.metadataDataSource = metadataDataSource
-        self.userDefaultsDataSource = userDefaultsDataSource
+        self.articleService = articleService
+        self.sharedStorage = sharedStorage
     }
 
     func syncSharedArticles() async throws -> [Article] {
-        let sharedURLs = try userDefaultsDataSource.getSharedURLs()
+        let sharedURLs = try sharedStorage.getSharedURLs()
 
         guard !sharedURLs.isEmpty else {
             return []
         }
 
         var newArticles: [Article] = []
-        var remainingSharedURLs: [SharedURL] = []
 
         for sharedURL in sharedURLs {
             do {
-                let validatedURL = try await metadataDataSource.validateURL(sharedURL.url)
-
-                if (try articleStore.fetchArticle(url: validatedURL)) != nil {
-                    Logger.sharing.debug("Skipping duplicate URL: \(validatedURL.absoluteString)")
-                    continue
-                }
-
-                let metadata = try await metadataDataSource.fetchMetadata(for: validatedURL)
-
-                let article = Article(
-                    id: UUID(),
-                    url: validatedURL,
-                    title: metadata.title,
-                    content: nil,
-                    savedDate: Date(),
-                    thumbnailURL: metadata.thumbnailURL,
-                    publishedDate: metadata.publishedDate,
-                    readPosition: 0
-                )
-
-                do {
-                    let savedArticle = try articleStore.saveArticle(article)
-                    newArticles.append(savedArticle)
-                } catch {
-                    if let existingArticle = try articleStore.fetchArticle(url: validatedURL) {
-                        Logger.sharing.debug("Duplicate detected via constraint: \(validatedURL.absoluteString)")
-                        newArticles.append(existingArticle)
-                    } else {
-                        Logger.sharing.error("Failed to save article and no existing article found: \(error.localizedDescription)")
-                        remainingSharedURLs.append(sharedURL)
-                    }
+                let result = try await articleService.addArticle(url: sharedURL.url, savedDate: Date())
+                try sharedStorage.acknowledgeSharedURL(id: sharedURL.id)
+                if result.isNew {
+                    newArticles.append(result.article)
                 }
             } catch {
                 Logger.sharing.error("Failed to sync shared article from \(sharedURL.url.absoluteString): \(error.localizedDescription)")
-                remainingSharedURLs.append(sharedURL)
                 continue
             }
         }
-
-        try userDefaultsDataSource.replaceSharedURLs(remainingSharedURLs)
 
         return newArticles
     }

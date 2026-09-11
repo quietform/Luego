@@ -1,5 +1,6 @@
 # Luego
-A minimal, offline read-it-later iOS app. I've built this app as an alternative to [Pocket](https://getpocket.com/). 
+
+A minimal read-it-later app for iPhone and iPad, with offline access to previously fetched articles.
 
 [Download](https://apps.apple.com/us/app/luego/id6755436648) on the App Store or [Join Beta](https://testflight.apple.com/join/XCNeNBsA) on TestFlight.
 <p>
@@ -8,25 +9,25 @@ A minimal, offline read-it-later iOS app. I've built this app as an alternative 
   <img src="docs/screenshots/App Store Screenshot 3.jpg" width="180" />
   <img src="docs/screenshots/App Store Screenshot 4.jpg" width="180" />
 </p>
+
 ## Architecture
 
-Luego follows an opinionated Clean Architecture implementation organized by feature. See [ARCHITECTURE.md](ARCHITECTURE.md).
-
+Luego uses SwiftUI and Observation, with services organized by feature and dependencies wired through `DIContainer`. Articles are stored locally with GRDB/SQLite and synchronized through `CKSyncEngine` with a CloudKit private database. See [ARCHITECTURE.md](ARCHITECTURE.md) for the data flows and [AGENTS.md](AGENTS.md) for contribution rules.
 
 ## Features
 
-- **Quick Article Saving**: Save articles via URL or iOS Share Extension
-- **Automatic Metadata Extraction**: Fetch titles, descriptions, and images automatically via OpenGraph tags
-- **Offline Reading**: Access saved articles with last read position
-- **Clean Reader View**: Distraction-free reading experience with Markdown rendering
-- **SwiftData Integration**: Modern data persistence with SwiftData
-
+- **Article saving**: Add a URL in the app or queue it through the share extension for import when the app is active.
+- **Content extraction**: Parse articles locally with a downloaded parser SDK, with API fallback.
+- **Offline reading**: Read previously fetched content with saved reading position and Markdown rendering.
+- **Reading lists**: Favorite and archive articles, with local SQLite storage and iCloud sync.
+- **Discovery**: Explore articles from Kagi Small Web and Blogroll.
+- **Import and export**: Transfer article URLs as plain text.
 
 ## Requirements
 
-- iOS 26.0+
+- iOS 26.0+ or iPadOS 26.0+
 - Xcode 26.0+
-- Swift 5.0+
+- The project uses Swift 5 language mode with complete strict concurrency checking.
 
 ## Installation
 
@@ -34,7 +35,7 @@ Luego follows an opinionated Clean Architecture implementation organized by feat
 
 ```bash
 git clone https://github.com/quietform/Luego.git
-cd luego
+cd Luego
 ```
 
 ### 2. Open in Xcode
@@ -51,19 +52,21 @@ Before building, you need to configure code signing:
 2. Select the **Luego** target
 3. Go to **Signing & Capabilities** tab
 4. Select your **Team** from the dropdown
-5. Repeat for the **LuegoShareExtension** target if needed
+5. Repeat for the **LuegoShareExtension** target
 
-The bundle identifier can be changed to your own if desired.
+Bundle identifiers and display names are configured per build configuration in [Configuration/](Configuration/). If using your own identifiers, update both targets, their App Group entitlements, the App Group identifiers in `SharedStorage` and `LegacySwiftDataArticleDataSource`, and the CloudKit container in the app entitlements and `AppConfiguration` together. The app uses `iCloud.com.esoxjem.Luego`; both targets share `group.com.esoxjem.Luego` for queued URLs.
 
 ## Developer CLI
 
-Use `xcodebuildmcp` instead of calling `xcodebuild` directly. This repo configures the project path, scheme, Debug configuration, and default iPhone simulator in `.xcodebuildmcp/config.yaml`.
+Run these commands from the repository root. Use `xcodebuildmcp` instead of calling `xcodebuild` directly. [.xcodebuildmcp/config.yaml](.xcodebuildmcp/config.yaml) configures the `Luego` project and scheme, Debug configuration, and iPhone 17 simulator.
 
 ```bash
 xcodebuildmcp simulator build --use-latest-os
 xcodebuildmcp simulator build-and-run --use-latest-os
-xcodebuildmcp simulator test --use-latest-os
+xcodebuildmcp simulator test --scheme LuegoTests --use-latest-os --json '{"extraArgs":["-parallel-testing-enabled","NO"]}'
 xcodebuildmcp simulator list
 xcodebuildmcp simulator screenshot --simulator-id <uuid>
 xcodebuildmcp simulator snapshot-ui --simulator-id <uuid>
 ```
+
+The `LuegoTests` scheme runs service and persistence tests with isolated storage, without launching the app or contacting CloudKit. Build and run on the relevant iPhone and iPad simulators, then verify behavior with logs or screenshots as described in [AGENTS.md](AGENTS.md).

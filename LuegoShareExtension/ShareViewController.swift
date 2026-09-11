@@ -184,13 +184,15 @@ class ShareViewController: UIViewController, UIAdaptivePresentationControllerDel
     }
 
     private func saveURL(_ url: URL) {
-        do {
-            try SharedStorage.shared.saveSharedURL(url)
-            Self.logger.info("Share extension saved article URL: \(url.absoluteString, privacy: .public)")
-            completeWithSuccess()
-        } catch {
-            Self.logger.error("Share extension failed to save article URL: \(error.localizedDescription, privacy: .public)")
-            completeWithError(message: error.localizedDescription)
+        Task {
+            do {
+                try await SharedStorage.shared.saveSharedURL(url)
+                Self.logger.info("Share extension saved article URL: \(url.absoluteString, privacy: .public)")
+                completeWithSuccess()
+            } catch {
+                Self.logger.error("Share extension failed to save article URL: \(error.localizedDescription, privacy: .public)")
+                completeWithError(message: error.localizedDescription)
+            }
         }
     }
 

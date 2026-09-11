@@ -1,29 +1,54 @@
 import Foundation
 
 @MainActor
-final class ContentDataSource: MetadataDataSourceProtocol {
+protocol ContentDataSourceProtocol: Sendable {
+    func validateURL(_ url: URL) async throws -> URL
+    func fetchMetadata(for url: URL, timeout: TimeInterval?) async throws -> ArticleMetadata
+    func fetchContent(for url: URL, timeout: TimeInterval?, forceRefresh: Bool, skipCache: Bool) async throws -> ArticleContent
+}
+
+extension ContentDataSourceProtocol {
+    func fetchMetadata(for url: URL) async throws -> ArticleMetadata {
+        try await fetchMetadata(for: url, timeout: nil)
+    }
+
+    func fetchContent(for url: URL) async throws -> ArticleContent {
+        try await fetchContent(for: url, timeout: nil, forceRefresh: false, skipCache: false)
+    }
+
+    func fetchContent(for url: URL, timeout: TimeInterval?) async throws -> ArticleContent {
+        try await fetchContent(for: url, timeout: timeout, forceRefresh: false, skipCache: false)
+    }
+
+    func fetchContent(for url: URL, timeout: TimeInterval?, forceRefresh: Bool) async throws -> ArticleContent {
+        try await fetchContent(for: url, timeout: timeout, forceRefresh: forceRefresh, skipCache: false)
+    }
+}
+
+@MainActor
+final class ContentDataSource: ContentDataSourceProtocol {
     private let parserDataSource: LuegoParserDataSourceProtocol
     private let parsedContentCache: ParsedContentCacheDataSourceProtocol
     private let luegoAPIDataSource: LuegoAPIDataSourceProtocol
-    private let metadataDataSource: MetadataDataSourceProtocol
+    private let webPageDataSource: WebPageDataSourceProtocol
     private let sdkManager: LuegoSDKManagerProtocol
 
     init(
         parserDataSource: LuegoParserDataSourceProtocol,
         parsedContentCache: ParsedContentCacheDataSourceProtocol,
         luegoAPIDataSource: LuegoAPIDataSourceProtocol,
-        metadataDataSource: MetadataDataSourceProtocol,
+        webPageDataSource: WebPageDataSourceProtocol,
         sdkManager: LuegoSDKManagerProtocol
     ) {
         self.parserDataSource = parserDataSource
         self.parsedContentCache = parsedContentCache
         self.luegoAPIDataSource = luegoAPIDataSource
-        self.metadataDataSource = metadataDataSource
+        self.webPageDataSource = webPageDataSource
         self.sdkManager = sdkManager
     }
 
     func validateURL(_ url: URL) async throws -> URL {
-        try await metadataDataSource.validateURL(url)
+        try await webPageDataSource.validateURL(url)
     }
 
     func fetchMetadata(for url: URL, timeout: TimeInterval?) async throws -> ArticleMetadata {
@@ -33,10 +58,6 @@ final class ContentDataSource: MetadataDataSourceProtocol {
             }
         }
         return try await fetchMetadataFromAPI(url: url)
-    }
-
-    func fetchHTML(from url: URL, timeout: TimeInterval?) async throws -> String {
-        try await metadataDataSource.fetchHTML(from: url, timeout: timeout)
     }
 
     func fetchContent(for url: URL, timeout: TimeInterval?, forceRefresh: Bool, skipCache: Bool) async throws -> ArticleContent {
@@ -77,7 +98,7 @@ final class ContentDataSource: MetadataDataSourceProtocol {
 
     private func tryLocalParsing(url: URL, timeout: TimeInterval?) async -> ArticleContent? {
         do {
-            let html = try await metadataDataSource.fetchHTML(from: url, timeout: timeout)
+            let html = try await webPageDataSource.fetchHTML(from: url, timeout: timeout)
 
             guard let result = await parserDataSource.parse(html: html, url: url),
                   result.success,
@@ -116,7 +137,7 @@ final class ContentDataSource: MetadataDataSourceProtocol {
 
     private func tryLocalMetadataParsing(url: URL, timeout: TimeInterval?) async -> ArticleMetadata? {
         do {
-            let html = try await metadataDataSource.fetchHTML(from: url, timeout: timeout)
+            let html = try await webPageDataSource.fetchHTML(from: url, timeout: timeout)
 
             guard let result = await parserDataSource.parse(html: html, url: url),
                   result.success,

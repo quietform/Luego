@@ -9,25 +9,9 @@ enum SyncState: Equatable {
     case error(message: String, needsSignIn: Bool)
 }
 
-@MainActor
-protocol SyncStatusObservable: AnyObject {
-    var state: SyncState { get }
-    var lastSyncTime: Date? { get }
-    var accountStatusDescription: String? { get }
-    var cloudKitDiagnosticHint: String? { get }
-    var cloudKitContainerIdentifier: String? { get }
-    var cloudKitIdentityTokenState: String? { get }
-    var cloudKitUserRecordID: String? { get }
-    var cloudKitDiagnosticSummary: String? { get }
-    var cloudKitNeedsAttention: Bool { get }
-    var recentErrors: [String] { get }
-    var recentFailedRecordDetails: [String] { get }
-    func dismissError()
-}
-
 @Observable
 @MainActor
-final class SyncStatusObserver: NSObject, SyncStatusObservable {
+final class SyncStatusObserver {
     private(set) var state: SyncState = .idle
     private(set) var lastSyncTime: Date?
     private(set) var accountStatusDescription: String?
@@ -44,69 +28,20 @@ final class SyncStatusObserver: NSObject, SyncStatusObservable {
     @ObservationIgnored
     private let recentFailedRecordDetailLimit = 5
 
-    override init() {
-        super.init()
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(handleStatusChange(_:)),
-            name: .luegoSyncEngineStatusDidChange,
-            object: nil
-        )
-    }
-
-    deinit {
-        NotificationCenter.default.removeObserver(self)
-    }
-
-    func dismissError() {
-        if case .error = state {
-            state = .idle
-        }
-    }
-
     func apply(_ payload: Payload) {
-        if let newState = payload.state {
-            state = newState
-            if case .error(let message, _) = newState {
-                appendRecentError(message)
-            }
+        state = payload.state
+        if case .error(let message, _) = state {
+            appendRecentError(message)
         }
 
-        if let lastSyncTime = payload.lastSyncTime {
-            self.lastSyncTime = lastSyncTime
-        }
-
+        lastSyncTime = payload.lastSyncTime
         accountStatusDescription = payload.accountStatus
+        cloudKitDiagnosticHint = payload.diagnosticHint
+        cloudKitContainerIdentifier = payload.cloudKitContainerIdentifier
+        cloudKitIdentityTokenState = payload.cloudKitIdentityTokenState
+        cloudKitUserRecordID = payload.cloudKitUserRecordID
 
-        if let diagnosticHint = payload.diagnosticHint {
-            cloudKitDiagnosticHint = diagnosticHint
-        }
-
-        if let containerIdentifier = payload.cloudKitContainerIdentifier {
-            cloudKitContainerIdentifier = containerIdentifier
-        }
-
-        if let identityTokenState = payload.cloudKitIdentityTokenState {
-            cloudKitIdentityTokenState = identityTokenState
-        }
-
-        if let userRecordID = payload.cloudKitUserRecordID {
-            cloudKitUserRecordID = userRecordID
-        }
-
-        if let errorMessage = payload.errorMessage,
-           case .error = state {
-            appendRecentError(errorMessage)
-        }
-
-        if let failedSaveDetails = payload.recentFailedSaveDetails {
-            recentFailedRecordDetails = Array(failedSaveDetails.prefix(recentFailedRecordDetailLimit))
-        }
-    }
-
-    @objc private func handleStatusChange(_ notification: Notification) {
-        guard let payload = Self.payload(from: notification.userInfo) else { return }
-        apply(payload)
+        recentFailedRecordDetails = Array(payload.recentFailedSaveDetails.prefix(recentFailedRecordDetailLimit))
     }
 
     private func appendRecentError(_ message: String) {
@@ -118,31 +53,15 @@ final class SyncStatusObserver: NSObject, SyncStatusObservable {
         }
     }
 
-    private static func payload(from userInfo: [AnyHashable: Any]?) -> Payload? {
-        guard let userInfo else { return nil }
-        return Payload(
-            state: userInfo[SyncEngineStatusPayloadKey.state] as? SyncState,
-            lastSyncTime: userInfo[SyncEngineStatusPayloadKey.lastSyncTime] as? Date,
-            errorMessage: userInfo[SyncEngineStatusPayloadKey.errorMessage] as? String,
-            accountStatus: userInfo[SyncEngineStatusPayloadKey.accountStatus] as? String,
-            diagnosticHint: userInfo[SyncEngineStatusPayloadKey.diagnosticHint] as? String,
-            cloudKitContainerIdentifier: userInfo[SyncEngineStatusPayloadKey.cloudKitContainerIdentifier] as? String,
-            cloudKitIdentityTokenState: userInfo[SyncEngineStatusPayloadKey.cloudKitIdentityTokenState] as? String,
-            cloudKitUserRecordID: userInfo[SyncEngineStatusPayloadKey.cloudKitUserRecordID] as? String,
-            recentFailedSaveDetails: userInfo[SyncEngineStatusPayloadKey.recentFailedSaveDetails] as? [String]
-        )
-    }
-
     struct Payload: Sendable {
-        let state: SyncState?
+        let state: SyncState
         let lastSyncTime: Date?
-        let errorMessage: String?
         let accountStatus: String?
         let diagnosticHint: String?
         let cloudKitContainerIdentifier: String?
         let cloudKitIdentityTokenState: String?
         let cloudKitUserRecordID: String?
-        let recentFailedSaveDetails: [String]?
+        let recentFailedSaveDetails: [String]
     }
 
     var cloudKitDiagnosticSummary: String? {

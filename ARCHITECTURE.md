@@ -1,262 +1,74 @@
 # Luego Architecture
 
-Luego follows a **service-based architecture** organized by feature with shared infrastructure for maintainability and simplicity.
+Luego is a SwiftUI app for iOS and iPadOS 26+, organized by feature. It uses Observation for UI state, GRDB/SQLite for local storage, and `CKSyncEngine` for CloudKit private database sync. Features share one app target; the share extension runs separately.
 
-## Architecture Overview
+## Startup and dependencies
 
-```
-┌────────────────────────────────────────────────────────┐
-│                  Feature Modules                       │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  │
-│  │  Reading     │  │    Reader    │  │  Discovery   │  │
-│  │    List      │  │              │  │              │  │
-│  ├──────────────┤  ├──────────────┤  ├──────────────┤  │
-│  │ • Services   │  │ • Services   │  │ • Services   │  │
-│  │ • Views      │  │ • Views      │  │ • DataSources│  │
-│  │ • ViewModels │  │ • ViewModels │  │ • Views      │  │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘  │
-│         │                 │                 │          │
-└─────────┼─────────────────┼─────────────────┼──────────┘
-          │                 │                 │
-          └─────────────────┼─────────────────┘
-                            ↓
-┌────────────────────────────────────────────────────────┐
-│              Core (Shared Infrastructure)              │
-│  ┌─────────────────────────────────────────────────┐   │
-│  │ Models: SwiftData @Model classes                │   │
-│  ├─────────────────────────────────────────────────┤   │
-│  │ DataSources: Shared data access                 │   │
-│  ├─────────────────────────────────────────────────┤   │
-│  │ DI Container, App Configuration                 │   │
-│  └─────────────────────────────────────────────────┘   │
-└────────────────────────────────────────────────────────┘
+[LuegoApp](Luego/App/LuegoApp.swift) opens `AppDatabase`, creates `DIContainer`, starts sync, and runs the legacy article migration. It provides the container and sync-status observer through the SwiftUI environment.
+
+[DIContainer](Luego/Core/DI/DIContainer.swift) owns shared dependencies and constructs view models. Feature services use protocols for injection. View models, feature services, article stores, and sync orchestration use `@MainActor` isolation.
+
+```text
+View -> ViewModel -> Service -> ArticleStoreProtocol -> GRDB / SQLite
+                       |
+                       +-> Data sources -> Network / caches / preferences
+
+GRDBArticleStore <-> SyncEngineManager <-> CloudKit private database
 ```
 
-**Organization Strategy:**
-- **Vertical Slices** (Features/): Group services and views by feature
-- **Horizontal Slice** (Core/): Common models, infrastructure, and shared data sources
-- **Direct Model Usage**: Use SwiftData models throughout for simplicity
+[ContentView](Luego/App/ContentView.swift) owns navigation, foreground catch-up, shared-URL import, and deep links. Compact layouts use tabs; regular layouts use split navigation.
 
-## Project Structure
+## Storage and sync
 
-```
-Luego/
-├── Features/                          # Feature modules (vertical slices)
-│   ├── ReadingList/                   # Save, list, and delete articles
-│   │   ├── Services/
-│   │   │   └── ArticleService.swift   # CRUD operations for articles
-│   │   └── Views/
-│   │       ├── ArticleListViewModel.swift
-│   │       ├── ArticleRowView.swift
-│   │       └── AddArticleView.swift
-│   │
-│   ├── Reader/                        # Read articles with position tracking
-│   │   ├── Services/
-│   │   │   └── ReaderService.swift    # Content fetching, position updates
-│   │   └── Views/
-│   │       ├── ReaderViewModel.swift
-│   │       └── ReaderView.swift
-│   │
-│   ├── Discovery/                     # Random article exploration
-│   │   ├── Services/
-│   │   │   └── DiscoveryService.swift # Random article fetching
-│   │   ├── DataSources/
-│   │   │   ├── KagiSmallWebDataSource.swift
-│   │   │   └── BlogrollDataSource.swift
-│   │   └── Views/
-│   │       ├── DiscoveryViewModel.swift
-│   │       └── DiscoveryView.swift
-│   │
-│   ├── Sharing/                       # Share extension integration
-│   │   ├── Services/
-│   │   │   └── SharingService.swift   # Sync shared articles
-│   │   └── DataSources/
-│   │       ├── UserDefaultsDataSource.swift
-│   │       └── SharedStorage.swift
-│   │
-│   └── Settings/                      # App settings
-│       └── Views/
-│           ├── SettingsViewModel.swift
-│           └── SettingsView.swift
-│
-├── Core/                              # Shared infrastructure (horizontal slice)
-│   ├── Models/                        # SwiftData models & DTOs
-│   │   ├── Article.swift              # @Model class (persistence)
-│   │   ├── ArticleMetadata.swift      # DTO struct + errors
-│   │   ├── ArticleContent.swift       # DTO struct
-│   │   ├── EphemeralArticle.swift     # Non-persisted article
-│   │   └── DiscoverySource.swift      # Discovery source enum
-│   ├── DataSources/                   # Shared data access
-│   │   ├── MetadataDataSource.swift   # URL validation, content fetching
-│   │   └── SeenItemTracker.swift      # Track seen items
-│   ├── DI/
-│   │   └── DIContainer.swift
-│   └── Configuration/
-│       └── AppConfiguration.swift
-│
-└── App/                               # Application entry point
-    ├── LuegoApp.swift
-    └── ContentView.swift
-```
+[AppDatabase](Luego/Core/Database/AppDatabase.swift) opens a GRDB database pool at `Application Support/Luego/luego.sqlite` in the app sandbox. Migrations define the article, sync-state, and migration-marker tables.
 
-## Architecture Responsibilities
+[Article](Luego/Core/Models/Article.swift) is an observable in-memory model. [ArticleRecord](Luego/Core/Database/ArticleRecord.swift) maps SQLite and CloudKit records, including deletion timestamps and CloudKit system fields. [ArticleListMembership](Luego/Core/Models/ArticleListMembership.swift) contains the favorite/archive rules.
 
-### 🟪 Features (Vertical Slices)
+[GRDBArticleStore](Luego/Core/Stores/GRDBArticleStore.swift) implements two contracts: `ArticleStoreProtocol` for feature operations and `ArticleRecordStoreProtocol` for sync and migration. It handles queries, observation, duplicate URLs, and local mutations:
 
-**Purpose**: Group related functionality by feature for better cohesion and locality.
+- Local article changes enqueue sync. Deletion creates a tombstone.
+- `saveRecord` applies records without enqueueing sync; `deleteRecord` physically removes them when applying remote deletions.
+- Visible article queries exclude tombstones. Raw record queries can include them.
+- Observation preserves article object identity. Direct fetches and saves return detached objects.
 
-**Rules**:
-- Each feature is a self-contained module
-- Contains services specific to that feature
-- Contains views and view models for that feature
-- May contain feature-specific data sources (e.g., Discovery, Sharing)
+[SyncEngineManager](Luego/Core/Services/SyncEngineManager.swift) sends local changes and applies incoming records using the store. Engine state is persisted in SQLite. Foreground catch-up and manual refresh fetch changes and perform a server backfill; Settings also exposes a full repair operation. The configured container is `iCloud.com.esoxjem.Luego`, using its private database.
 
+[SyncStatusObserver](Luego/Core/Services/SyncStatusObserver.swift) receives status directly from the manager in the app's DI setup. It is the single observable owner of sync state and diagnostics.
 
-### 🟩 Core (Horizontal Slice)
+Local reading and editing work without a successful CloudKit round trip. Offline reading requires article content to have been fetched and saved.
 
-**Purpose**: Contains shared infrastructure used by multiple features.
+## Content fetching
 
-**Rules**:
-- NO feature-specific logic
-- Common models, infrastructure, and shared data sources
-- Shared persistence and data transfer objects
+Services receive [ContentDataSource](Luego/Core/DataSources/ContentDataSource.swift) through `ContentDataSourceProtocol`. A content request follows this order:
 
-**Components**:
-- **Models**: SwiftData @Model classes and DTOs
-- **DataSources**: Shared data access (MetadataDataSource)
-- **DI**: Dependency injection container
-- **Configuration**: App-wide configuration
+1. Read `ParsedContentCacheDataSource` when caching is enabled.
+2. Fetch HTML through `WebPageDataSource` and parse it with `LuegoParserDataSource` when the SDK is ready.
+3. Fall back to `LuegoAPIDataSource` if local parsing is unavailable or fails.
 
-### 🟦 Architecture Principles
+`WebPageDataSource` handles URL validation and HTML fetching. `ContentDataSource` implements metadata and content requests. Force refresh clears cached content for the URL; Discovery skips cache reads and writes. Metadata requests do not populate the parsed-content cache.
 
-The architecture maintains separation of concerns with a pragmatic approach:
+[LuegoSDKManager](Luego/Core/DataSources/LuegoSDKManager.swift) downloads parser bundles and rules through `LuegoSDKDataSource`, storing them in `LuegoSDKCacheDataSource`. `LuegoParserDataSource` executes the bundles in JavaScriptCore. SDK files and parsed article content have separate caches.
 
-**Business Logic & Data Access (Services)**:
-- Located in Features/*/Services/
-- Combine business logic with data access for simplicity
-- Work directly with SwiftData models
-- Handle persistence and external data
-- All service classes marked with `@MainActor` (required for SwiftData's ModelContext)
+## Features
 
-**Data Sources**:
-- Located in Core/DataSources/ (shared) or Features/*/DataSources/ (feature-specific)
-- Handle external data fetching (network, APIs)
-- Protocol-based for testability
+| Folder | Responsibility |
+| --- | --- |
+| [ReadingList](Luego/Features/ReadingList/) | Save, list, favorite, archive, delete, and import/export article URLs |
+| [Reader](Luego/Features/Reader/) | Fetch and save article content, and persist reading position |
+| [Discovery](Luego/Features/Discovery/) | Fetch random articles from Kagi Small Web or Blogroll; hold them in memory until saved |
+| [Sharing](Luego/Features/Sharing/) | Queue shared URLs, import them into the app, and construct deep links |
+| [Settings](Luego/Features/Settings/) | Preferences, parser updates, repair sync, import/export UI, and diagnostics |
 
-**Presentation (Views & ViewModels)**:
-- Located in Features/*/Views/
-- Depend on services and models
-- Use dependency injection for testability
+Adding a URL saves metadata first. `ReaderService` fetches the body when needed, reloads the current article from storage, and saves the content. Saving a Discovery article includes its available content. Add, sharing, and plain-text import use `ArticleService.addArticle`, which reports whether it saved a new article or found an existing one.
 
-## Data Flow
+## Share extension
 
-### Reading Articles
-```
-View → ViewModel → Service → SwiftData
-                                  ↓
-View ← ViewModel ← Service ← [Article]
-```
+[ShareViewController](LuegoShareExtension/ShareViewController.swift) extracts a web URL and appends it to [SharedStorage](Luego/Features/Sharing/DataSources/SharedStorage.swift). The queue lives in `SharedURLs.sqlite` in App Group `group.com.esoxjem.Luego`. Each occurrence has its own ID. The first database migration imports the previous `UserDefaults` JSON queue.
 
-### Adding an Article
-```
-User Input (URL)
-    ↓
-AddArticleView
-    ↓
-ArticleListViewModel.addArticle(url)
-    ↓
-ArticleService.addArticle(url)
-    ├→ MetadataDataSource.validateURL()
-    ├→ MetadataDataSource.fetchMetadata()
-    └→ ModelContext.insert() + save()
-           ↓
-       SwiftData
-```
+When active, the app requests foreground catch-up and then imports the queue through `SharingService`. Successful items are acknowledged individually; failed items and URLs added during import remain queued. The extension's success screen confirms queueing; article ingestion happens in the app.
 
-### Discovery Flow
-```
-DiscoveryView
-    ↓
-DiscoveryViewModel.fetchRandomArticle()
-    ↓
-DiscoveryService.fetchRandomArticle()
-    ├→ KagiSmallWebDataSource.randomArticleEntry()
-    └→ MetadataDataSource.fetchContent()
-           ↓
-    EphemeralArticle (non-persisted)
-           ↓
-    [User saves] → ArticleService.saveEphemeralArticle()
-```
+## Legacy migration
 
-## Dependency Injection
+[LegacySwiftDataArticleMigration](Luego/Core/Services/LegacySwiftDataArticleMigration.swift) reads the previous SwiftData SQLite store, imports records into GRDB, enqueues them for sync, and records completion in `migrationState`. Preserve this upgrade path for existing installs.
 
-Dependencies are managed through the `DIContainer`
-
-**Usage in SwiftUI**:
-```swift
-@main
-struct LuegoApp: App {
-    var sharedModelContainer: ModelContainer = { /* ... */ }()
-
-    @MainActor
-    private var diContainer: DIContainer {
-        DIContainer(modelContext: sharedModelContainer.mainContext)
-    }
-
-    var body: some Scene {
-        WindowGroup {
-            ContentView()
-                .environment(\.diContainer, diContainer)
-        }
-    }
-}
-```
-
-## Service Protocols
-
-### ArticleService
-```swift
-protocol ArticleServiceProtocol: Sendable {
-    func getAllArticles() async throws -> [Article]
-    func addArticle(url: URL) async throws -> Article
-    func deleteArticle(id: UUID) async throws
-    func updateArticle(_ article: Article) async throws
-    func toggleFavorite(id: UUID) async throws
-    func toggleArchive(id: UUID) async throws
-    func saveEphemeralArticle(_ ephemeralArticle: EphemeralArticle) async throws -> Article
-}
-```
-
-### ReaderService
-```swift
-protocol ReaderServiceProtocol: Sendable {
-    func fetchContent(for article: Article, forceRefresh: Bool) async throws -> Article
-    func updateReadPosition(articleId: UUID, position: Double) async throws
-}
-```
-
-### DiscoveryService
-```swift
-protocol DiscoveryServiceProtocol: Sendable {
-    func fetchRandomArticle(from source: DiscoverySource, onArticleEntryFetched: @escaping @MainActor (URL) -> Void) async throws -> EphemeralArticle
-    func prepareForFetch(source: DiscoverySource) -> DiscoverySource
-    func clearCache(for source: DiscoverySource)
-    func clearAllCaches()
-}
-```
-
-### SharingService
-```swift
-protocol SharingServiceProtocol: Sendable {
-    func syncSharedArticles() async throws -> [Article]
-}
-```
-
-## ViewModel Dependencies
-
-| ViewModel | Dependencies |
-|-----------|--------------|
-| ArticleListViewModel | ArticleService, SharingService |
-| ReaderViewModel | ReaderService |
-| DiscoveryViewModel | DiscoveryService, ArticleService, PreferencesDataSource |
-| SettingsViewModel | DiscoveryService, PreferencesDataSource |
+See [AGENTS.md](AGENTS.md) for coding and verification rules and [README.md](README.md) for setup and simulator commands.

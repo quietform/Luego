@@ -106,24 +106,6 @@ struct ArticleRecord: Codable, FetchableRecord, PersistableRecord, Sendable {
         normalizeListMembership()
     }
 
-    @MainActor
-    func toArticle() -> Article {
-        let membership = listMembership
-        return Article(
-            id: UUID(uuidString: id) ?? UUID(),
-            url: url,
-            title: title,
-            content: content,
-            savedDate: savedDate,
-            thumbnailURL: thumbnailURL,
-            publishedDate: publishedDate,
-            readPosition: readPosition,
-            isFavorite: membership.isFavorite,
-            isArchived: membership.isArchived,
-            wordCount: wordCount
-        )
-    }
-
     func makeCKRecord(recordID: CKRecord.ID) -> CKRecord {
         let membership = listMembership
         let record: CKRecord

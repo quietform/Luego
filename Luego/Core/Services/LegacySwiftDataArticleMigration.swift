@@ -3,7 +3,7 @@ import Foundation
 @MainActor
 struct LegacySwiftDataArticleMigration {
     private let database: AppDatabase
-    private let store: ArticleStoreProtocol
+    private let store: ArticleRecordStoreProtocol
     private let syncEngineManager: SyncEngineManagerProtocol
     private let legacyArticleDataSource: LegacySwiftDataArticleDataSourceProtocol
 
@@ -11,7 +11,7 @@ struct LegacySwiftDataArticleMigration {
 
     init(
         database: AppDatabase,
-        store: ArticleStoreProtocol,
+        store: ArticleRecordStoreProtocol,
         syncEngineManager: SyncEngineManagerProtocol,
         legacyArticleDataSource: LegacySwiftDataArticleDataSourceProtocol = LegacySwiftDataArticleDataSource()
     ) {

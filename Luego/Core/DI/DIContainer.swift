@@ -4,13 +4,9 @@ import Foundation
 @MainActor
 final class DIContainer {
     let database: AppDatabase
-    let articleStore: ArticleStoreProtocol
+    let articleStore: GRDBArticleStore
     let syncEngineManager: SyncEngineManager
     let syncObserver = SyncStatusObserver()
-
-    private lazy var userDefaultsDataSource: UserDefaultsDataSourceProtocol = {
-        UserDefaultsDataSource(sharedStorage: SharedStorage.shared)
-    }()
 
     private lazy var luegoAPIDataSource: LuegoAPIDataSourceProtocol = {
         LuegoAPIDataSource()
@@ -43,16 +39,16 @@ final class DIContainer {
         ParsedContentCacheDataSource()
     }()
 
-    private lazy var localMetadataDataSource: MetadataDataSourceProtocol = {
-        MetadataDataSource()
+    private lazy var webPageDataSource: WebPageDataSourceProtocol = {
+        WebPageDataSource()
     }()
 
-    private lazy var metadataDataSource: MetadataDataSourceProtocol = {
+    private lazy var contentDataSource: ContentDataSourceProtocol = {
         ContentDataSource(
             parserDataSource: luegoParserDataSource,
             parsedContentCache: parsedContentCacheDataSource,
             luegoAPIDataSource: luegoAPIDataSource,
-            metadataDataSource: localMetadataDataSource,
+            webPageDataSource: webPageDataSource,
             sdkManager: luegoSDKManager
         )
     }()
@@ -87,7 +83,7 @@ final class DIContainer {
     private lazy var articleService: ArticleServiceProtocol = {
         ArticleService(
             articleStore: articleStore,
-            metadataDataSource: metadataDataSource,
+            contentDataSource: contentDataSource,
             syncEngineManager: syncEngineManager
         )
     }()
@@ -95,7 +91,7 @@ final class DIContainer {
     private lazy var readerService: ReaderServiceProtocol = {
         ReaderService(
             articleStore: articleStore,
-            metadataDataSource: metadataDataSource
+            contentDataSource: contentDataSource
         )
     }()
 
@@ -103,23 +99,19 @@ final class DIContainer {
         DiscoveryService(
             kagiSmallWebDataSource: kagiSmallWebDataSource,
             blogrollDataSource: blogrollDataSource,
-            metadataDataSource: metadataDataSource
+            contentDataSource: contentDataSource
         )
     }()
 
     private lazy var sharingService: SharingServiceProtocol = {
         SharingService(
-            articleStore: articleStore,
-            metadataDataSource: metadataDataSource,
-            userDefaultsDataSource: userDefaultsDataSource
+            articleService: articleService,
+            sharedStorage: SharedStorage.shared
         )
     }()
 
     private lazy var _savedArticleImportService: SavedArticleImportServiceProtocol = {
-        SavedArticleImportService(
-            articleStore: articleStore,
-            metadataDataSource: metadataDataSource
-        )
+        SavedArticleImportService(articleService: articleService)
     }()
 
     private lazy var _savedArticleExportService: SavedArticleExportServiceProtocol = {
@@ -138,10 +130,10 @@ final class DIContainer {
         let syncEngineManager = SyncEngineManager(
             database: database,
             store: coreArticleStore,
+            statusObserver: syncObserver,
             container: CKContainer(identifier: AppConfiguration.cloudKitContainerIdentifier)
         )
         self.syncEngineManager = syncEngineManager
-        syncEngineManager.statusObserver = syncObserver
         coreArticleStore.syncEngineManager = syncEngineManager
     }
 

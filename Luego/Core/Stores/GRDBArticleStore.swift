@@ -2,7 +2,7 @@ import Foundation
 import GRDB
 
 @MainActor
-final class GRDBArticleStore: ArticleStoreProtocol {
+final class GRDBArticleStore: ArticleStoreProtocol, ArticleRecordStoreProtocol {
     private let database: AppDatabase
     weak var syncEngineManager: SyncEngineManagerProtocol?
     private var articleCache: [UUID: Article] = [:]
@@ -127,10 +127,6 @@ final class GRDBArticleStore: ArticleStoreProtocol {
         try saveRecord(record)
         syncEngineManager?.enqueueSave(for: ArticleRecord.makeRecordID(for: record.id))
         return makeDetachedArticle(from: record)
-    }
-
-    func insertArticle(_ article: Article) throws {
-        _ = try saveArticle(article)
     }
 
     func saveRecord(_ record: ArticleRecord) throws {

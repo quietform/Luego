@@ -26,17 +26,17 @@ protocol DiscoveryServiceProtocol: Sendable {
 final class DiscoveryService: DiscoveryServiceProtocol {
     private let kagiSmallWebDataSource: DiscoverySourceProtocol
     private let blogrollDataSource: DiscoverySourceProtocol
-    private let metadataDataSource: MetadataDataSourceProtocol
+    private let contentDataSource: ContentDataSourceProtocol
     private var preparedSurpriseMeSource: DiscoverySource?
 
     init(
         kagiSmallWebDataSource: DiscoverySourceProtocol,
         blogrollDataSource: DiscoverySourceProtocol,
-        metadataDataSource: MetadataDataSourceProtocol
+        contentDataSource: ContentDataSourceProtocol
     ) {
         self.kagiSmallWebDataSource = kagiSmallWebDataSource
         self.blogrollDataSource = blogrollDataSource
-        self.metadataDataSource = metadataDataSource
+        self.contentDataSource = contentDataSource
     }
 
     func prepareForFetch(source: DiscoverySource) -> DiscoverySource {
@@ -117,7 +117,7 @@ final class DiscoveryService: DiscoveryServiceProtocol {
         let discoveryTimeoutSeconds: TimeInterval = 10
 
         do {
-            let articleContent = try await metadataDataSource.fetchContent(
+            let articleContent = try await contentDataSource.fetchContent(
                 for: articleEntry.articleUrl,
                 timeout: discoveryTimeoutSeconds,
                 forceRefresh: false,

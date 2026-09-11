@@ -10,6 +10,7 @@
 		607598D12EC2300000BEE86E /* Textual in Frameworks */ = {isa = PBXBuildFile; productRef = 607598D02EC2300000BEE86E /* Textual */; };
 		70D100032F70000000D10001 /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = 70D100042F70000000D10001 /* GRDB */; };
 		608D75732EC33EA6002DD532 /* LuegoShareExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 608D75692EC33EA6002DD532 /* LuegoShareExtension.appex */; platformFilter = ios; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		C0DEC000000000000000000C /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = 70D100042F70000000D10001 /* GRDB */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -48,6 +49,7 @@
                 6075988F2EC1FC8D00BEE86E /* Luego.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Luego.app; sourceTree = BUILT_PRODUCTS_DIR; };
                 607598CF2EC2220900BEE86E /* CLAUDE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CLAUDE.md; sourceTree = "<group>"; };
                 608D75692EC33EA6002DD532 /* LuegoShareExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = LuegoShareExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		C0DEC0000000000000000002 /* LuegoTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LuegoTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -55,7 +57,6 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Features/Sharing/DataSources/SharedStorage.swift,
-				Features/Sharing/DataSources/UserDefaultsDataSource.swift,
 				Features/Sharing/Services/ArticleDeepLinkBuilder.swift,
 				Features/Sharing/Services/SharedTextURLExtractor.swift,
 			);
@@ -75,6 +76,62 @@
 			);
 			target = 6075988E2EC1FC8D00BEE86E /* Luego */;
 		};
+		C0DEC000000000000000000B /* Luego sources in LuegoTests */ = {
+            isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+            membershipExceptions = (
+				"Core/Configuration/AppConfiguration.swift",
+				"Core/Configuration/Secrets.swift",
+				"Core/DataSources/ContentDataSource.swift",
+				"Core/DataSources/LegacySwiftDataArticleDataSource.swift",
+				"Core/DataSources/LuegoAPIDataSource.swift",
+				"Core/DataSources/LuegoParserDataSource.swift",
+				"Core/DataSources/LuegoSDKCacheDataSource.swift",
+				"Core/DataSources/LuegoSDKDataSource.swift",
+				"Core/DataSources/LuegoSDKManager.swift",
+				"Core/DataSources/WebPageDataSource.swift",
+				"Core/DataSources/ParsedContentCacheDataSource.swift",
+				"Core/DataSources/SeenItemTracker.swift",
+				"Core/DataSources/XMLSanitizer.swift",
+				"Core/Database/AppDatabase.swift",
+				"Core/Database/ArticleRecord.swift",
+				"Core/Database/SyncEngineStatePayload.swift",
+				"Core/Extensions/URL+Identifiable.swift",
+				"Core/Logging/LogStream.swift",
+				"Core/Logging/Logger.swift",
+				"Core/Models/Article.swift",
+				"Core/Models/ArticleContent.swift",
+				"Core/Models/ArticleListMembership.swift",
+				"Core/Models/ArticleMetadata.swift",
+				"Core/Models/LuegoSDKModels.swift",
+				"Core/Services/CloudKitRuntimeDiagnostics.swift",
+				"Core/Services/LegacySwiftDataArticleMigration.swift",
+				"Core/Services/SyncEngineManager.swift",
+				"Core/Services/SyncEngineManagerProtocol.swift",
+				"Core/Services/SyncStatusObserver.swift",
+				"Core/Stores/ArticleStoreProtocol.swift",
+				"Core/Stores/GRDBArticleStore.swift",
+				"Core/Utilities/DateFormatters.swift",
+				"Features/Discovery/DataSources/BlogrollDataSource.swift",
+				"Features/Discovery/DataSources/BlogrollRSSDataSource.swift",
+				"Features/Discovery/DataSources/DiscoveryPreferencesDataSource.swift",
+				"Features/Discovery/DataSources/GenericRSSDataSource.swift",
+				"Features/Discovery/DataSources/KagiSmallWebDataSource.swift",
+				"Features/Discovery/DataSources/OPMLDataSource.swift",
+				"Features/Discovery/Models/DiscoverySource.swift",
+				"Features/Discovery/Models/EphemeralArticle.swift",
+				"Features/Discovery/Models/SmallWebFeed.swift",
+				"Features/Discovery/Services/DiscoveryService.swift",
+				"Features/Reader/Services/ReaderService.swift",
+				"Features/ReadingList/Services/ArticleService.swift",
+				"Features/ReadingList/Services/SavedArticleExportService.swift",
+				"Features/ReadingList/Services/SavedArticleImportService.swift",
+				"Features/Sharing/DataSources/SharedStorage.swift",
+				"Features/Sharing/Services/ArticleDeepLinkBuilder.swift",
+				"Features/Sharing/Services/SharedTextURLExtractor.swift",
+				"Features/Sharing/Services/SharingService.swift",
+            );
+            target = C0DEC0000000000000000001 /* LuegoTests */;
+        };
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -92,6 +149,7 @@
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				6094439C2F2CD929001F4AD5 /* Exceptions for "Luego" folder in "Luego" target */,
+                C0DEC000000000000000000B /* Luego sources in LuegoTests */,
 				601506582EC4660200CADAFB /* Exceptions for "Luego" folder in "LuegoShareExtension" target */,
 			);
 			path = Luego;
@@ -110,6 +168,7 @@
 			path = .github;
 			sourceTree = "<group>";
 		};
+		C0DEC0000000000000000003 /* LuegoTests */ = {isa = PBXFileSystemSynchronizedRootGroup; path = LuegoTests; sourceTree = "<group>"; };
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -130,6 +189,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		C0DEC0000000000000000005 = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (C0DEC000000000000000000C /* GRDB in Frameworks */,); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -158,7 +218,8 @@
 				607598CF2EC2220900BEE86E /* CLAUDE.md */,
 				607598912EC1FC8D00BEE86E /* Luego */,
 				608D756A2EC33EA6002DD532 /* LuegoShareExtension */,
-				607598902EC1FC8D00BEE86E /* Products */,
+				C0DEC0000000000000000003 /* LuegoTests */,
+                607598902EC1FC8D00BEE86E /* Products */,
 			);
 			sourceTree = "<group>";
 		};
@@ -167,6 +228,7 @@
 			children = (
 				6075988F2EC1FC8D00BEE86E /* Luego.app */,
 				608D75692EC33EA6002DD532 /* LuegoShareExtension.appex */,
+                C0DEC0000000000000000002 /* LuegoTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -223,6 +285,19 @@
 			productReference = 608D75692EC33EA6002DD532 /* LuegoShareExtension.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
+		C0DEC0000000000000000001 /* LuegoTests */ = {
+            isa = PBXNativeTarget;
+            buildConfigurationList = C0DEC0000000000000000007;
+            buildPhases = (C0DEC0000000000000000004, C0DEC0000000000000000005, C0DEC0000000000000000006);
+            buildRules = ();
+            dependencies = ();
+            fileSystemSynchronizedGroups = (C0DEC0000000000000000003);
+            name = LuegoTests;
+            packageProductDependencies = (70D100042F70000000D10001 /* GRDB */);
+            productName = LuegoTests;
+            productReference = C0DEC0000000000000000002;
+            productType = "com.apple.product-type.bundle.unit-test";
+        };
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -261,6 +336,7 @@
 			targets = (
 				6075988E2EC1FC8D00BEE86E /* Luego */,
 				608D75682EC33EA6002DD532 /* LuegoShareExtension */,
+                C0DEC0000000000000000001 /* LuegoTests */,
 			);
 		};
 /* End PBXProject section */
@@ -280,6 +356,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		C0DEC0000000000000000006 = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -297,6 +374,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		C0DEC0000000000000000004 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -718,6 +796,57 @@
 			};
 			name = Beta;
 		};
+		C0DEC0000000000000000008 /* Debug */ = {
+            isa = XCBuildConfiguration;
+            buildSettings = {
+                CODE_SIGNING_ALLOWED = NO;
+                GENERATE_INFOPLIST_FILE = YES;
+                IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+                PRODUCT_BUNDLE_IDENTIFIER = com.esoxjem.Luego.tests;
+                PRODUCT_NAME = "$(TARGET_NAME)";
+                SDKROOT = iphoneos;
+                SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+                SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+                SWIFT_STRICT_CONCURRENCY = complete;
+                SWIFT_VERSION = 5.0;
+                TARGETED_DEVICE_FAMILY = "1,2";
+            };
+            name = Debug;
+        };
+		C0DEC0000000000000000009 /* Release */ = {
+            isa = XCBuildConfiguration;
+            buildSettings = {
+                CODE_SIGNING_ALLOWED = NO;
+                GENERATE_INFOPLIST_FILE = YES;
+                IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+                PRODUCT_BUNDLE_IDENTIFIER = com.esoxjem.Luego.tests;
+                PRODUCT_NAME = "$(TARGET_NAME)";
+                SDKROOT = iphoneos;
+                SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+                SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+                SWIFT_STRICT_CONCURRENCY = complete;
+                SWIFT_VERSION = 5.0;
+                TARGETED_DEVICE_FAMILY = "1,2";
+            };
+            name = Release;
+        };
+		C0DEC000000000000000000A /* Beta */ = {
+            isa = XCBuildConfiguration;
+            buildSettings = {
+                CODE_SIGNING_ALLOWED = NO;
+                GENERATE_INFOPLIST_FILE = YES;
+                IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+                PRODUCT_BUNDLE_IDENTIFIER = com.esoxjem.Luego.tests;
+                PRODUCT_NAME = "$(TARGET_NAME)";
+                SDKROOT = iphoneos;
+                SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+                SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+                SWIFT_STRICT_CONCURRENCY = complete;
+                SWIFT_VERSION = 5.0;
+                TARGETED_DEVICE_FAMILY = "1,2";
+            };
+            name = Beta;
+        };
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -751,6 +880,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		C0DEC0000000000000000007 = {isa = XCConfigurationList; buildConfigurations = (C0DEC0000000000000000008, C0DEC0000000000000000009, C0DEC000000000000000000A); defaultConfigurationIsVisible = 0; defaultConfigurationName = Debug; };
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */

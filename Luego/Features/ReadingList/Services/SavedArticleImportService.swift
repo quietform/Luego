@@ -26,15 +26,10 @@ protocol SavedArticleImportServiceProtocol: Sendable {
 
 @MainActor
 final class SavedArticleImportService: SavedArticleImportServiceProtocol {
-    private let articleStore: ArticleStoreProtocol
-    private let metadataDataSource: MetadataDataSourceProtocol
+    private let articleService: ArticleServiceProtocol
 
-    init(
-        articleStore: ArticleStoreProtocol,
-        metadataDataSource: MetadataDataSourceProtocol
-    ) {
-        self.articleStore = articleStore
-        self.metadataDataSource = metadataDataSource
+    init(articleService: ArticleServiceProtocol) {
+        self.articleService = articleService
     }
 
     func importArticles(fromPlainText text: String) async -> SavedArticleImportResult {
@@ -51,44 +46,16 @@ final class SavedArticleImportService: SavedArticleImportServiceProtocol {
 
         for (index, inputURL) in deduplicatedInput.enumerated() {
             do {
-                let validatedURL = try await metadataDataSource.validateURL(inputURL)
-
-                if !validatedSeen.insert(validatedURL.absoluteString).inserted {
-                    skippedDuplicateInputCount += 1
-                    continue
-                }
-
-                if try articleStore.fetchArticle(url: validatedURL) != nil {
-                    skippedExistingCount += 1
-                    continue
-                }
-
-                let metadata = try await metadataDataSource.fetchMetadata(for: validatedURL)
-                let article = Article(
-                    id: UUID(),
-                    url: validatedURL,
-                    title: metadata.title,
-                    content: nil,
-                    savedDate: baseSavedDate.addingTimeInterval(-Double(index)),
-                    thumbnailURL: metadata.thumbnailURL,
-                    publishedDate: metadata.publishedDate,
-                    readPosition: 0
+                let result = try await articleService.addArticle(
+                    url: inputURL,
+                    savedDate: baseSavedDate.addingTimeInterval(-Double(index))
                 )
-
-                do {
-                    _ = try articleStore.saveArticle(article)
+                if !validatedSeen.insert(result.article.url.absoluteString).inserted {
+                    skippedDuplicateInputCount += 1
+                } else if result.isNew {
                     importedCount += 1
-                } catch {
-                    if try articleStore.fetchArticle(url: validatedURL) != nil {
-                        skippedExistingCount += 1
-                    } else {
-                        failedCount += 1
-                        appendFailure(
-                            urlString: validatedURL.absoluteString,
-                            message: error.localizedDescription,
-                            to: &failureSamples
-                        )
-                    }
+                } else {
+                    skippedExistingCount += 1
                 }
             } catch {
                 failedCount += 1
