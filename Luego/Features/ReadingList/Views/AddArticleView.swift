@@ -55,16 +55,6 @@ struct AddArticleView: View {
                                 await saveArticle()
                             }
                         }
-
-                    PasteButton(payloadType: String.self) { strings in
-                        pasteClipboardText(strings)
-                    }
-                    .accessibilityIdentifier("addArticle.paste")
-                    .accessibilityLabel("Paste from Clipboard")
-                    .labelStyle(.iconOnly)
-                    .buttonStyle(.borderless)
-                    .controlSize(.small)
-                    .foregroundStyle(.secondary)
                 }
                 .padding(.horizontal, 14)
                 .padding(.vertical, 12)
@@ -168,17 +158,6 @@ struct AddArticleView: View {
         guard !hasInitializedPresentation else { return }
 
         hasInitializedPresentation = true
-        isURLFieldFocused = true
-    }
-
-    private func pasteClipboardText(_ strings: [String]) {
-        guard let clipboardText = strings
-            .map({ $0.trimmingCharacters(in: .whitespacesAndNewlines) })
-            .first(where: { !$0.isEmpty }) else {
-            return
-        }
-
-        urlText = clipboardText
         isURLFieldFocused = true
     }
 }
