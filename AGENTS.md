@@ -24,6 +24,7 @@
 - `Configuration/`: build-configuration-specific bundle identifiers and display names.
 - `docs/`: public website, privacy page, and screenshots.
 - [ARCHITECTURE.md](ARCHITECTURE.md): runtime composition and data flows.
+- [ASC.md](ASC.md): App Store Connect CLI setup and commands.
 
 ## Architecture Rules
 
