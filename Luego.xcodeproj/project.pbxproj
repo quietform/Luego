@@ -38,8 +38,6 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-                601505C22EC3650D00CADAFB /* ARCHITECTURE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = ARCHITECTURE.md; sourceTree = "<group>"; };
-                601507252EC4B31A00CADAFB /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
                 70C0F0012F60000000C0F001 /* Configuration/Luego-Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = "Luego-Debug.xcconfig"; path = "Configuration/Luego-Debug.xcconfig"; sourceTree = "<group>"; };
                 70C0F0022F60000000C0F001 /* Configuration/Luego-Beta.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = "Luego-Beta.xcconfig"; path = "Configuration/Luego-Beta.xcconfig"; sourceTree = "<group>"; };
                 70C0F0032F60000000C0F001 /* Configuration/Luego-Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = "Luego-Release.xcconfig"; path = "Configuration/Luego-Release.xcconfig"; sourceTree = "<group>"; };
@@ -214,8 +212,6 @@
 				60FB82782EFA56AA0039288F /* .github */,
                                 6060B4192EF509290021B178 /* agent_docs */,
 				600EEBCD2ED6C294005459C8 /* docs */,
-				601507252EC4B31A00CADAFB /* README.md */,
-				601505C22EC3650D00CADAFB /* ARCHITECTURE.md */,
 				607598CF2EC2220900BEE86E /* CLAUDE.md */,
 				607598912EC1FC8D00BEE86E /* Luego */,
 				608D756A2EC33EA6002DD532 /* LuegoShareExtension */,
@@ -580,7 +576,7 @@
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_ENTITLEMENTS = Luego/Luego.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = QTZUF46V7A;
 				ENABLE_PREVIEWS = YES;
@@ -622,7 +618,7 @@
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_ENTITLEMENTS = Luego/Luego.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = QTZUF46V7A;
 				ENABLE_PREVIEWS = YES;
@@ -664,7 +660,7 @@
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_ENTITLEMENTS = Luego/Luego.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = QTZUF46V7A;
 				ENABLE_PREVIEWS = YES;
@@ -704,7 +700,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = LuegoShareExtension/LuegoShareExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = QTZUF46V7A;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -737,7 +733,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = LuegoShareExtension/LuegoShareExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = QTZUF46V7A;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -770,7 +766,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = LuegoShareExtension/LuegoShareExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = QTZUF46V7A;
 				GENERATE_INFOPLIST_FILE = YES;
