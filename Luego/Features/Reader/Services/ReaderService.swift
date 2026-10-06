@@ -42,6 +42,7 @@ final class ReaderService: ReaderServiceProtocol {
 
         Logger.reader.debug("Fetching article content")
         let content = try await contentDataSource.fetchContent(for: article.url, timeout: nil, forceRefresh: forceRefresh)
+        try Task.checkCancellation()
 
         guard let freshArticle = try articleStore.fetchArticle(id: articleId) else {
             Logger.reader.error("Article \(articleId) not found after fetch")

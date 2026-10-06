@@ -11,6 +11,8 @@ final class ReaderViewModel {
 
     @ObservationIgnored
     private var loadingTask: Task<Void, Never>?
+    @ObservationIgnored
+    private var loadingRequestID = UUID()
     private let readerService: ReaderServiceProtocol
 
     init(
@@ -31,9 +33,18 @@ final class ReaderViewModel {
             return
         }
 
-        loadingTask?.cancel()
-        Logger.reader.debug("Starting content load")
+        await fetchContent(forceRefresh: false)
+    }
 
+    func refreshContent() async {
+        Logger.reader.debug("refreshContent() called for article \(article.id)")
+        await fetchContent(forceRefresh: true)
+    }
+
+    private func fetchContent(forceRefresh: Bool) async {
+        loadingTask?.cancel()
+        let requestID = UUID()
+        loadingRequestID = requestID
         isLoading = true
         errorMessage = nil
 
@@ -42,62 +53,33 @@ final class ReaderViewModel {
 
             do {
                 try Task.checkCancellation()
-
-                let updatedArticle = try await readerService.fetchContent(for: article, forceRefresh: false)
-
+                let updatedArticle = try await readerService.fetchContent(for: article, forceRefresh: forceRefresh)
                 try Task.checkCancellation()
 
                 article = updatedArticle
                 articleContent = updatedArticle.content
                 Logger.reader.debug("Content loaded successfully")
             } catch is CancellationError {
-                Logger.reader.debug("loadContent cancelled for article \(article.id)")
+                Logger.reader.debug("Content fetch cancelled for article \(article.id)")
             } catch {
-                Logger.reader.error("loadContent failed: \(error.localizedDescription)")
-                errorMessage = error.localizedDescription
+                if !Task.isCancelled {
+                    Logger.reader.error("Content fetch failed: \(error.localizedDescription)")
+                    errorMessage = error.localizedDescription
+                }
             }
 
-            isLoading = false
+            if loadingRequestID == requestID {
+                isLoading = false
+                loadingTask = nil
+            }
         }
 
         loadingTask = task
-        await task.value
-    }
-
-    func refreshContent() async {
-        Logger.reader.debug("refreshContent() called for article \(article.id)")
-
-        loadingTask?.cancel()
-        Logger.reader.debug("Starting content refresh")
-
-        isLoading = true
-        errorMessage = nil
-
-        let task = Task { [weak self] in
-            guard let self else { return }
-
-            do {
-                try Task.checkCancellation()
-
-                let updatedArticle = try await readerService.fetchContent(for: article, forceRefresh: true)
-
-                try Task.checkCancellation()
-
-                article = updatedArticle
-                articleContent = updatedArticle.content
-                Logger.reader.debug("Content refreshed successfully")
-            } catch is CancellationError {
-                Logger.reader.debug("refreshContent cancelled for article \(article.id)")
-            } catch {
-                Logger.reader.error("refreshContent failed: \(error.localizedDescription)")
-                errorMessage = error.localizedDescription
-            }
-
-            isLoading = false
+        await withTaskCancellationHandler {
+            await task.value
+        } onCancel: {
+            task.cancel()
         }
-
-        loadingTask = task
-        await task.value
     }
 
     func updateReadPosition(_ position: Double) async {

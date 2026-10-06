@@ -59,7 +59,7 @@ Services receive [ContentDataSource](Luego/Core/DataSources/ContentDataSource.sw
 | [Sharing](Luego/Features/Sharing/) | Queue shared URLs, import them into the app, and construct deep links |
 | [Settings](Luego/Features/Settings/) | Preferences, parser updates, repair sync, import/export UI, and diagnostics |
 
-Adding a URL saves metadata first. `ReaderService` fetches the body when needed, reloads the current article from storage, and saves the content. Saving a Discovery article includes its available content. Add, sharing, and plain-text import use `ArticleService.addArticle`, which reports whether it saved a new article or found an existing one.
+Adding a URL saves metadata first. `ReaderService` fetches the body when needed, reloads the current article from storage, and saves the content. Reader load, retry, and refresh requests share the view's task lifetime. Cancellation stops fallback and discards late results before cache or article writes. Saving a Discovery article includes its available content. Add, sharing, and plain-text import use `ArticleService.addArticle`, which reports whether it saved a new article or found an existing one.
 
 ## Share extension
 

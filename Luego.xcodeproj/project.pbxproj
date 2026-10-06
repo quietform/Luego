@@ -122,6 +122,7 @@
 				"Features/Discovery/Models/SmallWebFeed.swift",
 				"Features/Discovery/Services/DiscoveryService.swift",
 				"Features/Reader/Services/ReaderService.swift",
+				"Features/Reader/Views/ReaderViewModel.swift",
 				"Features/ReadingList/Services/ArticleService.swift",
 				"Features/ReadingList/Services/SavedArticleExportService.swift",
 				"Features/ReadingList/Services/SavedArticleImportService.swift",

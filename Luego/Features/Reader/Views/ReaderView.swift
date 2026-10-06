@@ -10,6 +10,8 @@ struct ReaderView: View {
     @State private var saveTask: Task<Void, Never>?
     @State private var hasRestoredPosition = false
     @State private var lastSavedPosition: Double = 0
+    @State private var contentRequestID = UUID()
+    @State private var refreshRequested = false
 
     var body: some View {
         Group {
@@ -33,7 +35,10 @@ struct ReaderView: View {
                 ArticleErrorView(
                     message: error,
                     onOpenInBrowser: openInBrowser,
-                    onRetry: { Task { await viewModel.loadContent() } }
+                    onRetry: {
+                        refreshRequested = false
+                        contentRequestID = UUID()
+                    }
                 )
             }
         }
@@ -50,8 +55,14 @@ struct ReaderView: View {
         #if os(iOS)
         .appNavigationChrome(.transparent)
         #endif
-        .task(id: viewModel.article.id) {
-            await viewModel.loadContent()
+        .task(id: [viewModel.article.id, contentRequestID]) {
+            let shouldRefresh = refreshRequested
+            refreshRequested = false
+            if shouldRefresh {
+                await viewModel.refreshContent()
+            } else {
+                await viewModel.loadContent()
+            }
         }
         .onAppear {
             iPhoneTabBarVisibilityController?.hide()
@@ -302,8 +313,7 @@ extension ReaderView {
     }
 
     private func refreshContent() {
-        Task {
-            await viewModel.refreshContent()
-        }
+        refreshRequested = true
+        contentRequestID = UUID()
     }
 }

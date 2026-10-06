@@ -52,8 +52,9 @@ final class ContentDataSource: ContentDataSourceProtocol {
     }
 
     func fetchMetadata(for url: URL, timeout: TimeInterval?) async throws -> ArticleMetadata {
+        try Task.checkCancellation()
         if parserDataSource.isReady {
-            if let metadata = await tryLocalMetadataParsing(url: url, timeout: timeout) {
+            if let metadata = try await tryLocalMetadataParsing(url: url, timeout: timeout) {
                 return metadata
             }
         }
@@ -61,6 +62,7 @@ final class ContentDataSource: ContentDataSourceProtocol {
     }
 
     func fetchContent(for url: URL, timeout: TimeInterval?, forceRefresh: Bool, skipCache: Bool) async throws -> ArticleContent {
+        try Task.checkCancellation()
         logFetchStart(url: url, forceRefresh: forceRefresh, skipCache: skipCache)
 
         if skipCache {
@@ -76,7 +78,7 @@ final class ContentDataSource: ContentDataSourceProtocol {
         }
 
         if parserDataSource.isReady {
-            if let result = await tryLocalParsing(url: url, timeout: timeout) {
+            if let result = try await tryLocalParsing(url: url, timeout: timeout) {
                 parsedContentCache.save(result, for: url)
                 return result
             }
@@ -89,18 +91,22 @@ final class ContentDataSource: ContentDataSourceProtocol {
 
     private func fetchContentWithoutCaching(url: URL, timeout: TimeInterval?) async throws -> ArticleContent {
         if parserDataSource.isReady {
-            if let result = await tryLocalParsing(url: url, timeout: timeout) {
+            if let result = try await tryLocalParsing(url: url, timeout: timeout) {
                 return result
             }
         }
         return try await fetchFromAPI(url: url)
     }
 
-    private func tryLocalParsing(url: URL, timeout: TimeInterval?) async -> ArticleContent? {
+    private func tryLocalParsing(url: URL, timeout: TimeInterval?) async throws -> ArticleContent? {
         do {
             let html = try await webPageDataSource.fetchHTML(from: url, timeout: timeout)
+            try Task.checkCancellation()
 
-            guard let result = await parserDataSource.parse(html: html, url: url),
+            let result = await parserDataSource.parse(html: html, url: url)
+            try Task.checkCancellation()
+
+            guard let result,
                   result.success,
                   let content = result.content,
                   !content.isEmpty else {
@@ -112,13 +118,22 @@ final class ContentDataSource: ContentDataSourceProtocol {
 
             return ArticleContent(from: result, url: url)
         } catch {
+            try Task.checkCancellation()
+            if error is CancellationError { throw error }
             Logger.content.debug("✗ HTML fetch failed: \(error.localizedDescription) → falling back to API")
             return nil
         }
     }
 
     private func fetchFromAPI(url: URL) async throws -> ArticleContent {
-        let response = try await luegoAPIDataSource.fetchArticle(for: url)
+        let response: LuegoAPIResponse
+        do {
+            response = try await luegoAPIDataSource.fetchArticle(for: url)
+        } catch {
+            try Task.checkCancellation()
+            throw error
+        }
+        try Task.checkCancellation()
 
         Logger.content.debug("✓ API fetch SUCCESS")
 
@@ -135,11 +150,15 @@ final class ContentDataSource: ContentDataSourceProtocol {
         )
     }
 
-    private func tryLocalMetadataParsing(url: URL, timeout: TimeInterval?) async -> ArticleMetadata? {
+    private func tryLocalMetadataParsing(url: URL, timeout: TimeInterval?) async throws -> ArticleMetadata? {
         do {
             let html = try await webPageDataSource.fetchHTML(from: url, timeout: timeout)
+            try Task.checkCancellation()
 
-            guard let result = await parserDataSource.parse(html: html, url: url),
+            let result = await parserDataSource.parse(html: html, url: url)
+            try Task.checkCancellation()
+
+            guard let result,
                   result.success,
                   let metadata = result.metadata else {
                 return nil
@@ -151,6 +170,8 @@ final class ContentDataSource: ContentDataSourceProtocol {
 
             return buildMetadataFromParserResult(metadata, url: url)
         } catch {
+            try Task.checkCancellation()
+            if error is CancellationError { throw error }
             return nil
         }
     }
