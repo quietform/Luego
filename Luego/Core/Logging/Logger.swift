@@ -1,6 +1,6 @@
 import OSLog
 
-final class Logger: Sendable {
+nonisolated final class Logger: Sendable {
     private static let subsystem = Bundle.main.bundleIdentifier ?? "com.esoxjem.Luego"
     private let osLogger: os.Logger
     private let category: String
@@ -43,7 +43,7 @@ final class Logger: Sendable {
 extension Logger {
     static let sdk = Logger(category: "SDK")
     static let api = Logger(category: "API")
-    static let parser = Logger(category: "Parser")
+    nonisolated static let parser = Logger(category: "Parser")
     static let content = Logger(category: "Content")
     static let cache = Logger(category: "Cache")
     static let article = Logger(category: "Article")

@@ -9,8 +9,34 @@ protocol LuegoParserDataSourceProtocol: Sendable {
 
 @MainActor
 final class LuegoParserDataSource: LuegoParserDataSourceProtocol {
-    private var jsContext: JSContext?
+    private let worker = LuegoParserWorker()
     private let sdkManager: LuegoSDKManagerProtocol
+
+    init(sdkManager: LuegoSDKManagerProtocol) {
+        self.sdkManager = sdkManager
+    }
+
+    var isReady: Bool {
+        sdkManager.isSDKAvailable()
+    }
+
+    func parse(html: String, url: URL) async -> ParserResult? {
+        var bundles: [String: String]?
+        if await worker.needsInitialization {
+            guard sdkManager.isSDKAvailable(), let loadedBundles = sdkManager.loadBundles() else {
+                Logger.parser.debug("Failed to load bundles")
+                return nil
+            }
+            bundles = loadedBundles
+        }
+
+        let rulesData = sdkManager.loadRules()
+        return await worker.parse(html: html, url: url, bundles: bundles, rulesData: rulesData)
+    }
+}
+
+private actor LuegoParserWorker {
+    private var jsContext: JSContext?
 
     private let polyfills = """
     var setTimeout = function(fn, delay) { fn(); };
@@ -24,17 +50,13 @@ final class LuegoParserDataSource: LuegoParserDataSourceProtocol {
     };
     """
 
-    init(sdkManager: LuegoSDKManagerProtocol) {
-        self.sdkManager = sdkManager
+    var needsInitialization: Bool {
+        jsContext == nil
     }
 
-    var isReady: Bool {
-        sdkManager.isSDKAvailable()
-    }
-
-    func parse(html: String, url: URL) async -> ParserResult? {
-        if jsContext == nil && sdkManager.isSDKAvailable() {
-            initializeContext()
+    func parse(html: String, url: URL, bundles: [String: String]?, rulesData: Data?) -> ParserResult? {
+        if jsContext == nil, let bundles {
+            initializeContext(bundles: bundles)
         }
 
         guard let context = jsContext else {
@@ -42,15 +64,10 @@ final class LuegoParserDataSource: LuegoParserDataSourceProtocol {
             return nil
         }
 
-        return executeParser(context: context, html: html, url: url)
+        return executeParser(context: context, html: html, url: url, rulesData: rulesData)
     }
 
-    private func initializeContext() {
-        guard let bundles = sdkManager.loadBundles() else {
-            Logger.parser.debug("Failed to load bundles")
-            return
-        }
-
+    private func initializeContext(bundles: [String: String]) {
         guard let context = JSContext() else {
             Logger.parser.error("Failed to create JSContext")
             return
@@ -83,14 +100,14 @@ final class LuegoParserDataSource: LuegoParserDataSourceProtocol {
         Logger.parser.info("Initialized successfully")
     }
 
-    private func executeParser(context: JSContext, html: String, url: URL) -> ParserResult? {
+    private func executeParser(context: JSContext, html: String, url: URL, rulesData: Data?) -> ParserResult? {
         guard let htmlJSON = encodeAsJSONString(html),
               let urlString = encodeAsJSONString(url.absoluteString) else {
             Logger.parser.debug("Failed to encode parameters")
             return nil
         }
 
-        let rulesJSON = loadRulesJSON()
+        let rulesJSON = loadRulesJSON(rulesData)
         let script = "LuegoParser.parse(\(htmlJSON), \(urlString), \(rulesJSON));"
 
         guard let result = context.evaluateScript(script),
@@ -111,8 +128,8 @@ final class LuegoParserDataSource: LuegoParserDataSourceProtocol {
         return String(jsonArray.dropFirst().dropLast())
     }
 
-    private func loadRulesJSON() -> String {
-        guard let rulesData = sdkManager.loadRules(),
+    private func loadRulesJSON(_ rulesData: Data?) -> String {
+        guard let rulesData,
               let rulesString = String(data: rulesData, encoding: .utf8) else {
             return "{}"
         }

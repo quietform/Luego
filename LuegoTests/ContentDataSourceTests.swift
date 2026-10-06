@@ -15,12 +15,64 @@ struct ContentDataSourceTests {
         #expect(try await source.fetchMetadata(for: url).title == "Local title")
     }
 
+    @Test(arguments: [nil, "", "Local article body"] as [String?])
+    func localMetadataCachesUsableContent(body: String?) async throws {
+        let parser = TestParser()
+        parser.result = ParserResult(success: true, content: body, metadata: ParserMetadata(title: "Local title", publishedDate: "2026-10-06T10:00:00Z", excerpt: "Local excerpt", siteName: nil, thumbnail: "https://example.com/image.jpg"), error: nil)
+        let cache = TestContentCache()
+        let source = makeSource(parser: parser, cache: cache, api: TestArticleAPI(isAvailable: false))
+
+        let metadata = try await source.fetchMetadata(for: url)
+
+        #expect(metadata.title == "Local title")
+        #expect(metadata.description == "Local excerpt")
+        #expect(metadata.wordCount == nil)
+
+        if let body, !body.isEmpty {
+            let content = try await source.fetchContent(for: url)
+            #expect(content.content == body)
+            #expect(content.title == metadata.title)
+            #expect(content.description == metadata.description)
+            #expect(content.thumbnailURL == metadata.thumbnailURL)
+            #expect(content.publishedDate == metadata.publishedDate)
+            #expect(content.wordCount == 3)
+            #expect(parser.parseCount == 1)
+        } else {
+            #expect(cache.get(for: url) == nil)
+        }
+    }
+
     @Test
     func failedLocalParsingFallsBackToAPI() async throws {
         let source = makeSource()
 
         #expect(try await source.fetchContent(for: url).content == "API article body")
         #expect(try await source.fetchMetadata(for: url).title == "API title")
+    }
+
+    @Test(arguments: ["", "API article body"])
+    func apiMetadataCachesUsableContent(body: String) async throws {
+        let cache = TestContentCache()
+        let api = TestArticleAPI(content: body)
+        let source = makeSource(cache: cache, api: api)
+
+        let metadata = try await source.fetchMetadata(for: url)
+
+        #expect(metadata.title == "API title")
+        #expect(metadata.wordCount == 3)
+
+        if !body.isEmpty {
+            let content = try await source.fetchContent(for: url)
+            #expect(content.content == body)
+            #expect(content.title == metadata.title)
+            #expect(content.description == metadata.description)
+            #expect(content.thumbnailURL == metadata.thumbnailURL)
+            #expect(content.publishedDate == metadata.publishedDate)
+            #expect(content.wordCount == metadata.wordCount)
+            #expect(await api.fetchCount == 1)
+        } else {
+            #expect(cache.get(for: url) == nil)
+        }
     }
 
     @Test
@@ -65,7 +117,11 @@ struct ContentDataSourceTests {
 private final class TestParser: LuegoParserDataSourceProtocol {
     let isReady = true
     var result: ParserResult?
-    func parse(html: String, url: URL) async -> ParserResult? { result }
+    private(set) var parseCount = 0
+    func parse(html: String, url: URL) async -> ParserResult? {
+        parseCount += 1
+        return result
+    }
 }
 
 @MainActor
@@ -77,11 +133,20 @@ private final class TestContentCache: ParsedContentCacheDataSourceProtocol {
     func remove(for url: URL) { contents.removeValue(forKey: url) }
 }
 
-private struct TestArticleAPI: LuegoAPIDataSourceProtocol {
-    var isAvailable = true
+private actor TestArticleAPI: LuegoAPIDataSourceProtocol {
+    private let isAvailable: Bool
+    private let content: String
+    private(set) var fetchCount = 0
+
+    init(isAvailable: Bool = true, content: String = "API article body") {
+        self.isAvailable = isAvailable
+        self.content = content
+    }
+
     func fetchArticle(for url: URL) async throws -> LuegoAPIResponse {
+        fetchCount += 1
         guard isAvailable else { throw URLError(.notConnectedToInternet) }
-        return LuegoAPIResponse(content: "API article body", metadata: LuegoAPIMetadata(title: "API title", author: nil, publishedDate: nil, estimatedReadTimeMinutes: nil, wordCount: 3, sourceUrl: url.absoluteString, domain: "example.com", thumbnail: nil))
+        return LuegoAPIResponse(content: content, metadata: LuegoAPIMetadata(title: "API title", author: nil, publishedDate: nil, estimatedReadTimeMinutes: nil, wordCount: 3, sourceUrl: url.absoluteString, domain: "example.com", thumbnail: nil))
     }
 }
 

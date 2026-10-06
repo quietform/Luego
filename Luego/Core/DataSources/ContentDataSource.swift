@@ -145,6 +145,10 @@ final class ContentDataSource: ContentDataSourceProtocol {
                 return nil
             }
 
+            if let content = result.content, !content.isEmpty {
+                parsedContentCache.save(ArticleContent(from: result, url: url), for: url)
+            }
+
             return buildMetadataFromParserResult(metadata, url: url)
         } catch {
             return nil
@@ -152,18 +156,18 @@ final class ContentDataSource: ContentDataSourceProtocol {
     }
 
     private func fetchMetadataFromAPI(url: URL) async throws -> ArticleMetadata {
-        let response = try await luegoAPIDataSource.fetchArticle(for: url)
-        let publishedDate = parsePublishedDate(from: response.metadata.publishedDate)
-        let thumbnailURL = response.metadata.thumbnail.flatMap { URL(string: $0) }
+        let content = try await fetchFromAPI(url: url)
 
-        Logger.content.debug("[ThumbnailDebug] API URL Conversion - Input: '\(response.metadata.thumbnail ?? "nil")' → URL: \(thumbnailURL?.absoluteString ?? "nil")")
+        if !content.content.isEmpty {
+            parsedContentCache.save(content, for: url)
+        }
 
         return ArticleMetadata(
-            title: response.metadata.title ?? url.host() ?? url.absoluteString,
-            thumbnailURL: thumbnailURL,
-            description: nil,
-            publishedDate: publishedDate,
-            wordCount: response.metadata.wordCount
+            title: content.title,
+            thumbnailURL: content.thumbnailURL,
+            description: content.description,
+            publishedDate: content.publishedDate,
+            wordCount: content.wordCount
         )
     }
 
