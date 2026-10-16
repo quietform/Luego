@@ -11,6 +11,7 @@
 		70D100032F70000000D10001 /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = 70D100042F70000000D10001 /* GRDB */; };
 		608D75732EC33EA6002DD532 /* LuegoShareExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 608D75692EC33EA6002DD532 /* LuegoShareExtension.appex */; platformFilter = ios; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		C0DEC000000000000000000C /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = 70D100042F70000000D10001 /* GRDB */; };
+		C0DEC000000000000000000D = {isa = PBXBuildFile; productRef = 607598D02EC2300000BEE86E /* Textual */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -109,6 +110,10 @@
 				"Core/Stores/ArticleStoreProtocol.swift",
 				"Core/Stores/GRDBArticleStore.swift",
 				"Core/Utilities/DateFormatters.swift",
+				"Core/UI/Readers/ReaderDocument.swift",
+				"Core/UI/Readers/ReaderBlocksView.swift",
+				"Core/UI/Readers/ReaderImageDecoder.swift",
+				"Core/UI/Readers/ReaderImageLoader.swift",
 				"Features/Discovery/DataSources/BlogrollDataSource.swift",
 				"Features/Discovery/DataSources/BlogrollRSSDataSource.swift",
 				"Features/Discovery/DataSources/DiscoveryPreferencesDataSource.swift",
@@ -188,7 +193,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		C0DEC0000000000000000005 = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (C0DEC000000000000000000C /* GRDB in Frameworks */,); runOnlyForDeploymentPostprocessing = 0; };
+		C0DEC0000000000000000005 = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (C0DEC000000000000000000C /* GRDB in Frameworks */, C0DEC000000000000000000D,); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -290,7 +295,7 @@
             dependencies = ();
             fileSystemSynchronizedGroups = (C0DEC0000000000000000003);
             name = LuegoTests;
-            packageProductDependencies = (70D100042F70000000D10001 /* GRDB */);
+            packageProductDependencies = (70D100042F70000000D10001 /* GRDB */, 607598D02EC2300000BEE86E /* Textual */);
             productName = LuegoTests;
             productReference = C0DEC0000000000000000002;
             productType = "com.apple.product-type.bundle.unit-test";

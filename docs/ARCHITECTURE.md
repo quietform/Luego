@@ -61,6 +61,8 @@ Services receive [ContentDataSource](../Luego/Core/DataSources/ContentDataSource
 
 Adding a URL saves metadata first. `ReaderService` fetches the body when needed, reloads the current article from storage, and saves the content. Reader load, retry, and refresh requests share the view's task lifetime. Cancellation stops fallback and discards late results before cache or article writes. Saving a Discovery article includes its available content. Add, sharing, and plain-text import use `ArticleService.addArticle`, which reports whether it saved a new article or found an existing one.
 
+Reader Markdown is parsed once and rendered as separate top-level blocks. Text-only blocks stay rendered. Image-bearing blocks load within one viewport height above or below the screen and retain their attachments until they are more than two viewport heights away. Standalone photos own their decoded image state directly and retain only their dimensions after release, so reloading does not shrink their placeholders. Textual continues to render text and mixed markup. Geometry updates change state only when a block crosses one of these boundaries. Images are decoded off the main actor with ImageIO thumbnails capped at 1200 pixels; animated images share a 24 MiB frame budget. The reader uses URLSession caching for compressed responses and does not keep a global decoded-image cache.
+
 ## Share extension
 
 [ShareViewController](../LuegoShareExtension/ShareViewController.swift) extracts a web URL and appends it to [SharedStorage](../Luego/Features/Sharing/DataSources/SharedStorage.swift). The queue lives in `SharedURLs.sqlite` in App Group `group.com.esoxjem.Luego`. Each occurrence has its own ID. The first database migration imports the previous `UserDefaults` JSON queue.
