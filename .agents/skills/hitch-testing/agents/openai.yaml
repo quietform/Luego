@@ -1,0 +1,3 @@
+interface:
+  display_name: "Hitch Testing"
+  short_description: "Measure and regression-test UI animation hitches"
