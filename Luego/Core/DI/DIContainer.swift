@@ -142,7 +142,8 @@ final class DIContainer {
     func makeArticleListViewModel() -> ArticleListViewModel {
         ArticleListViewModel(
             articleService: articleService,
-            sharingService: sharingService
+            sharingService: sharingService,
+            syncEngineManager: syncEngineManager
         )
     }
 

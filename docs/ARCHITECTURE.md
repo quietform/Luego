@@ -16,7 +16,7 @@ View -> ViewModel -> Service -> ArticleStoreProtocol -> GRDB / SQLite
 GRDBArticleStore <-> SyncEngineManager <-> CloudKit private database
 ```
 
-[ContentView](../Luego/App/ContentView.swift) owns navigation, foreground catch-up, shared-URL import, and deep links. Compact layouts use tabs; regular layouts use split navigation.
+[ContentView](../Luego/App/ContentView.swift) owns navigation and deep links, and asks `ArticleListViewModel` to refresh when active. The view model imports shared URLs independently of foreground CloudKit catch-up. Compact layouts use tabs; regular layouts use split navigation.
 
 ## Storage and sync
 
@@ -59,7 +59,7 @@ Services receive [ContentDataSource](../Luego/Core/DataSources/ContentDataSource
 | [Sharing](../Luego/Features/Sharing/) | Queue shared URLs, import them into the app, and construct deep links |
 | [Settings](../Luego/Features/Settings/) | Preferences, parser updates, repair sync, import/export UI, and diagnostics |
 
-Adding a URL saves metadata first. `ReaderService` fetches the body when needed, reloads the current article from storage, and saves the content. Reader load, retry, and refresh requests share the view's task lifetime. Cancellation stops fallback and discards late results before cache or article writes. Saving a Discovery article includes its available content. Add, sharing, and plain-text import use `ArticleService.addArticle`, which reports whether it saved a new article or found an existing one.
+Adding a URL saves metadata and any body already returned by the parser or API, so the list can show an excerpt before the reader opens. `ReaderService` fetches the body when needed, reloads the current article from storage, and saves the content. Reader load, retry, and refresh requests share the view's task lifetime. Cancellation stops fallback and discards late results before cache or article writes. Saving a Discovery article includes its available content. Add, sharing, and plain-text import use `ArticleService.addArticle`, which reports whether it saved a new article or found an existing one.
 
 Reader Markdown is parsed once and rendered as separate top-level blocks. Text-only blocks stay rendered. Image-bearing blocks load within one viewport height above or below the screen and retain their attachments until they are more than two viewport heights away. Standalone photos own their decoded image state directly and retain only their dimensions after release, so reloading does not shrink their placeholders. Textual continues to render text and mixed markup. Geometry updates change state only when a block crosses one of these boundaries. Images are decoded off the main actor with ImageIO thumbnails capped at 1200 pixels; animated images share a 24 MiB frame budget. The reader uses URLSession caching for compressed responses and does not keep a global decoded-image cache.
 
@@ -67,7 +67,7 @@ Reader Markdown is parsed once and rendered as separate top-level blocks. Text-o
 
 [ShareViewController](../LuegoShareExtension/ShareViewController.swift) extracts a web URL and appends it to [SharedStorage](../Luego/Features/Sharing/DataSources/SharedStorage.swift). The queue lives in `SharedURLs.sqlite` in App Group `group.com.esoxjem.Luego`. Each occurrence has its own ID. The first database migration imports the previous `UserDefaults` JSON queue.
 
-When active, the app requests foreground catch-up and then imports the queue through `SharingService`. Successful items are acknowledged individually; failed items and URLs added during import remain queued. The extension's success screen confirms queueing; article ingestion happens in the app.
+When active, the app imports the queue through `SharingService` while foreground CloudKit catch-up runs independently. Overlapping foreground events share one active import and request a follow-up pass to pick up URLs queued in the meantime. Successful items are acknowledged individually; failed items and URLs added during a pass remain queued until a later pass. The extension's success screen confirms queueing; article ingestion happens in the app.
 
 ## Legacy migration
 

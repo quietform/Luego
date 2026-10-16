@@ -168,7 +168,7 @@ final class ContentDataSource: ContentDataSourceProtocol {
                 parsedContentCache.save(ArticleContent(from: result, url: url), for: url)
             }
 
-            return buildMetadataFromParserResult(metadata, url: url)
+            return buildMetadataFromParserResult(metadata, url: url, content: result.content)
         } catch {
             try Task.checkCancellation()
             if error is CancellationError { throw error }
@@ -187,12 +187,13 @@ final class ContentDataSource: ContentDataSourceProtocol {
             title: content.title,
             thumbnailURL: content.thumbnailURL,
             description: content.description,
+            content: content.content,
             publishedDate: content.publishedDate,
             wordCount: content.wordCount
         )
     }
 
-    private func buildMetadataFromParserResult(_ metadata: ParserMetadata, url: URL) -> ArticleMetadata {
+    private func buildMetadataFromParserResult(_ metadata: ParserMetadata, url: URL, content: String?) -> ArticleMetadata {
         let publishedDate = parsePublishedDate(from: metadata.publishedDate)
         let thumbnailURL = metadata.thumbnail.flatMap { URL(string: $0) }
 
@@ -202,6 +203,7 @@ final class ContentDataSource: ContentDataSourceProtocol {
             title: metadata.title ?? url.host() ?? url.absoluteString,
             thumbnailURL: thumbnailURL,
             description: metadata.excerpt,
+            content: content,
             publishedDate: publishedDate
         )
     }

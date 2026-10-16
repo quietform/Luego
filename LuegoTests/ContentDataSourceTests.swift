@@ -1,9 +1,33 @@
 import Foundation
+import GRDB
 import Testing
 
 @MainActor
 struct ContentDataSourceTests {
     private let url = URL(string: "https://example.com/article")!
+
+    @Test(arguments: [false, true])
+    func newlySavedArticleHasAnExcerptBeforeOpeningTheReader(useLocalParser: Bool) async throws {
+        let body = "Fresh article body"
+        let parser = TestParser()
+        if useLocalParser {
+            parser.result = ParserResult(success: true, content: body, metadata: ParserMetadata(title: "Article", publishedDate: nil, excerpt: "An article description", siteName: nil, thumbnail: nil), error: nil)
+        }
+        let api = TestArticleAPI(content: body)
+        let source = makeSource(parser: parser, api: api)
+        let database = try AppDatabase(DatabaseQueue())
+        let store = GRDBArticleStore(database: database)
+        let service = ArticleService(articleStore: store, contentDataSource: source, syncEngineManager: TestSyncEngine())
+
+        let result = try await service.addArticle(url: url, savedDate: Date())
+        let reloaded = try #require(try GRDBArticleStore(database: database).fetchArticle(id: result.article.id))
+
+        #expect(reloaded.excerpt == body)
+        #expect(reloaded.content == body)
+        #expect(result.article.excerpt == body)
+        #expect(parser.parseCount == 1)
+        #expect(await api.fetchCount == (useLocalParser ? 0 : 1))
+    }
 
     @Test
     func localParsingWorksWhenAPIIsUnavailable() async throws {
@@ -27,6 +51,7 @@ struct ContentDataSourceTests {
         #expect(metadata.title == "Local title")
         #expect(metadata.description == "Local excerpt")
         #expect(metadata.wordCount == nil)
+        #expect(metadata.content == (body?.isEmpty == false ? body : nil))
 
         if let body, !body.isEmpty {
             let content = try await source.fetchContent(for: url)
@@ -60,6 +85,7 @@ struct ContentDataSourceTests {
 
         #expect(metadata.title == "API title")
         #expect(metadata.wordCount == 3)
+        #expect(metadata.content == (body.isEmpty ? nil : body))
 
         if !body.isEmpty {
             let content = try await source.fetchContent(for: url)

@@ -12,17 +12,24 @@ final class ArticleListViewModel {
 
     private let articleService: ArticleServiceProtocol
     private let sharingService: SharingServiceProtocol
+    private let syncEngineManager: SyncEngineManagerProtocol
     @ObservationIgnored
     private var observationTask: Task<Void, Never>?
     @ObservationIgnored
     private var observationRetryTask: Task<Void, Never>?
+    @ObservationIgnored
+    private var isImportingSharedArticles = false
+    @ObservationIgnored
+    private var sharedImportRequested = false
 
     init(
         articleService: ArticleServiceProtocol,
-        sharingService: SharingServiceProtocol
+        sharingService: SharingServiceProtocol,
+        syncEngineManager: SyncEngineManagerProtocol
     ) {
         self.articleService = articleService
         self.sharingService = sharingService
+        self.syncEngineManager = syncEngineManager
         self.articles = []
     }
 
@@ -101,12 +108,26 @@ final class ArticleListViewModel {
         }
     }
 
-    func syncSharedArticles() async {
-        do {
-            _ = try await sharingService.syncSharedArticles()
-        } catch {
-            errorMessage = "Failed to sync shared articles: \(error.localizedDescription)"
-        }
+    func refreshOnForeground() async {
+        async let catchUp: Void = syncEngineManager.performForegroundCatchUp()
+        await syncSharedArticles()
+        await catchUp
+    }
+
+    private func syncSharedArticles() async {
+        sharedImportRequested = true
+        guard !isImportingSharedArticles else { return }
+        isImportingSharedArticles = true
+        defer { isImportingSharedArticles = false }
+
+        repeat {
+            sharedImportRequested = false
+            do {
+                _ = try await sharingService.syncSharedArticles()
+            } catch {
+                errorMessage = "Failed to sync shared articles: \(error.localizedDescription)"
+            }
+        } while sharedImportRequested
     }
 
     func refreshArticles() async {

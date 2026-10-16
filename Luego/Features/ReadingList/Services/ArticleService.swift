@@ -66,6 +66,7 @@ final class ArticleService: ArticleServiceProtocol {
         let article = Article(
             url: validatedURL,
             title: metadata.title,
+            content: metadata.content,
             savedDate: savedDate,
             thumbnailURL: metadata.thumbnailURL,
             publishedDate: metadata.publishedDate

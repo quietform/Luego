@@ -234,9 +234,8 @@ struct ContentView: View {
 
     private func handleScenePhaseChange(_ phase: ScenePhase) async {
         initializeArticleListViewModelIfNeeded()
-        guard phase == .active, let articleListViewModel, let diContainer else { return }
-        await diContainer.syncEngineManager.performForegroundCatchUp()
-        await articleListViewModel.syncSharedArticles()
+        guard phase == .active, let articleListViewModel else { return }
+        await articleListViewModel.refreshOnForeground()
     }
 
     private func handleIncomingURL(_ url: URL) async {

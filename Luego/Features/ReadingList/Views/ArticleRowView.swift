@@ -1,5 +1,4 @@
 import SwiftUI
-import UIKit
 
 struct ArticleRowView: View {
     let article: Article
@@ -32,7 +31,9 @@ struct ArticleRowView: View {
                 )
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.vertical, 6)
+        .contentShape(Rectangle())
         .accessibilityIdentifier(ReadingListAccessibilityID.row(article))
     }
 
@@ -59,49 +60,23 @@ struct ArticleTitleRow: View {
     let excerpt: String
     let isFavorite: Bool
     var isSelected: Bool = false
-    @State private var measuredTitleHeight: CGFloat = 0
-
-    private var titleLineHeight: CGFloat {
-        return UIFont.app(.listTitle).lineHeight
-    }
-
-    private var reservedTitleHeight: CGFloat {
-        (titleLineHeight * 2) + 1
-    }
-
-    private var excerptSlotHeight: CGFloat {
-        max(reservedTitleHeight - measuredTitleHeight, 0)
-    }
-
-    private var shouldShowExcerpt: Bool {
-        measuredTitleHeight > 0 && measuredTitleHeight <= (titleLineHeight + 0.5) && !excerpt.isEmpty
-    }
 
     var body: some View {
         HStack(alignment: .top, spacing: 6) {
-            VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(.app(.listTitle))
                     .foregroundStyle(isSelected ? Color.regularSelectionInk : Color.primary)
                     .lineLimit(2)
                     .lineSpacing(1)
-                    .background {
-                        GeometryReader { geometry in
-                            Color.clear
-                                .preference(key: ArticleTitleHeightPreferenceKey.self, value: geometry.size.height)
-                        }
-                    }
 
-                if shouldShowExcerpt {
+                if !excerpt.isEmpty {
                     Text(excerpt)
                         .font(.app(.listExcerpt))
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
-                        .frame(height: excerptSlotHeight, alignment: .bottomLeading)
                 }
             }
-            .frame(height: reservedTitleHeight, alignment: .topLeading)
-            .onPreferenceChange(ArticleTitleHeightPreferenceKey.self) { measuredTitleHeight = $0 }
 
             Spacer(minLength: 4)
 
@@ -112,14 +87,6 @@ struct ArticleTitleRow: View {
                     .accessibilityIdentifier(ReadingListAccessibilityID.favoriteBadge(article))
             }
         }
-    }
-}
-
-private struct ArticleTitleHeightPreferenceKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
     }
 }
 
