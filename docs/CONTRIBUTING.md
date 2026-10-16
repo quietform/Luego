@@ -67,18 +67,11 @@
 
 ## Coding Rules
 
-- Favor simple implementations with few moving parts. Remove unnecessary abstractions before adding new layers.
+- Use TDD skill while writing code
+- Use Systematic Debugging skill for finding bugs and issues
 - No inline comments.
 - No `// MARK:` sections.
-- Prefer clear naming and small functions over commentary.
+- Prefer clear naming and small functions
 - Use modern Swift patterns: `@Observable`, `async/await`, `@MainActor`, `#Preview`.
 - SwiftUI organization: root view first, supporting subviews next, extensions last.
 - Prefer deep modules and deep classes.
-
-## Verification
-
-Follow [TESTING.md](TESTING.md) for simulator checks and manual article testing.
-
-## Pull Requests
-
-Use `.github/PULL_REQUEST_TEMPLATE.md` when creating pull requests.
