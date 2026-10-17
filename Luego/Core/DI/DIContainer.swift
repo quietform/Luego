@@ -66,7 +66,7 @@ final class DIContainer {
     }()
 
     private lazy var kagiSmallWebDataSource: DiscoverySourceProtocol = {
-        KagiSmallWebDataSource(opmlDataSource: opmlDataSource)
+        KagiSmallWebDataSource(opmlDataSource: opmlDataSource, genericRSSDataSource: genericRSSDataSource)
     }()
 
     private lazy var blogrollDataSource: DiscoverySourceProtocol = {

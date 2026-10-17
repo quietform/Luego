@@ -53,7 +53,8 @@ private final class GenericRSSParser: NSObject, XMLParserDelegate {
         }
 
         if isAtomFeed && elementName == "link" && isInItem {
-            if let href = attributeDict["href"], attributeDict["rel"] != "enclosure" {
+            let relation = attributeDict["rel"] ?? "alternate"
+            if let href = attributeDict["href"], relation == "alternate" {
                 currentLink = href
             }
         }

@@ -32,6 +32,8 @@ final class KagiSmallWebDataSource: DiscoverySourceProtocol {
     let sourceIdentifier: DiscoverySource = .kagiSmallWeb
 
     private let opmlDataSource: OPMLDataSource
+    private let genericRSSDataSource: GenericRSSDataSource
+    private let session: URLSession
     private let seenTracker: SeenItemTracker
     private let opmlURL = URL(string: "https://kagi.com/smallweb/opml")!
     private let cacheKey = "smallweb_articles_v2"
@@ -40,8 +42,14 @@ final class KagiSmallWebDataSource: DiscoverySourceProtocol {
 
     private var cachedArticles: [SmallWebArticleEntry] = []
 
-    init(opmlDataSource: OPMLDataSource) {
+    init(
+        opmlDataSource: OPMLDataSource,
+        genericRSSDataSource: GenericRSSDataSource,
+        session: URLSession = .shared
+    ) {
         self.opmlDataSource = opmlDataSource
+        self.genericRSSDataSource = genericRSSDataSource
+        self.session = session
         self.seenTracker = SeenItemTracker(storageKey: "smallweb_shown_articles")
         loadCachedArticles()
     }
@@ -52,7 +60,7 @@ final class KagiSmallWebDataSource: DiscoverySourceProtocol {
         }
 
         do {
-            let (data, _) = try await URLSession.shared.data(from: opmlURL)
+            let (data, _) = try await session.data(from: opmlURL)
             let articles = opmlDataSource.parse(data)
 
             guard !articles.isEmpty else {
@@ -81,12 +89,18 @@ final class KagiSmallWebDataSource: DiscoverySourceProtocol {
 
         let articlesToChooseFrom = didReset ? articles : (unseenArticles.isEmpty ? articles : unseenArticles)
 
-        guard let selectedArticle = articlesToChooseFrom.randomElement() else {
+        guard let selectedFeed = articlesToChooseFrom.randomElement() else {
             throw SmallWebError.noArticlesAvailable
         }
 
-        seenTracker.markAsSeen(selectedArticle.articleUrl.absoluteString)
-        return selectedArticle
+        let (data, _) = try await session.data(from: selectedFeed.articleUrl)
+        let posts = genericRSSDataSource.parse(data)
+        guard let post = posts.randomElement() else {
+            throw SmallWebError.noArticlesAvailable
+        }
+
+        seenTracker.markAsSeen(selectedFeed.articleUrl.absoluteString)
+        return SmallWebArticleEntry(title: post.title, articleUrl: post.postURL, htmlUrl: selectedFeed.htmlUrl)
     }
 
     private func isCacheValid() -> Bool {
