@@ -1,6 +1,6 @@
 import Foundation
 
-struct ArticleContent: Codable {
+nonisolated struct ArticleContent: Codable, Sendable {
     let title: String
     let thumbnailURL: URL?
     let description: String?
@@ -26,23 +26,24 @@ struct ArticleContent: Codable {
 }
 
 extension ArticleContent {
-    init(from result: ParserResult, url: URL) {
-        self.init(
+    @concurrent
+    static func prepare(from result: ParserResult, url: URL) async -> ArticleContent {
+        return ArticleContent(
             title: result.metadata?.title ?? url.host() ?? url.absoluteString,
-            thumbnailURL: Self.parseThumbnailURL(result.metadata?.thumbnail),
+            thumbnailURL: parseThumbnailURL(result.metadata?.thumbnail),
             description: result.metadata?.excerpt,
             content: result.content ?? "",
-            publishedDate: Self.parseDate(result.metadata?.publishedDate),
-            wordCount: Self.calculateWordCount(result.content)
+            publishedDate: parseDate(result.metadata?.publishedDate),
+            wordCount: calculateWordCount(result.content)
         )
     }
 
-    private static func parseThumbnailURL(_ urlString: String?) -> URL? {
+    private nonisolated static func parseThumbnailURL(_ urlString: String?) -> URL? {
         guard let urlString else { return nil }
         return URL(string: urlString)
     }
 
-    private static func parseDate(_ dateString: String?) -> Date? {
+    private nonisolated static func parseDate(_ dateString: String?) -> Date? {
         guard let dateString else { return nil }
 
         let formatter = ISO8601DateFormatter()
@@ -56,7 +57,7 @@ extension ArticleContent {
         return formatter.date(from: dateString)
     }
 
-    private static func calculateWordCount(_ content: String?) -> Int? {
+    private nonisolated static func calculateWordCount(_ content: String?) -> Int? {
         guard let content, !content.isEmpty else { return nil }
         return content.components(separatedBy: .whitespacesAndNewlines)
             .filter { !$0.isEmpty }

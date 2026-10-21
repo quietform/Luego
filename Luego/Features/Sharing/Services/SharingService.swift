@@ -19,7 +19,7 @@ final class SharingService: SharingServiceProtocol {
     }
 
     func syncSharedArticles() async throws -> [Article] {
-        let sharedURLs = try sharedStorage.getSharedURLs()
+        let sharedURLs = try await sharedStorage.getSharedURLs()
 
         guard !sharedURLs.isEmpty else {
             return []
@@ -30,7 +30,7 @@ final class SharingService: SharingServiceProtocol {
         for sharedURL in sharedURLs {
             do {
                 let result = try await articleService.addArticle(url: sharedURL.url, savedDate: Date())
-                try sharedStorage.acknowledgeSharedURL(id: sharedURL.id)
+                try await sharedStorage.acknowledgeSharedURL(id: sharedURL.id)
                 if result.isNew {
                     newArticles.append(result.article)
                 }

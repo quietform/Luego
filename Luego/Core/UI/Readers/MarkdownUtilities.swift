@@ -1,6 +1,6 @@
 import Foundation
 
-func stripFirstH1FromMarkdown(_ markdown: String, matchingTitle: String) -> String {
+nonisolated func stripFirstH1FromMarkdown(_ markdown: String, matchingTitle: String) -> String {
     let lines = markdown.split(separator: "\n", omittingEmptySubsequences: false)
     let normalizedTitle = normalizeForComparison(matchingTitle)
 
@@ -25,7 +25,7 @@ func stripFirstH1FromMarkdown(_ markdown: String, matchingTitle: String) -> Stri
     return resultLines.joined(separator: "\n")
 }
 
-func findMatchingH1Index(in lines: [String.SubSequence], normalizedTitle: String) -> Int? {
+nonisolated func findMatchingH1Index(in lines: [String.SubSequence], normalizedTitle: String) -> Int? {
     let h1Indices = lines.indices.filter { index in
         lines[index].trimmingCharacters(in: .whitespaces).hasPrefix("# ")
     }
@@ -46,7 +46,7 @@ func findMatchingH1Index(in lines: [String.SubSequence], normalizedTitle: String
     return nil
 }
 
-func normalizeForComparison(_ text: String) -> String {
+nonisolated func normalizeForComparison(_ text: String) -> String {
     return text
         .lowercased()
         .components(separatedBy: .punctuationCharacters)
@@ -56,7 +56,7 @@ func normalizeForComparison(_ text: String) -> String {
         .joined(separator: " ")
 }
 
-func areSimilar(_ text1: String, _ text2: String) -> Bool {
+nonisolated func areSimilar(_ text1: String, _ text2: String) -> Bool {
     if text1 == text2 {
         return true
     }

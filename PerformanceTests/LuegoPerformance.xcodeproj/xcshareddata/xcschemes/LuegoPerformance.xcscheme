@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Scheme LastUpgradeVersion="2600" version="1.3">
+ <BuildAction parallelizeBuildables="YES" buildImplicitDependencies="YES"><BuildActionEntries>
+  <BuildActionEntry buildForTesting="YES" buildForRunning="YES" buildForProfiling="YES" buildForArchiving="NO" buildForAnalyzing="YES"><BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="C0DECC000000000000000002" BuildableName="LuegoPerformance.app" BlueprintName="LuegoPerformance" ReferencedContainer="container:LuegoPerformance.xcodeproj"/></BuildActionEntry>
+  <BuildActionEntry buildForTesting="YES" buildForRunning="NO" buildForProfiling="NO" buildForArchiving="NO" buildForAnalyzing="YES"><BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="C0DECC000000000000000003" BuildableName="LuegoPerformanceUITests.xctest" BlueprintName="LuegoPerformanceUITests" ReferencedContainer="container:LuegoPerformance.xcodeproj"/></BuildActionEntry>
+ </BuildActionEntries></BuildAction>
+ <TestAction buildConfiguration="Release" selectedDebuggerIdentifier="" selectedLauncherIdentifier="Xcode.IDEFoundation.Launcher.PosixSpawn" shouldUseLaunchSchemeArgsEnv="YES" codeCoverageEnabled="NO" disableMainThreadChecker="YES" enablePerformanceTestsDiagnostics="NO" systemAttachmentLifetime="keepNever">
+  <TestPlans><TestPlanReference reference="container:ReaderHitches.xctestplan" default="YES"/><TestPlanReference reference="container:ReaderProfiling.xctestplan"/></TestPlans>
+ </TestAction>
+ <LaunchAction disableMainThreadChecker="YES" buildConfiguration="Release" selectedDebuggerIdentifier="" selectedLauncherIdentifier="Xcode.IDEFoundation.Launcher.PosixSpawn" launchStyle="0"><BuildableProductRunnable runnableDebuggingMode="0"><BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="C0DECC000000000000000002" BuildableName="LuegoPerformance.app" BlueprintName="LuegoPerformance" ReferencedContainer="container:LuegoPerformance.xcodeproj"/></BuildableProductRunnable></LaunchAction>
+ <ProfileAction buildConfiguration="Release"><BuildableProductRunnable runnableDebuggingMode="0"><BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="C0DECC000000000000000002" BuildableName="LuegoPerformance.app" BlueprintName="LuegoPerformance" ReferencedContainer="container:LuegoPerformance.xcodeproj"/></BuildableProductRunnable></ProfileAction>
+ <AnalyzeAction buildConfiguration="Release"/>
+ <ArchiveAction buildConfiguration="Release" revealArchiveInOrganizer="NO"/>
+</Scheme>

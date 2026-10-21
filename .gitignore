@@ -66,6 +66,12 @@ fastlane/test_output
 # Build directory
 build/
 
+PerformanceTests/Host/BenchmarkImages/
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+
 # Xcode derived data
 DerivedData/
 .DerivedData/

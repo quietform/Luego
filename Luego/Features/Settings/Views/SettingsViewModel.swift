@@ -63,9 +63,14 @@ final class SettingsViewModel {
         self.selectedDiscoverySource = preferencesDataSource.getSelectedSource()
     }
 
-    var sdkVersionString: String? {
-        guard let info = sdkManager.getVersionInfo() else { return nil }
-        return "Parser \(info.parserVersion) · Rules \(info.rulesVersion)"
+    private(set) var sdkVersionString: String?
+
+    private func refreshSDKVersion() async {
+        guard let info = await sdkManager.getVersionInfo() else {
+            sdkVersionString = nil
+            return
+        }
+        sdkVersionString = "Parser \(info.parserVersion) · Rules \(info.rulesVersion)"
     }
 
     func updateDiscoverySource(_ source: DiscoverySource) {
@@ -150,6 +155,7 @@ final class SettingsViewModel {
     }
 
     func refreshTransferCounts() async {
+        await refreshSDKVersion()
         do {
             let articles = try await articleService.getAllArticles()
             totalSavedArticleCount = articles.count
@@ -188,14 +194,14 @@ final class SettingsViewModel {
         await importArticles(from: text, source: .file)
     }
 
-    func prepareExport(scope: SavedArticleExportScope) {
+    func prepareExport(scope: SavedArticleExportScope) async {
         guard !isPreparingExport else { return }
 
         isPreparingExport = true
         defer { isPreparingExport = false }
 
         do {
-            let export = try savedArticleExportService.makePlainTextExport(scope: scope)
+            let export = try await savedArticleExportService.makePlainTextExport(scope: scope)
 
             guard export.articleCount > 0 else {
                 presentAlert(
@@ -206,7 +212,7 @@ final class SettingsViewModel {
             }
 
             removeExportedFileIfNeeded()
-            let fileURL = try writeExportFile(export)
+            let fileURL = try await ArticleTransferFile.write(export)
             exportPresentation = SettingsExportPresentation(fileURL: fileURL)
         } catch {
             presentAlert(
@@ -432,20 +438,9 @@ final class SettingsViewModel {
         }
     }
 
-    private func writeExportFile(_ export: SavedArticlePlainTextExport) throws -> URL {
-        let fileURL = FileManager.default.temporaryDirectory.appendingPathComponent(export.filename)
-
-        if FileManager.default.fileExists(atPath: fileURL.path) {
-            try FileManager.default.removeItem(at: fileURL)
-        }
-
-        try export.body.write(to: fileURL, atomically: true, encoding: .utf8)
-        return fileURL
-    }
-
     private func removeExportedFileIfNeeded() {
         guard let fileURL = exportPresentation?.fileURL else { return }
-        try? FileManager.default.removeItem(at: fileURL)
+        Task { await ArticleTransferFile.remove(fileURL) }
     }
 }
 

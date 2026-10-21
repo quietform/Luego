@@ -1,7 +1,7 @@
 import CloudKit
 import Foundation
 
-struct SyncEngineStatePayload: Codable {
+nonisolated struct SyncEngineStatePayload: Codable, Sendable {
     var stateSerialization: CKSyncEngine.State.Serialization?
     var lastSyncTime: Date?
 }

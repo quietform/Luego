@@ -1,0 +1,321 @@
+// !$*UTF8*$!
+{
+	"archiveVersion" = 1;
+	"classes" = {
+	};
+	"objectVersion" = 77;
+	"objects" = {
+		"C0DECC000000000000000004" = {
+			"isa" = "PBXFileReference";
+			"explicitFileType" = "wrapper.application";
+			"path" = "LuegoPerformance.app";
+			"sourceTree" = "BUILT_PRODUCTS_DIR";
+		};
+		"C0DECC000000000000000005" = {
+			"isa" = "PBXFileReference";
+			"explicitFileType" = "wrapper.cfbundle";
+			"path" = "LuegoPerformanceUITests.xctest";
+			"sourceTree" = "BUILT_PRODUCTS_DIR";
+		};
+		"C0DECC000000000000000006" = {
+			"isa" = "PBXFileSystemSynchronizedBuildFileExceptionSet";
+			"membershipExceptions" = (
+				"Info-iOS.plist",
+			);
+			"target" = "C0DECC000000000000000002";
+		};
+		"C0DECC000000000000000007" = {
+			"isa" = "PBXFileSystemSynchronizedRootGroup";
+			"path" = "../Luego";
+			"sourceTree" = "<group>";
+			"exceptions" = (
+				"C0DECC000000000000000006",
+			);
+		};
+		"C0DECC000000000000000008" = {
+			"isa" = "PBXFileSystemSynchronizedBuildFileExceptionSet";
+			"membershipExceptions" = (
+				"Info.plist",
+			);
+			"target" = "C0DECC000000000000000002";
+		};
+		"C0DECC000000000000000009" = {
+			"isa" = "PBXFileSystemSynchronizedRootGroup";
+			"path" = "Host";
+			"sourceTree" = "<group>";
+			"exceptions" = (
+				"C0DECC000000000000000008",
+			);
+		};
+		"C0DECC00000000000000000A" = {
+			"isa" = "PBXFileSystemSynchronizedRootGroup";
+			"path" = "UITests";
+			"sourceTree" = "<group>";
+		};
+		"C0DECC00000000000000000B" = {
+			"isa" = "PBXGroup";
+			"name" = "Products";
+			"sourceTree" = "<group>";
+			"children" = (
+				"C0DECC000000000000000004",
+				"C0DECC000000000000000005",
+			);
+		};
+		"C0DECC00000000000000000C" = {
+			"isa" = "PBXGroup";
+			"sourceTree" = "<group>";
+			"children" = (
+				"C0DECC000000000000000007",
+				"C0DECC000000000000000009",
+				"C0DECC00000000000000000A",
+				"C0DECC00000000000000000B",
+			);
+		};
+		"C0DECC00000000000000000D" = {
+			"isa" = "XCRemoteSwiftPackageReference";
+			"repositoryURL" = "https://github.com/groue/GRDB.swift.git";
+			"requirement" = {
+				"kind" = "exactVersion";
+				"version" = "7.10.0";
+			};
+		};
+		"C0DECC00000000000000000E" = {
+			"isa" = "XCRemoteSwiftPackageReference";
+			"repositoryURL" = "https://github.com/gonzalezreal/textual.git";
+			"requirement" = {
+				"kind" = "exactVersion";
+				"version" = "0.3.1";
+			};
+		};
+		"C0DECC00000000000000000F" = {
+			"isa" = "XCSwiftPackageProductDependency";
+			"package" = "C0DECC00000000000000000D";
+			"productName" = "GRDB";
+		};
+		"C0DECC000000000000000010" = {
+			"isa" = "XCSwiftPackageProductDependency";
+			"package" = "C0DECC00000000000000000E";
+			"productName" = "Textual";
+		};
+		"C0DECC000000000000000011" = {
+			"isa" = "PBXBuildFile";
+			"productRef" = "C0DECC00000000000000000F";
+		};
+		"C0DECC000000000000000012" = {
+			"isa" = "PBXBuildFile";
+			"productRef" = "C0DECC000000000000000010";
+		};
+		"C0DECC000000000000000013" = {
+			"isa" = "PBXSourcesBuildPhase";
+			"buildActionMask" = 2147483647;
+			"files" = (
+			);
+			"runOnlyForDeploymentPostprocessing" = 0;
+		};
+		"C0DECC000000000000000014" = {
+			"isa" = "PBXFrameworksBuildPhase";
+			"buildActionMask" = 2147483647;
+			"files" = (
+				"C0DECC000000000000000011",
+				"C0DECC000000000000000012",
+			);
+			"runOnlyForDeploymentPostprocessing" = 0;
+		};
+		"C0DECC000000000000000015" = {
+			"isa" = "PBXResourcesBuildPhase";
+			"buildActionMask" = 2147483647;
+			"files" = (
+			);
+			"runOnlyForDeploymentPostprocessing" = 0;
+		};
+		"C0DECC000000000000000016" = {
+			"isa" = "PBXSourcesBuildPhase";
+			"buildActionMask" = 2147483647;
+			"files" = (
+			);
+			"runOnlyForDeploymentPostprocessing" = 0;
+		};
+		"C0DECC000000000000000017" = {
+			"isa" = "PBXFrameworksBuildPhase";
+			"buildActionMask" = 2147483647;
+			"files" = (
+			);
+			"runOnlyForDeploymentPostprocessing" = 0;
+		};
+		"C0DECC000000000000000018" = {
+			"isa" = "PBXResourcesBuildPhase";
+			"buildActionMask" = 2147483647;
+			"files" = (
+			);
+			"runOnlyForDeploymentPostprocessing" = 0;
+		};
+		"C0DECC000000000000000019" = {
+			"isa" = "PBXContainerItemProxy";
+			"containerPortal" = "C0DECC000000000000000001";
+			"proxyType" = 1;
+			"remoteGlobalIDString" = "C0DECC000000000000000002";
+			"remoteInfo" = "LuegoPerformance";
+		};
+		"C0DECC00000000000000001A" = {
+			"isa" = "PBXTargetDependency";
+			"target" = "C0DECC000000000000000002";
+			"targetProxy" = "C0DECC000000000000000019";
+		};
+		"C0DECC00000000000000001B" = {
+			"isa" = "XCBuildConfiguration";
+			"name" = "Release";
+			"buildSettings" = {
+				"IPHONEOS_DEPLOYMENT_TARGET" = "26.0";
+				"SDKROOT" = "iphoneos";
+				"SUPPORTED_PLATFORMS" = "iphoneos iphonesimulator";
+				"SWIFT_VERSION" = "5.0";
+				"SWIFT_STRICT_CONCURRENCY" = "complete";
+				"SWIFT_DEFAULT_ACTOR_ISOLATION" = "MainActor";
+				"SWIFT_COMPILATION_MODE" = "wholemodule";
+				"SWIFT_OPTIMIZATION_LEVEL" = "-O";
+				"SWIFT_ACTIVE_COMPILATION_CONDITIONS" = "LUEGO_BENCHMARK";
+				"DEBUG_INFORMATION_FORMAT" = "dwarf-with-dsym";
+				"ENABLE_TESTABILITY" = "NO";
+				"ENABLE_NS_ASSERTIONS" = "NO";
+				"CLANG_ENABLE_MODULES" = "YES";
+				"CLANG_ENABLE_OBJC_ARC" = "YES";
+				"DEVELOPMENT_TEAM" = "QTZUF46V7A";
+				"CODE_SIGN_STYLE" = "Automatic";
+				"TARGETED_DEVICE_FAMILY" = "1,2";
+				"GCC_GENERATE_TEST_COVERAGE_FILES" = "NO";
+				"CLANG_ENABLE_CODE_COVERAGE" = "NO";
+			};
+		};
+		"C0DECC00000000000000001C" = {
+			"isa" = "XCBuildConfiguration";
+			"name" = "Release";
+			"buildSettings" = {
+				"PRODUCT_NAME" = "$(TARGET_NAME)";
+				"PRODUCT_BUNDLE_IDENTIFIER" = "com.esoxjem.Luego.performance";
+				"GENERATE_INFOPLIST_FILE" = "YES";
+				"INFOPLIST_FILE" = "Host/Info.plist";
+				"INFOPLIST_KEY_UILaunchScreen_Generation" = "YES";
+				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation" = "YES";
+				"INFOPLIST_KEY_CFBundleDisplayName" = "Luego Benchmark";
+				"ASSETCATALOG_COMPILER_APPICON_NAME" = "AppIcon";
+				"MARKETING_VERSION" = "1.0";
+				"CURRENT_PROJECT_VERSION" = "1";
+			};
+		};
+		"C0DECC00000000000000001D" = {
+			"isa" = "XCBuildConfiguration";
+			"name" = "Release";
+			"buildSettings" = {
+				"PRODUCT_NAME" = "$(TARGET_NAME)";
+				"PRODUCT_BUNDLE_IDENTIFIER" = "com.esoxjem.Luego.performance.uitests";
+				"GENERATE_INFOPLIST_FILE" = "YES";
+				"TEST_TARGET_NAME" = "LuegoPerformance";
+			};
+		};
+		"C0DECC00000000000000001E" = {
+			"isa" = "XCConfigurationList";
+			"buildConfigurations" = (
+				"C0DECC00000000000000001B",
+			);
+			"defaultConfigurationIsVisible" = 0;
+			"defaultConfigurationName" = "Release";
+		};
+		"C0DECC00000000000000001F" = {
+			"isa" = "XCConfigurationList";
+			"buildConfigurations" = (
+				"C0DECC00000000000000001C",
+			);
+			"defaultConfigurationIsVisible" = 0;
+			"defaultConfigurationName" = "Release";
+		};
+		"C0DECC000000000000000020" = {
+			"isa" = "XCConfigurationList";
+			"buildConfigurations" = (
+				"C0DECC00000000000000001D",
+			);
+			"defaultConfigurationIsVisible" = 0;
+			"defaultConfigurationName" = "Release";
+		};
+		"C0DECC000000000000000002" = {
+			"isa" = "PBXNativeTarget";
+			"name" = "LuegoPerformance";
+			"productName" = "LuegoPerformance";
+			"productType" = "com.apple.product-type.application";
+			"productReference" = "C0DECC000000000000000004";
+			"buildConfigurationList" = "C0DECC00000000000000001F";
+			"buildPhases" = (
+				"C0DECC000000000000000013",
+				"C0DECC000000000000000014",
+				"C0DECC000000000000000015",
+			);
+			"buildRules" = (
+			);
+			"dependencies" = (
+			);
+			"fileSystemSynchronizedGroups" = (
+				"C0DECC000000000000000007",
+				"C0DECC000000000000000009",
+			);
+			"packageProductDependencies" = (
+				"C0DECC00000000000000000F",
+				"C0DECC000000000000000010",
+			);
+		};
+		"C0DECC000000000000000003" = {
+			"isa" = "PBXNativeTarget";
+			"name" = "LuegoPerformanceUITests";
+			"productName" = "LuegoPerformanceUITests";
+			"productType" = "com.apple.product-type.bundle.ui-testing";
+			"productReference" = "C0DECC000000000000000005";
+			"buildConfigurationList" = "C0DECC000000000000000020";
+			"buildPhases" = (
+				"C0DECC000000000000000016",
+				"C0DECC000000000000000017",
+				"C0DECC000000000000000018",
+			);
+			"buildRules" = (
+			);
+			"dependencies" = (
+				"C0DECC00000000000000001A",
+			);
+			"fileSystemSynchronizedGroups" = (
+				"C0DECC00000000000000000A",
+			);
+		};
+		"C0DECC000000000000000001" = {
+			"isa" = "PBXProject";
+			"attributes" = {
+				"LastUpgradeCheck" = "2600";
+				"TargetAttributes" = {
+					"C0DECC000000000000000002" = {
+						"CreatedOnToolsVersion" = "26.0";
+					};
+					"C0DECC000000000000000003" = {
+						"CreatedOnToolsVersion" = "26.0";
+						"TestTargetID" = "C0DECC000000000000000002";
+					};
+				};
+			};
+			"buildConfigurationList" = "C0DECC00000000000000001E";
+			"developmentRegion" = "en";
+			"knownRegions" = (
+				"en",
+				"Base",
+			);
+			"mainGroup" = "C0DECC00000000000000000C";
+			"productRefGroup" = "C0DECC00000000000000000B";
+			"projectDirPath" = "";
+			"projectRoot" = "";
+			"packageReferences" = (
+				"C0DECC00000000000000000D",
+				"C0DECC00000000000000000E",
+			);
+			"targets" = (
+				"C0DECC000000000000000002",
+				"C0DECC000000000000000003",
+			);
+			"preferredProjectObjectVersion" = 77;
+		};
+	};
+	"rootObject" = "C0DECC000000000000000001";
+}

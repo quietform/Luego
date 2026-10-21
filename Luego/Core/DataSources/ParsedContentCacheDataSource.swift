@@ -3,90 +3,45 @@ import CryptoKit
 
 @MainActor
 protocol ParsedContentCacheDataSourceProtocol: Sendable {
-    func get(for url: URL) -> ArticleContent?
-    func save(_ content: ArticleContent, for url: URL)
-    func clear()
-    func remove(for url: URL)
+    func get(for url: URL) async -> ArticleContent?
+    func save(_ content: ArticleContent, for url: URL) async
+    func clear() async
+    func remove(for url: URL) async
 }
 
 @MainActor
 final class ParsedContentCacheDataSource: ParsedContentCacheDataSourceProtocol {
-    private let fileManager = FileManager.default
+    private let storage: FileCache
+    private let cacheDirectory: URL
 
-    private var cacheDirectory: URL {
-        guard let caches = fileManager.urls(for: .cachesDirectory, in: .userDomainMask).first else {
-            return fileManager.temporaryDirectory.appendingPathComponent("ParsedContent")
-        }
-        return caches.appendingPathComponent("ParsedContent")
+    init(storage: FileCache = FileCache(), directory: URL? = nil) {
+        self.storage = storage
+        cacheDirectory = directory ?? (FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first ?? FileManager.default.temporaryDirectory).appendingPathComponent("ParsedContent")
     }
 
-    init() {
-        ensureDirectoryExists()
+    func get(for url: URL) async -> ArticleContent? {
+        await storage.readJSON(CachedContent.self, from: cacheFileURL(for: url))?.content
     }
 
-    private func ensureDirectoryExists() {
-        do {
-            try fileManager.createDirectory(at: cacheDirectory, withIntermediateDirectories: true)
-        } catch {
-            Logger.cache.error("Failed to create directory: \(error)")
-        }
+    func save(_ content: ArticleContent, for url: URL) async {
+        await storage.writeJSON(CachedContent(content: content), to: cacheFileURL(for: url))
     }
 
-    func get(for url: URL) -> ArticleContent? {
-        let fileURL = cacheFileURL(for: url)
-
-        guard let data = try? Data(contentsOf: fileURL) else {
-            return nil
-        }
-
-        guard let cached = try? JSONDecoder().decode(CachedContent.self, from: data) else {
-            remove(for: url)
-            return nil
-        }
-
-        Logger.cache.debug("Cache hit for: \(url.absoluteString)")
-
-        return cached.content
+    func clear() async {
+        await storage.remove(cacheDirectory)
     }
 
-    func save(_ content: ArticleContent, for url: URL) {
-        let cached = CachedContent(content: content)
-        let fileURL = cacheFileURL(for: url)
-
-        do {
-            let data = try JSONEncoder().encode(cached)
-            try data.write(to: fileURL)
-
-            Logger.cache.debug("Saved content for: \(url.absoluteString)")
-        } catch {
-            Logger.cache.error("Failed to save: \(error)")
-        }
-    }
-
-    func clear() {
-        try? fileManager.removeItem(at: cacheDirectory)
-        ensureDirectoryExists()
-
-        Logger.cache.info("Cleared all cached content")
-    }
-
-    func remove(for url: URL) {
-        let fileURL = cacheFileURL(for: url)
-        try? fileManager.removeItem(at: fileURL)
+    func remove(for url: URL) async {
+        await storage.remove(cacheFileURL(for: url))
     }
 
     private func cacheFileURL(for url: URL) -> URL {
-        let hash = sha256Hash(of: url.absoluteString)
-        return cacheDirectory.appendingPathComponent("\(hash).json")
-    }
-
-    private func sha256Hash(of string: String) -> String {
-        let data = Data(string.utf8)
-        let hash = SHA256.hash(data: data)
-        return hash.compactMap { String(format: "%02x", $0) }.joined()
+        let hash = SHA256.hash(data: Data(url.absoluteString.utf8))
+        let name = hash.map { String(format: "%02x", $0) }.joined()
+        return cacheDirectory.appendingPathComponent("\(name).json")
     }
 }
 
-private struct CachedContent: Codable {
+private nonisolated struct CachedContent: Codable, Sendable {
     let content: ArticleContent
 }

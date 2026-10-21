@@ -42,30 +42,17 @@ final class ReaderService: ReaderServiceProtocol {
 
         Logger.reader.debug("Fetching article content")
         let content = try await contentDataSource.fetchContent(for: article.url, timeout: nil, forceRefresh: forceRefresh)
-        try Task.checkCancellation()
 
-        guard let freshArticle = try articleStore.fetchArticle(id: articleId) else {
+        guard let freshArticle = try await articleStore.updateContent(id: articleId, content: content, forceRefresh: forceRefresh) else {
             Logger.reader.error("Article \(articleId) not found after fetch")
             throw ReaderServiceError.articleNotFound
         }
 
-        if forceRefresh || freshArticle.content == nil, !content.content.isEmpty {
-            freshArticle.content = content.content
-        }
-
-        if forceRefresh || freshArticle.wordCount == nil, let wordCount = content.wordCount {
-            freshArticle.wordCount = wordCount
-        }
-        if forceRefresh || freshArticle.thumbnailURL == nil, let thumbnailURL = content.thumbnailURL {
-            freshArticle.thumbnailURL = thumbnailURL
-        }
-
-        _ = try articleStore.saveArticle(freshArticle)
         Logger.reader.debug("Content saved for article \(articleId)")
         return freshArticle
     }
 
     func updateReadPosition(articleId: UUID, position: Double) async throws {
-        try articleStore.updateReadPosition(id: articleId, position: position)
+        try await articleStore.updateReadPosition(id: articleId, position: position)
     }
 }

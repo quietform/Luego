@@ -1,7 +1,7 @@
 import Foundation
 import GRDB
 
-struct SharedURL: Codable, FetchableRecord, PersistableRecord, Sendable {
+nonisolated struct SharedURL: Codable, FetchableRecord, PersistableRecord, Sendable {
     static let databaseTableName = "sharedURLs"
 
     let id: String
@@ -32,8 +32,8 @@ enum SharedStorageError: LocalizedError, Sendable {
 @MainActor
 protocol SharedStorageDataSourceProtocol: Sendable {
     func saveSharedURL(_ url: URL) async throws
-    func getSharedURLs() throws -> [SharedURL]
-    func acknowledgeSharedURL(id: String) throws
+    func getSharedURLs() async throws -> [SharedURL]
+    func acknowledgeSharedURL(id: String) async throws
 }
 
 @MainActor
@@ -55,7 +55,6 @@ final class SharedStorage: SharedStorageDataSourceProtocol {
     func saveSharedURL(_ url: URL) async throws {
         let item = SharedURL(url: url)
         for attempt in 0...20 {
-            try Task.checkCancellation()
             do {
                 try await openDatabase().write { db in
                     try item.insert(db)
@@ -67,24 +66,33 @@ final class SharedStorage: SharedStorageDataSourceProtocol {
         }
     }
 
-    func getSharedURLs() throws -> [SharedURL] {
-        try openDatabase().read { db in
+    func getSharedURLs() async throws -> [SharedURL] {
+        try await openDatabase().read { db in
             try SharedURL.order(Column("timestamp"), Column("id")).fetchAll(db)
         }
     }
 
-    func acknowledgeSharedURL(id: String) throws {
-        try openDatabase().write { db in
+    func acknowledgeSharedURL(id: String) async throws {
+        try await openDatabase().write { db in
             _ = try SharedURL.deleteOne(db, key: id)
         }
     }
 
-    private func openDatabase() throws -> DatabaseQueue {
+    private func openDatabase() async throws -> DatabaseQueue {
         if let database { return database }
         guard let databaseURL else { throw SharedStorageError.appGroupUnavailable }
 
-        let database = try DatabaseQueue(path: databaseURL.path)
         let legacyData = legacyDefaults?.data(forKey: "sharedURLs")
+        let opened = try await Self.makeDatabase(at: databaseURL, legacyData: legacyData)
+        legacyDefaults?.removeObject(forKey: "sharedURLs")
+        if let database { return database }
+        database = opened
+        return opened
+    }
+
+    @concurrent
+    private static func makeDatabase(at url: URL, legacyData: Data?) async throws -> DatabaseQueue {
+        let database = try DatabaseQueue(path: url.path)
         var migrator = DatabaseMigrator()
         migrator.registerMigration("sharedURLs-v1") { db in
             try db.create(table: SharedURL.databaseTableName) { table in
@@ -102,13 +110,11 @@ final class SharedStorage: SharedStorageDataSourceProtocol {
             }
         }
         try migrator.migrate(database)
-        legacyDefaults?.removeObject(forKey: "sharedURLs")
-        self.database = database
         return database
     }
 }
 
-private struct LegacySharedURL: Decodable {
+private nonisolated struct LegacySharedURL: Decodable {
     let url: URL
     let timestamp: Date
 }

@@ -5,11 +5,11 @@ import Testing
 @MainActor
 struct ReaderServiceTests {
     @Test(arguments: [false, true])
-    func canceledFetchDoesNotPersistLateContent(forceRefresh: Bool) async throws {
+    func frameworkCancellationLeavesStoredContentIntact(forceRefresh: Bool) async throws {
         let store = GRDBArticleStore(database: try AppDatabase(DatabaseQueue()))
         let previousContent = forceRefresh ? "Previously saved body" : nil
         let article = Article(url: URL(string: "https://example.com/article")!, title: "Original", content: previousContent)
-        _ = try store.saveArticle(article)
+        _ = try await store.saveArticle(article)
         let service = ReaderService(articleStore: store, contentDataSource: LateCanceledContentSource())
         let task = Task {
             _ = try await service.fetchContent(for: article, forceRefresh: forceRefresh)
@@ -21,7 +21,7 @@ struct ReaderServiceTests {
         } else {
             Issue.record("Canceled reader fetch returned a result")
         }
-        let savedArticle = try store.fetchArticle(id: article.id)
+        let savedArticle = try await store.fetchArticle(id: article.id)
         #expect(savedArticle?.content == previousContent)
         #expect(savedArticle?.wordCount == nil)
         #expect(savedArticle?.thumbnailURL == nil)

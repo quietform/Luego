@@ -26,8 +26,8 @@ struct SharingServiceTests {
 
         _ = try await service.syncSharedArticles()
 
-        #expect(try queue.getSharedURLs().map(\.url) == [laterURL])
-        #expect(try store.fetchArticle(url: firstURL) != nil)
+        #expect(try await queue.getSharedURLs().map(\.url) == [laterURL])
+        #expect(try await store.fetchArticle(url: firstURL) != nil)
     }
     @Test
     func failedArticleRemainsQueuedUntilRetrySucceeds() async throws {
@@ -43,12 +43,12 @@ struct SharingServiceTests {
         let service = SharingService(articleService: articles, sharedStorage: queue)
 
         _ = try await service.syncSharedArticles()
-        #expect(try queue.getSharedURLs().map(\.url) == [url])
+        #expect(try await queue.getSharedURLs().map(\.url) == [url])
 
         metadata.onFetchMetadata = { _ in ArticleMetadata(title: "Recovered") }
         _ = try await service.syncSharedArticles()
-        #expect(try queue.getSharedURLs().isEmpty)
-        #expect(try store.fetchArticle(url: url)?.title == "Recovered")
+        #expect(try await queue.getSharedURLs().isEmpty)
+        #expect(try await store.fetchArticle(url: url)?.title == "Recovered")
     }
 
 }

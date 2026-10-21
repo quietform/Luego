@@ -3,6 +3,43 @@ import Testing
 
 @MainActor
 struct ReaderViewModelTests {
+    @Test(arguments: [false, true])
+    func positionFailureIsOnlyPublishedForActiveViewTask(cancelled: Bool) async {
+        let article = Article(url: URL(string: "https://example.com/article")!, title: "Article", content: "Body")
+        let service = SuspendedReaderService()
+        service.positionError = URLError(.notConnectedToInternet)
+        let viewModel = ReaderViewModel(article: article, readerService: service)
+        let save = Task {
+            if cancelled { withUnsafeCurrentTask { $0?.cancel() } }
+            await viewModel.updateReadPosition(0.5, documentPrepared: true)
+        }
+        await save.value
+
+        #expect(service.savedPositions == [0.5])
+        if cancelled {
+            #expect(viewModel.errorMessage == nil)
+        } else {
+            #expect(viewModel.errorMessage?.hasPrefix("Failed to save read position:") == true)
+        }
+    }
+
+    @Test
+    func readPositionIsNotSavedBeforeDocumentIsPrepared() async {
+        let article = Article(url: URL(string: "https://example.com/article")!, title: "Article", content: "Body")
+        let service = SuspendedReaderService()
+        let viewModel = ReaderViewModel(article: article, readerService: service)
+
+        await viewModel.updateReadPosition(1, documentPrepared: false)
+
+        #expect(article.readPosition == 0)
+        #expect(service.savedPositions.isEmpty)
+
+        await viewModel.updateReadPosition(0.5, documentPrepared: true)
+
+        #expect(article.readPosition == 0.5)
+        #expect(service.savedPositions == [0.5])
+    }
+
     @Test(arguments: [false, true], [false, true])
     func canceledReaderRequestDoesNotPublishLateResult(forceRefresh: Bool, networkError: Bool) async {
         let article = Article(url: URL(string: "https://example.com/article")!, title: "Original")
@@ -39,6 +76,7 @@ struct ReaderViewModelTests {
         var started = service.started.stream.makeAsyncIterator()
         let first = Task { await viewModel.loadContent() }
         _ = await started.next()
+        first.cancel()
         let refresh = Task { await viewModel.refreshContent() }
         _ = await started.next()
 
@@ -63,6 +101,8 @@ struct ReaderViewModelTests {
 
 @MainActor
 private final class SuspendedReaderService: ReaderServiceProtocol {
+    private(set) var savedPositions: [Double] = []
+    var positionError: Error?
     let started = AsyncStream<Void>.makeStream()
     private(set) var requestedRefreshes: [Bool] = []
     private(set) var canceledRequests: [Int: Bool] = [:]
@@ -87,5 +127,8 @@ private final class SuspendedReaderService: ReaderServiceProtocol {
         }
     }
 
-    func updateReadPosition(articleId: UUID, position: Double) async throws {}
+    func updateReadPosition(articleId: UUID, position: Double) async throws {
+        savedPositions.append(position)
+        if let positionError { throw positionError }
+    }
 }

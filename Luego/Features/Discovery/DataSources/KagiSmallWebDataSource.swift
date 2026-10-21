@@ -40,6 +40,7 @@ final class KagiSmallWebDataSource: DiscoverySourceProtocol {
     private let cacheTimestampKey = "smallweb_cache_timestamp_v2"
     private let cacheDuration: TimeInterval = 24 * 60 * 60
 
+    private var cacheGeneration = UUID()
     private var cachedArticles: [SmallWebArticleEntry] = []
 
     init(
@@ -51,24 +52,28 @@ final class KagiSmallWebDataSource: DiscoverySourceProtocol {
         self.genericRSSDataSource = genericRSSDataSource
         self.session = session
         self.seenTracker = SeenItemTracker(storageKey: "smallweb_shown_articles")
-        loadCachedArticles()
     }
 
     func fetchArticles(forceRefresh: Bool = false) async throws -> [SmallWebArticleEntry] {
+        if !forceRefresh && cachedArticles.isEmpty { await loadCachedArticles() }
         if !forceRefresh && !cachedArticles.isEmpty && isCacheValid() {
             return cachedArticles
         }
 
+        let generation = cacheGeneration
         do {
             let (data, _) = try await session.data(from: opmlURL)
-            let articles = opmlDataSource.parse(data)
+            let articles = await opmlDataSource.parse(data)
 
             guard !articles.isEmpty else {
                 throw SmallWebError.parsingFailed
             }
 
-            cachedArticles = articles
-            saveArticlesToCache(articles)
+            if generation == cacheGeneration {
+                cacheGeneration = UUID()
+                cachedArticles = articles
+                await saveArticlesToCache(articles)
+            }
             return articles
         } catch let error as SmallWebError {
             throw error
@@ -84,8 +89,8 @@ final class KagiSmallWebDataSource: DiscoverySourceProtocol {
             throw SmallWebError.noArticlesAvailable
         }
 
-        let unseenArticles = seenTracker.filterUnseen(articles) { $0.articleUrl.absoluteString }
-        let didReset = seenTracker.resetIfNeeded(totalCount: articles.count, unseenCount: unseenArticles.count)
+        let unseenArticles = await seenTracker.filterUnseen(articles) { $0.articleUrl.absoluteString }
+        let didReset = await seenTracker.resetIfNeeded(totalCount: articles.count, unseenCount: unseenArticles.count)
 
         let articlesToChooseFrom = didReset ? articles : (unseenArticles.isEmpty ? articles : unseenArticles)
 
@@ -94,12 +99,12 @@ final class KagiSmallWebDataSource: DiscoverySourceProtocol {
         }
 
         let (data, _) = try await session.data(from: selectedFeed.articleUrl)
-        let posts = genericRSSDataSource.parse(data)
+        let posts = await genericRSSDataSource.parse(data)
         guard let post = posts.randomElement() else {
             throw SmallWebError.noArticlesAvailable
         }
 
-        seenTracker.markAsSeen(selectedFeed.articleUrl.absoluteString)
+        await seenTracker.markAsSeen(selectedFeed.articleUrl.absoluteString)
         return SmallWebArticleEntry(title: post.title, articleUrl: post.postURL, htmlUrl: selectedFeed.htmlUrl)
     }
 
@@ -110,34 +115,41 @@ final class KagiSmallWebDataSource: DiscoverySourceProtocol {
         return Date().timeIntervalSince(timestamp) < cacheDuration
     }
 
-    private func loadCachedArticles() {
-        guard let data = UserDefaults.standard.data(forKey: cacheKey),
-              let cached = try? JSONDecoder().decode([CachedArticle].self, from: data) else {
-            return
-        }
+    private func loadCachedArticles() async {
+        guard let data = UserDefaults.standard.data(forKey: cacheKey) else { return }
+        let generation = cacheGeneration
+        let entries = await Self.decodeCachedArticles(data)
+        guard generation == cacheGeneration else { return }
+        cachedArticles = entries
+    }
 
-        cachedArticles = cached.compactMap { cachedArticle -> SmallWebArticleEntry? in
-            guard let url = URL(string: cachedArticle.articleUrl) else { return nil }
-            let htmlUrl = cachedArticle.htmlUrl.flatMap { URL(string: $0) }
-            return SmallWebArticleEntry(title: cachedArticle.title, articleUrl: url, htmlUrl: htmlUrl)
+    @concurrent
+    static func decodeCachedArticles(_ data: Data) async -> [SmallWebArticleEntry] {
+        guard let cached = try? JSONDecoder().decode([CachedArticle].self, from: data) else { return [] }
+        return cached.compactMap { entry in
+            guard let url = URL(string: entry.articleUrl) else { return nil }
+            return SmallWebArticleEntry(title: entry.title, articleUrl: url, htmlUrl: entry.htmlUrl.flatMap(URL.init(string:)))
         }
     }
 
-    private func saveArticlesToCache(_ articles: [SmallWebArticleEntry]) {
-        let cached = articles.map { article in
-            CachedArticle(
-                title: article.title,
-                articleUrl: article.articleUrl.absoluteString,
-                htmlUrl: article.htmlUrl?.absoluteString
-            )
+    private func saveArticlesToCache(_ articles: [SmallWebArticleEntry]) async {
+        let generation = cacheGeneration
+        let data = await Self.encodeCachedArticles(articles)
+        guard let data, generation == cacheGeneration else { return }
+        UserDefaults.standard.set(data, forKey: cacheKey)
+        UserDefaults.standard.set(Date(), forKey: cacheTimestampKey)
+    }
+
+    @concurrent
+    static func encodeCachedArticles(_ articles: [SmallWebArticleEntry]) async -> Data? {
+        let cached = articles.map { entry in
+            CachedArticle(title: entry.title, articleUrl: entry.articleUrl.absoluteString, htmlUrl: entry.htmlUrl?.absoluteString)
         }
-        if let data = try? JSONEncoder().encode(cached) {
-            UserDefaults.standard.set(data, forKey: cacheKey)
-            UserDefaults.standard.set(Date(), forKey: cacheTimestampKey)
-        }
+        return try? JSONEncoder().encode(cached)
     }
 
     func clearCache() {
+        cacheGeneration = UUID()
         cachedArticles = []
         seenTracker.clear()
         UserDefaults.standard.removeObject(forKey: cacheKey)
@@ -145,7 +157,7 @@ final class KagiSmallWebDataSource: DiscoverySourceProtocol {
     }
 }
 
-private struct CachedArticle: Codable {
+private nonisolated struct CachedArticle: Codable, Sendable {
     let title: String
     let articleUrl: String
     let htmlUrl: String?

@@ -1,32 +1,35 @@
 import Foundation
 import SQLite3
 
-protocol LegacySwiftDataArticleDataSourceProtocol {
-    func fetchArticles() throws -> [Article]
+protocol LegacySwiftDataArticleDataSourceProtocol: Sendable {
+    func fetchRecords() async throws -> [ArticleRecord]
 }
 
-final class LegacySwiftDataArticleDataSource: LegacySwiftDataArticleDataSourceProtocol {
-    private let fileManager: FileManager
+nonisolated final class LegacySwiftDataArticleDataSource: LegacySwiftDataArticleDataSourceProtocol {
     private let groupIdentifier: String
+    private let storeURL: URL?
 
     init(
-        fileManager: FileManager = .default,
-        groupIdentifier: String = "group.com.esoxjem.Luego"
+        groupIdentifier: String = "group.com.esoxjem.Luego",
+        storeURL: URL? = nil
     ) {
-        self.fileManager = fileManager
         self.groupIdentifier = groupIdentifier
+        self.storeURL = storeURL
     }
 
-    func fetchArticles() throws -> [Article] {
-        guard let storeURL = legacyStoreURL(),
+    @concurrent
+    func fetchRecords() async throws -> [ArticleRecord] {
+        let fileManager = FileManager.default
+        guard let storeURL = storeURL ?? legacyStoreURL(),
               fileManager.fileExists(atPath: storeURL.path) else {
             return []
         }
 
-        return try fetchArticles(from: storeURL)
+        return try fetchRecords(from: storeURL)
     }
 
     private func legacyStoreURL() -> URL? {
+        let fileManager = FileManager.default
         if let groupContainerURL = fileManager.containerURL(
             forSecurityApplicationGroupIdentifier: groupIdentifier
         ) {
@@ -46,7 +49,7 @@ final class LegacySwiftDataArticleDataSource: LegacySwiftDataArticleDataSourcePr
         return applicationSupportURL.appendingPathComponent("default.store")
     }
 
-    private func fetchArticles(from storeURL: URL) throws -> [Article] {
+    private func fetchRecords(from storeURL: URL) throws -> [ArticleRecord] {
         var database: OpaquePointer?
         let openResult = sqlite3_open_v2(
             storeURL.path,
@@ -88,7 +91,7 @@ final class LegacySwiftDataArticleDataSource: LegacySwiftDataArticleDataSourcePr
         }
         defer { sqlite3_finalize(statement) }
 
-        var articles: [Article] = []
+        var records: [ArticleRecord] = []
         while sqlite3_step(statement) == SQLITE_ROW {
             guard let idData = blob(from: statement, column: 0),
                   let id = uuid(from: idData),
@@ -108,9 +111,9 @@ final class LegacySwiftDataArticleDataSource: LegacySwiftDataArticleDataSourcePr
             let isArchived = bool(from: statement, column: 9)
             let wordCount = int(from: statement, column: 11)
 
-            articles.append(
-                Article(
-                    id: id,
+            records.append(
+                ArticleRecord(
+                    id: id.uuidString,
                     url: url,
                     title: title,
                     content: content,
@@ -125,7 +128,7 @@ final class LegacySwiftDataArticleDataSource: LegacySwiftDataArticleDataSourcePr
             )
         }
 
-        return articles
+        return records
     }
 
     private func hasArticleTable(in database: OpaquePointer) -> Bool {

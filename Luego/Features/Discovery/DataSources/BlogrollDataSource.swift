@@ -36,30 +36,35 @@ final class BlogrollDataSource: DiscoverySourceProtocol {
     private let cacheDuration: TimeInterval = 24 * 60 * 60
     private let maxRetries = 5
 
+    private var cacheGeneration = UUID()
     private var cachedBlogs: [SmallWebArticleEntry] = []
 
     init(blogrollRSSDataSource: BlogrollRSSDataSource, genericRSSDataSource: GenericRSSDataSource) {
         self.blogrollRSSDataSource = blogrollRSSDataSource
         self.genericRSSDataSource = genericRSSDataSource
         self.seenTracker = SeenItemTracker(storageKey: "blogroll_shown_blogs")
-        loadCachedBlogs()
     }
 
     func fetchArticles(forceRefresh: Bool = false) async throws -> [SmallWebArticleEntry] {
+        if !forceRefresh && cachedBlogs.isEmpty { await loadCachedBlogs() }
         if !forceRefresh && !cachedBlogs.isEmpty && isCacheValid() {
             return cachedBlogs
         }
 
+        let generation = cacheGeneration
         do {
             let (data, _) = try await URLSession.shared.data(from: feedURL)
-            let blogs = blogrollRSSDataSource.parse(data)
+            let blogs = await blogrollRSSDataSource.parse(data)
 
             guard !blogs.isEmpty else {
                 throw BlogrollError.parsingFailed
             }
 
-            cachedBlogs = blogs
-            saveBlogsToCache(blogs)
+            if generation == cacheGeneration {
+                cacheGeneration = UUID()
+                cachedBlogs = blogs
+                await saveBlogsToCache(blogs)
+            }
             return blogs
         } catch let error as BlogrollError {
             throw error
@@ -75,7 +80,7 @@ final class BlogrollDataSource: DiscoverySourceProtocol {
             do {
                 let blog = try await selectRandomBlog()
                 let post = try await fetchRandomPostFromBlog(blog)
-                seenTracker.markAsSeen(blog.articleUrl.absoluteString)
+                await seenTracker.markAsSeen(blog.articleUrl.absoluteString)
                 return post
             } catch {
                 lastError = error
@@ -87,6 +92,7 @@ final class BlogrollDataSource: DiscoverySourceProtocol {
     }
 
     func clearCache() {
+        cacheGeneration = UUID()
         cachedBlogs = []
         seenTracker.clear()
         UserDefaults.standard.removeObject(forKey: cacheKey)
@@ -100,8 +106,8 @@ final class BlogrollDataSource: DiscoverySourceProtocol {
             throw BlogrollError.noArticlesAvailable
         }
 
-        let unseenBlogs = seenTracker.filterUnseen(blogs) { $0.articleUrl.absoluteString }
-        let didReset = seenTracker.resetIfNeeded(totalCount: blogs.count, unseenCount: unseenBlogs.count)
+        let unseenBlogs = await seenTracker.filterUnseen(blogs) { $0.articleUrl.absoluteString }
+        let didReset = await seenTracker.resetIfNeeded(totalCount: blogs.count, unseenCount: unseenBlogs.count)
 
         let blogsToChooseFrom = didReset ? blogs : (unseenBlogs.isEmpty ? blogs : unseenBlogs)
 
@@ -114,7 +120,7 @@ final class BlogrollDataSource: DiscoverySourceProtocol {
 
     private func fetchRandomPostFromBlog(_ blog: SmallWebArticleEntry) async throws -> SmallWebArticleEntry {
         let feedData = try await fetchBlogFeed(blog.articleUrl)
-        let posts = genericRSSDataSource.parse(feedData)
+        let posts = await genericRSSDataSource.parse(feedData)
 
         guard let randomPost = posts.randomElement() else {
             throw BlogrollError.noPostsInBlogFeed
@@ -143,35 +149,41 @@ final class BlogrollDataSource: DiscoverySourceProtocol {
         return Date().timeIntervalSince(timestamp) < cacheDuration
     }
 
-    private func loadCachedBlogs() {
-        guard let data = UserDefaults.standard.data(forKey: cacheKey),
-              let cached = try? JSONDecoder().decode([CachedBlogrollEntry].self, from: data) else {
-            return
-        }
+    private func loadCachedBlogs() async {
+        guard let data = UserDefaults.standard.data(forKey: cacheKey) else { return }
+        let generation = cacheGeneration
+        let entries = await Self.decodeCachedBlogs(data)
+        guard generation == cacheGeneration else { return }
+        cachedBlogs = entries
+    }
 
-        cachedBlogs = cached.compactMap { cachedEntry -> SmallWebArticleEntry? in
-            guard let url = URL(string: cachedEntry.feedUrl) else { return nil }
-            let htmlUrl = cachedEntry.htmlUrl.flatMap { URL(string: $0) }
-            return SmallWebArticleEntry(title: cachedEntry.title, articleUrl: url, htmlUrl: htmlUrl)
+    @concurrent
+    static func decodeCachedBlogs(_ data: Data) async -> [SmallWebArticleEntry] {
+        guard let cached = try? JSONDecoder().decode([CachedBlogrollEntry].self, from: data) else { return [] }
+        return cached.compactMap { entry in
+            guard let url = URL(string: entry.feedUrl) else { return nil }
+            return SmallWebArticleEntry(title: entry.title, articleUrl: url, htmlUrl: entry.htmlUrl.flatMap(URL.init(string:)))
         }
     }
 
-    private func saveBlogsToCache(_ blogs: [SmallWebArticleEntry]) {
-        let cached = blogs.map { blog in
-            CachedBlogrollEntry(
-                title: blog.title,
-                feedUrl: blog.articleUrl.absoluteString,
-                htmlUrl: blog.htmlUrl?.absoluteString
-            )
+    private func saveBlogsToCache(_ blogs: [SmallWebArticleEntry]) async {
+        let generation = cacheGeneration
+        let data = await Self.encodeCachedBlogs(blogs)
+        guard let data, generation == cacheGeneration else { return }
+        UserDefaults.standard.set(data, forKey: cacheKey)
+        UserDefaults.standard.set(Date(), forKey: cacheTimestampKey)
+    }
+
+    @concurrent
+    static func encodeCachedBlogs(_ blogs: [SmallWebArticleEntry]) async -> Data? {
+        let cached = blogs.map { entry in
+            CachedBlogrollEntry(title: entry.title, feedUrl: entry.articleUrl.absoluteString, htmlUrl: entry.htmlUrl?.absoluteString)
         }
-        if let data = try? JSONEncoder().encode(cached) {
-            UserDefaults.standard.set(data, forKey: cacheKey)
-            UserDefaults.standard.set(Date(), forKey: cacheTimestampKey)
-        }
+        return try? JSONEncoder().encode(cached)
     }
 }
 
-private struct CachedBlogrollEntry: Codable {
+private nonisolated struct CachedBlogrollEntry: Codable, Sendable {
     let title: String
     let feedUrl: String
     let htmlUrl: String?

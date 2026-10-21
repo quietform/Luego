@@ -28,11 +28,12 @@ struct ForegroundRefreshTests {
         let refresh = Task { await viewModel.refreshOnForeground() }
 
         let imported = await waitUntil {
-            cloudKitStarted && (try? store.fetchArticle(url: url)) != nil
+            guard cloudKitStarted else { return false }
+            return (try? await store.fetchArticle(url: url)) != nil
         }
         #expect(imported)
         #expect(!cloudKitFinished)
-        #expect(try queue.getSharedURLs().isEmpty)
+        #expect(try await queue.getSharedURLs().isEmpty)
         #expect(sync.savedRecordIDs.count == 1)
 
         cloudKitGate.continuation.finish()
@@ -71,13 +72,13 @@ struct ForegroundRefreshTests {
         let bothCaughtUp = await waitUntil { catchUpCount == 2 }
         #expect(bothCaughtUp)
         #expect(metadataRequests == 1)
-        #expect(try store.countArticles() == 0)
+        #expect(try await store.countArticles() == 0)
 
         metadataGate.continuation.finish()
         await first.value
         await second.value
-        #expect(try store.countArticles() == 1)
-        #expect(try queue.getSharedURLs().isEmpty)
+        #expect(try await store.countArticles() == 1)
+        #expect(try await queue.getSharedURLs().isEmpty)
     }
 
     @Test
@@ -110,14 +111,14 @@ struct ForegroundRefreshTests {
         metadataGate.continuation.finish()
         await first.value
 
-        #expect(try store.fetchArticle(url: laterURL) != nil)
-        #expect(try store.countArticles() == 2)
-        #expect(try queue.getSharedURLs().isEmpty)
+        #expect(try await store.fetchArticle(url: laterURL) != nil)
+        #expect(try await store.countArticles() == 2)
+        #expect(try await queue.getSharedURLs().isEmpty)
     }
 
-    private func waitUntil(_ condition: () -> Bool) async -> Bool {
+    private func waitUntil(_ condition: () async -> Bool) async -> Bool {
         let deadline = ContinuousClock.now.advanced(by: .seconds(2))
-        while !condition() {
+        while !(await condition()) {
             guard ContinuousClock.now < deadline else { return false }
             try? await Task.sleep(for: .milliseconds(10))
         }

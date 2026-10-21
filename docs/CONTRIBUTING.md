@@ -30,7 +30,8 @@
 
 - Keep feature persistence behind `View -> ViewModel -> Service -> ArticleStoreProtocol -> GRDB`.
 - Services use data sources for network content, preferences, and shared URLs.
-- Preserve `@MainActor` isolation for view models, feature services, article stores, and sync orchestration.
+- Preserve `@MainActor` isolation for view models, feature-service coordination, article-store facades, and sync orchestration. Use GRDB async APIs for persistence, `@concurrent` functions for stateless computation, and the shared `FileCache` actor for file caches. Pass Sendable value snapshots rather than observable models across these boundaries.
+- Keep cancellation policy at UI boundaries. Workers and storage do not inspect task cancellation or silently skip accepted work. Let framework errors propagate normally and keep mutations atomic.
 - Every service should have a protocol for testability.
 - Wire dependencies only through `DIContainer`.
 - When adding a feature:

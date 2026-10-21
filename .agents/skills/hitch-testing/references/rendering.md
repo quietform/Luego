@@ -16,6 +16,8 @@ Source: [render-loop overview](https://developer.apple.com/videos/play/tech-talk
 
 Select the hitch's relevant frame work, including preparation before the visible stall, rather than sampling only after the deadline. Correlate Hitches, frame lifetimes, commits, renders, GPU, and Time Profiler tracks where available. Main-thread idleness is not proof that the rendering work is cheap.
 
+When exporting frame-pipeline tables, matching swap IDs help connect a hitch with its app update, render, and GPU work. A tool's "potentially expensive" narrative suggests an investigation; use those intervals and CPU stacks to substantiate the cause. Frame-lifetime row counts establish captured pipeline activity, not the number of frames presented to the user.
+
 Sources: [commit-phase diagnosis](https://developer.apple.com/videos/play/tech-talks/10856/), [render-phase diagnosis](https://developer.apple.com/videos/play/tech-talks/10857/).
 
 ## SwiftUI work

@@ -10,8 +10,6 @@ final class ReaderViewModel {
     var errorMessage: String?
 
     @ObservationIgnored
-    private var loadingTask: Task<Void, Never>?
-    @ObservationIgnored
     private var loadingRequestID = UUID()
     private let readerService: ReaderServiceProtocol
 
@@ -42,53 +40,37 @@ final class ReaderViewModel {
     }
 
     private func fetchContent(forceRefresh: Bool) async {
-        loadingTask?.cancel()
         let requestID = UUID()
         loadingRequestID = requestID
         isLoading = true
         errorMessage = nil
-
-        let task = Task { [weak self] in
-            guard let self else { return }
-
-            do {
-                try Task.checkCancellation()
-                let updatedArticle = try await readerService.fetchContent(for: article, forceRefresh: forceRefresh)
-                try Task.checkCancellation()
-
-                article = updatedArticle
-                articleContent = updatedArticle.content
-                Logger.reader.debug("Content loaded successfully")
-            } catch is CancellationError {
-                Logger.reader.debug("Content fetch cancelled for article \(article.id)")
-            } catch {
-                if !Task.isCancelled {
-                    Logger.reader.error("Content fetch failed: \(error.localizedDescription)")
-                    errorMessage = error.localizedDescription
-                }
-            }
-
-            if loadingRequestID == requestID {
-                isLoading = false
-                loadingTask = nil
-            }
+        defer {
+            if loadingRequestID == requestID { isLoading = false }
         }
 
-        loadingTask = task
-        await withTaskCancellationHandler {
-            await task.value
-        } onCancel: {
-            task.cancel()
+        do {
+            let updatedArticle = try await readerService.fetchContent(for: article, forceRefresh: forceRefresh)
+            try Task.checkCancellation()
+            article = updatedArticle
+            articleContent = updatedArticle.content
+            Logger.reader.debug("Content loaded successfully")
+        } catch is CancellationError {
+        } catch {
+            guard !Task.isCancelled else { return }
+            Logger.reader.error("Content fetch failed: \(error.localizedDescription)")
+            errorMessage = error.localizedDescription
         }
     }
 
-    func updateReadPosition(_ position: Double) async {
+    func updateReadPosition(_ position: Double, documentPrepared: Bool) async {
+        guard documentPrepared else { return }
         let clampedPosition = max(0.0, min(1.0, position))
         article.readPosition = clampedPosition
 
         do {
             try await readerService.updateReadPosition(articleId: article.id, position: clampedPosition)
         } catch {
+            guard !Task.isCancelled else { return }
             errorMessage = "Failed to save read position: \(error.localizedDescription)"
         }
     }

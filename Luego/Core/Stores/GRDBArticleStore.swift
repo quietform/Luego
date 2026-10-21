@@ -17,18 +17,19 @@ final class GRDBArticleStore: ArticleStoreProtocol, ArticleRecordStoreProtocol {
         self.database = database
     }
 
-    func fetchAllArticles() throws -> [Article] {
-        let records = try database.reader.read { db in
+    func fetchAllArticles() async throws -> [Article] {
+        let sql = visibleArticlesSQL
+        let records = try await database.reader.read { db in
             try ArticleRecord.fetchAll(
                 db,
-                sql: self.visibleArticlesSQL
+                sql: sql
             )
         }
         return records.map(makeDetachedArticle(from:))
     }
 
-    func fetchAllRecords() throws -> [ArticleRecord] {
-        try database.reader.read { db in
+    func fetchAllRecords() async throws -> [ArticleRecord] {
+        try await database.reader.read { db in
             try ArticleRecord.fetchAll(
                 db,
                 sql: "SELECT * FROM articles ORDER BY savedDate DESC"
@@ -38,10 +39,11 @@ final class GRDBArticleStore: ArticleStoreProtocol, ArticleRecordStoreProtocol {
     }
 
     func observeArticles() -> AsyncThrowingStream<[Article], Error> {
+        let sql = visibleArticlesSQL
         let observation = ValueObservation.tracking { db in
             try ArticleRecord.fetchAll(
                 db,
-                sql: self.visibleArticlesSQL
+                sql: sql
             )
         }
 
@@ -63,33 +65,33 @@ final class GRDBArticleStore: ArticleStoreProtocol, ArticleRecordStoreProtocol {
         }
     }
 
-    func fetchArticle(id: UUID) throws -> Article? {
-        guard let record = try fetchRecord(id: id), record.deletedAt == nil else {
+    func fetchArticle(id: UUID) async throws -> Article? {
+        guard let record = try await fetchRecord(id: id), record.deletedAt == nil else {
             return nil
         }
         return makeDetachedArticle(from: record)
     }
 
-    func fetchArticle(url: URL) throws -> Article? {
-        guard let record = try fetchRecord(url: url), record.deletedAt == nil else {
+    func fetchArticle(url: URL) async throws -> Article? {
+        guard let record = try await fetchRecord(url: url), record.deletedAt == nil else {
             return nil
         }
         return makeDetachedArticle(from: record)
     }
 
-    func fetchRecord(id: UUID) throws -> ArticleRecord? {
-        try fetchRecord(recordName: id.uuidString)
+    func fetchRecord(id: UUID) async throws -> ArticleRecord? {
+        try await fetchRecord(recordName: id.uuidString)
     }
 
-    func fetchRecord(recordName: String) throws -> ArticleRecord? {
-        try database.reader.read { db in
+    func fetchRecord(recordName: String) async throws -> ArticleRecord? {
+        try await database.reader.read { db in
             try ArticleRecord.fetchOne(db, key: recordName)
         }
         .map(normalizedRecord(from:))
     }
 
-    func fetchRecord(url: URL) throws -> ArticleRecord? {
-        try database.reader.read { db in
+    func fetchRecord(url: URL) async throws -> ArticleRecord? {
+        try await database.reader.read { db in
             try ArticleRecord.fetchOne(
                 db,
                 sql: "SELECT * FROM articles WHERE url = ? LIMIT 1",
@@ -99,55 +101,72 @@ final class GRDBArticleStore: ArticleStoreProtocol, ArticleRecordStoreProtocol {
         .map(normalizedRecord(from:))
     }
 
-    func saveArticle(_ article: Article) throws -> Article {
-        if let existingRecord = try fetchRecord(url: article.url),
-           existingRecord.id != article.id.uuidString {
-            if existingRecord.deletedAt == nil {
-                return makeDetachedArticle(from: existingRecord)
+    func saveArticle(_ article: Article) async throws -> ArticleSaveResult {
+        let incoming = ArticleRecord(article)
+        let result = try await database.writer.write { db -> (record: ArticleRecord, didSave: Bool, isNew: Bool) in
+            var record = incoming
+            let existing = try ArticleRecord.fetchOne(db, sql: "SELECT * FROM articles WHERE url = ? LIMIT 1", arguments: [incoming.url.absoluteString])
+                ?? ArticleRecord.fetchOne(db, key: incoming.id)
+            if let existing {
+                if existing.id != incoming.id {
+                    guard existing.deletedAt != nil else { return (existing, false, false) }
+                    record.id = existing.id
+                }
+                record.author = existing.author
+                record.cloudKitSystemFields = existing.cloudKitSystemFields
             }
-
-            var revivedRecord = ArticleRecord(article)
-            revivedRecord.id = existingRecord.id
-            revivedRecord.author = existingRecord.author
-            revivedRecord.cloudKitSystemFields = existingRecord.cloudKitSystemFields
-            revivedRecord.deletedAt = nil
-            try saveRecord(revivedRecord)
-            syncEngineManager?.enqueueSave(for: ArticleRecord.makeRecordID(for: revivedRecord.id))
+            record.deletedAt = nil
+            record.normalizeListMembership()
+            try record.save(db)
+            return (record, true, existing == nil || existing?.deletedAt != nil)
+        }
+        if result.record.id != incoming.id {
             articleCache.removeValue(forKey: article.id)
-            return makeDetachedArticle(from: revivedRecord)
         }
-
-        var record = ArticleRecord(article)
-        if let existingRecord = try fetchRecord(id: article.id) {
-            record.author = existingRecord.author
-            record.cloudKitSystemFields = existingRecord.cloudKitSystemFields
+        if result.didSave {
+            syncEngineManager?.enqueueSave(for: ArticleRecord.makeRecordID(for: result.record.id))
         }
-        record.deletedAt = nil
-
-        try saveRecord(record)
-        syncEngineManager?.enqueueSave(for: ArticleRecord.makeRecordID(for: record.id))
-        return makeDetachedArticle(from: record)
+        return ArticleSaveResult(article: makeDetachedArticle(from: result.record), isNew: result.isNew)
     }
 
-    func saveRecord(_ record: ArticleRecord) throws {
-        var normalizedRecord = record
-        normalizedRecord.normalizeListMembership()
-        try database.writer.write { db in
+    func updateContent(id: UUID, content: ArticleContent, forceRefresh: Bool) async throws -> Article? {
+        let saved = try await database.writer.write { db -> ArticleRecord? in
+            guard var record = try ArticleRecord.fetchOne(db, key: id.uuidString), record.deletedAt == nil else { return nil }
+            if (forceRefresh || record.content == nil), !content.content.isEmpty {
+                record.content = content.content
+            }
+            if (forceRefresh || record.wordCount == nil), let wordCount = content.wordCount {
+                record.wordCount = wordCount
+            }
+            if (forceRefresh || record.thumbnailURL == nil), let thumbnailURL = content.thumbnailURL {
+                record.thumbnailURL = thumbnailURL
+            }
+            record.normalizeListMembership()
+            try record.save(db)
+            return record
+        }
+        guard let saved else { return nil }
+        syncEngineManager?.enqueueSave(for: ArticleRecord.makeRecordID(for: saved.id))
+        return makeDetachedArticle(from: saved)
+    }
+
+    func saveRecord(_ record: ArticleRecord) async throws {
+        let normalizedRecord = normalizedRecord(from: record)
+        try await database.writer.write { db in
             try normalizedRecord.save(db)
         }
     }
 
-    func deleteArticle(id: UUID) throws {
-        var didTombstone = false
-        try database.writer.write { db in
+    func deleteArticle(id: UUID) async throws {
+        let didTombstone = try await database.writer.write { db -> Bool in
             guard var record = try ArticleRecord.fetchOne(db, key: id.uuidString),
                   record.deletedAt == nil else {
-                return
+                return false
             }
 
             record.deletedAt = Date()
             try record.save(db)
-            didTombstone = true
+            return true
         }
         if didTombstone {
             articleCache.removeValue(forKey: id)
@@ -155,8 +174,8 @@ final class GRDBArticleStore: ArticleStoreProtocol, ArticleRecordStoreProtocol {
         }
     }
 
-    func deleteRecord(recordName: String) throws {
-        try database.writer.write { db in
+    func deleteRecord(recordName: String) async throws {
+        try await database.writer.write { db in
             _ = try ArticleRecord.deleteOne(db, key: recordName)
         }
         if let articleID = UUID(uuidString: recordName) {
@@ -164,79 +183,71 @@ final class GRDBArticleStore: ArticleStoreProtocol, ArticleRecordStoreProtocol {
         }
     }
 
-    func clearCloudKitSystemFields(recordName: String) throws {
-        try database.writer.write { db in
-            guard var record = try ArticleRecord.fetchOne(db, key: recordName) else {
-                return
-            }
-
-            record.cloudKitSystemFields = nil
-            try record.save(db)
+    func updateCloudKitSystemFields(recordName: String, fields: Data?) async throws {
+        try await database.writer.write { db in
+            try db.execute(sql: "UPDATE articles SET cloudKitSystemFields = ? WHERE id = ?", arguments: [fields, recordName])
         }
     }
 
-    func toggleFavorite(id: UUID) throws {
-        var didUpdate = false
-        try database.writer.write { db in
+    func toggleFavorite(id: UUID) async throws {
+        let didUpdate = try await database.writer.write { db -> Bool in
             guard var record = try ArticleRecord.fetchOne(db, key: id.uuidString) else {
-                return
+                return false
             }
 
             guard record.deletedAt == nil else {
-                return
+                return false
             }
 
             record.toggleFavoriteMembership()
             try record.save(db)
-            didUpdate = true
+            return true
         }
         if didUpdate {
             syncEngineManager?.enqueueSave(for: ArticleRecord.makeRecordID(for: id.uuidString))
         }
     }
 
-    func toggleArchive(id: UUID) throws {
-        var didUpdate = false
-        try database.writer.write { db in
+    func toggleArchive(id: UUID) async throws {
+        let didUpdate = try await database.writer.write { db -> Bool in
             guard var record = try ArticleRecord.fetchOne(db, key: id.uuidString) else {
-                return
+                return false
             }
 
             guard record.deletedAt == nil else {
-                return
+                return false
             }
 
             record.toggleArchiveMembership()
             try record.save(db)
-            didUpdate = true
+            return true
         }
         if didUpdate {
             syncEngineManager?.enqueueSave(for: ArticleRecord.makeRecordID(for: id.uuidString))
         }
     }
 
-    func updateReadPosition(id: UUID, position: Double) throws {
-        var didUpdate = false
-        try database.writer.write { db in
+    func updateReadPosition(id: UUID, position: Double) async throws {
+        let didUpdate = try await database.writer.write { db -> Bool in
             guard var record = try ArticleRecord.fetchOne(db, key: id.uuidString) else {
-                return
+                return false
             }
 
             guard record.deletedAt == nil else {
-                return
+                return false
             }
 
             record.readPosition = position
             try record.save(db)
-            didUpdate = true
+            return true
         }
         if didUpdate {
             syncEngineManager?.enqueueSave(for: ArticleRecord.makeRecordID(for: id.uuidString))
         }
     }
 
-    func countArticles() throws -> Int {
-        try database.reader.read { db in
+    func countArticles() async throws -> Int {
+        try await database.reader.read { db in
             try Int.fetchOne(
                 db,
                 sql: "SELECT COUNT(*) FROM articles WHERE deletedAt IS NULL"

@@ -70,7 +70,7 @@ struct DiscoveryInlineView: View {
             }
         }
         .task {
-            if viewModel.ephemeralArticle == nil && !viewModel.isLoading {
+            if viewModel.ephemeralArticle == nil {
                 await viewModel.fetchRandomArticle()
             }
         }

@@ -1,0 +1,48 @@
+{
+  "configurations": [
+    {
+      "id": "4313597B-1F25-4E68-BA11-D2E496C326E6",
+      "name": "Reader Profiling",
+      "options": {}
+    }
+  ],
+  "defaultOptions": {
+    "codeCoverage": false,
+    "mainThreadCheckerEnabled": false,
+    "performanceAntipatternCheckerEnabled": false,
+    "systemAttachmentLifetime": "keepNever",
+    "userAttachmentLifetime": "keepAlways",
+    "targetForVariableExpansion": {
+      "containerPath": "container:LuegoPerformance.xcodeproj",
+      "identifier": "C0DECC000000000000000002",
+      "name": "LuegoPerformance"
+    }
+  },
+  "testTargets": [
+    {
+      "parallelizable": false,
+      "target": {
+        "containerPath": "container:LuegoPerformance.xcodeproj",
+        "identifier": "C0DECC000000000000000003",
+        "name": "LuegoPerformanceUITests"
+      },
+      "selectedTests": [
+        "ReaderHitchTests/testAnimationDelayedDrawWithProfiler()",
+        "ReaderHitchTests/testAnimationNormalWithProfiler()",
+        "ReaderHitchTests/testColdImagesWithProfiler()",
+        "ReaderHitchTests/testForegroundSyncBaselineWithProfiler()",
+        "ReaderHitchTests/testForegroundSyncPollingWithProfiler()",
+        "ReaderHitchTests/testForegroundSyncWithProfiler()",
+        "ReaderHitchTests/testIndexedColdImagesWithProfiler()",
+        "ReaderHitchTests/testIndexedForegroundSyncBaselineWithProfiler()",
+        "ReaderHitchTests/testIndexedForegroundSyncWithProfiler()",
+        "ReaderHitchTests/testIndexedWarmImagesWithProfiler()",
+        "ReaderHitchTests/testReaderScrollWithProfiler()",
+        "ReaderHitchTests/testStalledImagesWithProfiler()",
+        "ReaderHitchTests/testStalledReaderScrollWithProfiler()",
+        "ReaderHitchTests/testWarmImagesWithProfiler()"
+      ]
+    }
+  ],
+  "version": 1
+}

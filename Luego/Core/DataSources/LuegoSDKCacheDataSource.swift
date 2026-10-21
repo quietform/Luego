@@ -1,112 +1,69 @@
 import Foundation
 
 protocol LuegoSDKCacheDataSourceProtocol: Sendable {
-    func loadBundle(name: String) -> Data?
-    func saveBundle(name: String, data: Data)
-    func loadRules() -> Data?
-    func saveRules(_ data: Data)
-    func loadVersions() -> SDKVersionsResponse?
-    func saveVersions(_ versions: SDKVersionsResponse)
-    func bundleExists(name: String) -> Bool
-    func rulesExist() -> Bool
-    func allBundlesExist() -> Bool
-    func clearAll()
+    func loadBundles(names: [String]) async -> [String: String]?
+    func saveBundle(name: String, data: Data) async
+    func loadRules() async -> Data?
+    func saveRules(_ data: Data) async
+    func loadVersions() async -> SDKVersionsResponse?
+    func saveVersions(_ versions: SDKVersionsResponse) async
+    func bundleExists(name: String) async -> Bool
+    func rulesExist() async -> Bool
+    func allBundlesExist() async -> Bool
+    func clearAll() async
 }
 
 @MainActor
 final class LuegoSDKCacheDataSource: LuegoSDKCacheDataSourceProtocol {
-    private let fileManager = FileManager.default
+    private let storage: FileCache
+    private let sdkDirectory: URL
 
-    private var sdkDirectory: URL {
-        guard let appSupport = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else {
-            return fileManager.temporaryDirectory.appendingPathComponent("LuegoSDK")
-        }
-        return appSupport.appendingPathComponent("LuegoSDK")
+    init(storage: FileCache = FileCache(), directory: URL? = nil) {
+        self.storage = storage
+        sdkDirectory = directory ?? (FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first ?? FileManager.default.temporaryDirectory).appendingPathComponent("LuegoSDK")
     }
 
-    private var bundlesDirectory: URL {
-        sdkDirectory.appendingPathComponent("bundles")
+    private func bundleURL(_ name: String) -> URL {
+        sdkDirectory.appendingPathComponent("bundles/\(name).js")
     }
 
-    private var rulesFileURL: URL {
-        sdkDirectory.appendingPathComponent("rules.json")
+    func loadBundles(names: [String]) async -> [String: String]? {
+        await storage.readStrings(from: Dictionary(uniqueKeysWithValues: names.map { ($0, bundleURL($0)) }))
     }
 
-    private var versionsFileURL: URL {
-        sdkDirectory.appendingPathComponent("versions.json")
+    func saveBundle(name: String, data: Data) async {
+        await storage.writeData(data, to: bundleURL(name))
     }
 
-    init() {
-        ensureDirectoriesExist()
+    func loadRules() async -> Data? {
+        await storage.readData(from: sdkDirectory.appendingPathComponent("rules.json"))
     }
 
-    private func ensureDirectoriesExist() {
-        do {
-            try fileManager.createDirectory(at: bundlesDirectory, withIntermediateDirectories: true)
-        } catch {
-            Logger.cache.error("⚠ Failed to create directories: \(error)")
-        }
+    func saveRules(_ data: Data) async {
+        await storage.writeData(data, to: sdkDirectory.appendingPathComponent("rules.json"))
     }
 
-    func loadBundle(name: String) -> Data? {
-        let fileURL = bundlesDirectory.appendingPathComponent("\(name).js")
-        return try? Data(contentsOf: fileURL)
+    func loadVersions() async -> SDKVersionsResponse? {
+        await storage.readJSON(SDKVersionsResponse.self, from: sdkDirectory.appendingPathComponent("versions.json"))
     }
 
-    func saveBundle(name: String, data: Data) {
-        let fileURL = bundlesDirectory.appendingPathComponent("\(name).js")
-        do {
-            try data.write(to: fileURL)
-        } catch {
-            Logger.cache.error("⚠ Failed to save bundle '\(name)': \(error)")
-        }
+    func saveVersions(_ versions: SDKVersionsResponse) async {
+        await storage.writeJSON(versions, to: sdkDirectory.appendingPathComponent("versions.json"))
     }
 
-    func loadRules() -> Data? {
-        try? Data(contentsOf: rulesFileURL)
+    func bundleExists(name: String) async -> Bool {
+        await storage.contains([bundleURL(name)])
     }
 
-    func saveRules(_ data: Data) {
-        do {
-            try data.write(to: rulesFileURL)
-        } catch {
-            Logger.cache.error("⚠ Failed to save rules: \(error)")
-        }
+    func rulesExist() async -> Bool {
+        await storage.contains([sdkDirectory.appendingPathComponent("rules.json")])
     }
 
-    func loadVersions() -> SDKVersionsResponse? {
-        guard let data = try? Data(contentsOf: versionsFileURL) else {
-            return nil
-        }
-        return try? JSONDecoder().decode(SDKVersionsResponse.self, from: data)
+    func allBundlesExist() async -> Bool {
+        await storage.contains(AppConfiguration.sdkBundleNames.map(bundleURL))
     }
 
-    func saveVersions(_ versions: SDKVersionsResponse) {
-        do {
-            let data = try JSONEncoder().encode(versions)
-            try data.write(to: versionsFileURL)
-        } catch {
-            Logger.cache.error("⚠ Failed to save versions: \(error)")
-        }
-    }
-
-    func bundleExists(name: String) -> Bool {
-        let fileURL = bundlesDirectory.appendingPathComponent("\(name).js")
-        return fileManager.fileExists(atPath: fileURL.path)
-    }
-
-    func rulesExist() -> Bool {
-        fileManager.fileExists(atPath: rulesFileURL.path)
-    }
-
-    func allBundlesExist() -> Bool {
-        AppConfiguration.sdkBundleNames.allSatisfy { bundleExists(name: $0) }
-    }
-
-    func clearAll() {
-        try? fileManager.removeItem(at: sdkDirectory)
-        ensureDirectoriesExist()
-
-        Logger.cache.info("Cache cleared")
+    func clearAll() async {
+        await storage.remove(sdkDirectory)
     }
 }

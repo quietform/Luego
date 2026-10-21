@@ -29,8 +29,8 @@ struct ReaderImageDecoderTests {
         #expect(decodedBytes <= 24 * 1024 * 1024)
     }
 
-    @Test
-    func largePhotoUsesDisplaySizedPixels() async throws {
+    @Test(arguments: [false, true])
+    func largePhotoUsesDisplaySizedPixels(cancelled: Bool) async throws {
         let format = UIGraphicsImageRendererFormat()
         format.scale = 1
         let data = UIGraphicsImageRenderer(size: CGSize(width: 2000, height: 3418), format: format)
@@ -38,7 +38,11 @@ struct ReaderImageDecoderTests {
                 UIColor.blue.setFill()
                 context.fill(CGRect(x: 0, y: 0, width: 2000, height: 3418))
             }
-        let result = try await ReaderImageDecoder.decode(data)
+        let decoding = Task {
+            if cancelled { withUnsafeCurrentTask { $0?.cancel() } }
+            return try await ReaderImageDecoder.decode(data)
+        }
+        let result = try await decoding.value
         let image = try #require(result.frames.first)
 
         #expect(max(image.width, image.height) <= 1200)

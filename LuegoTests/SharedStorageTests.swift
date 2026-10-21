@@ -4,14 +4,30 @@ import Testing
 @MainActor
 struct SharedStorageTests {
     @Test
-    func migratesLegacyQueueOnce() throws {
+    func readingSharedQueueKeepsMainActorResponsive() async throws {
+        let fixture = try SharedQueueFixture()
+        defer { fixture.remove() }
+        let queue = fixture.makeQueue()
+        var mainActorRan = false
+        let heartbeat = Task { @MainActor in mainActorRan = true }
+
+        let items = try await queue.getSharedURLs()
+        let progressedWhileReading = mainActorRan
+        await heartbeat.value
+
+        #expect(progressedWhileReading)
+        #expect(items.isEmpty)
+    }
+
+    @Test
+    func migratesLegacyQueueOnce() async throws {
         let fixture = try SharedQueueFixture()
         defer { fixture.remove() }
         let legacyData = Data(#"[{"url":"https://example.com/legacy","timestamp":0}]"#.utf8)
         fixture.defaults.set(legacyData, forKey: "sharedURLs")
 
-        let items = try fixture.makeQueue().getSharedURLs()
-        let reopenedItems = try fixture.makeQueue().getSharedURLs()
+        let items = try await fixture.makeQueue().getSharedURLs()
+        let reopenedItems = try await fixture.makeQueue().getSharedURLs()
 
         #expect(items.count == 1)
         #expect(items.first?.url.absoluteString == "https://example.com/legacy")
@@ -21,18 +37,18 @@ struct SharedStorageTests {
     }
 
     @Test
-    func corruptLegacyDataIsPreservedForRetry() throws {
+    func corruptLegacyDataIsPreservedForRetry() async throws {
         let fixture = try SharedQueueFixture()
         defer { fixture.remove() }
         let corruptData = Data("invalid JSON".utf8)
         fixture.defaults.set(corruptData, forKey: "sharedURLs")
         let queue = fixture.makeQueue()
 
-        #expect(throws: SharedStorageError.self) { try queue.getSharedURLs() }
+        await #expect(throws: SharedStorageError.self) { try await queue.getSharedURLs() }
         #expect(fixture.defaults.data(forKey: "sharedURLs") == corruptData)
 
         fixture.defaults.set(Data(#"[{"url":"https://example.com/recovered","timestamp":0}]"#.utf8), forKey: "sharedURLs")
-        #expect(try queue.getSharedURLs().count == 1)
+        #expect(try await queue.getSharedURLs().count == 1)
     }
 
     @Test
@@ -43,13 +59,13 @@ struct SharedStorageTests {
         let extensionQueue = fixture.makeQueue()
         let url = URL(string: "https://example.com/article")!
         try await appQueue.saveSharedURL(url)
-        let first = try #require(appQueue.getSharedURLs().first)
+        let first = try #require(await appQueue.getSharedURLs().first)
         try await extensionQueue.saveSharedURL(url)
 
-        try appQueue.acknowledgeSharedURL(id: first.id)
-        try appQueue.acknowledgeSharedURL(id: first.id)
+        try await appQueue.acknowledgeSharedURL(id: first.id)
+        try await appQueue.acknowledgeSharedURL(id: first.id)
 
-        let remaining = try fixture.makeQueue().getSharedURLs()
+        let remaining = try await fixture.makeQueue().getSharedURLs()
         #expect(remaining.count == 1)
         #expect(remaining.first?.url == url)
         #expect(remaining.first?.id != first.id)
@@ -61,11 +77,11 @@ struct SharedStorageTests {
         defer { fixture.remove() }
         let queue = fixture.makeQueue()
         try await queue.saveSharedURL(URL(string: "https://example.com/article")!)
-        let item = try #require(queue.getSharedURLs().first)
+        let item = try #require(await queue.getSharedURLs().first)
 
-        try queue.acknowledgeSharedURL(id: item.id)
+        try await queue.acknowledgeSharedURL(id: item.id)
 
-        #expect(try fixture.makeQueue().getSharedURLs().isEmpty)
+        #expect(try await fixture.makeQueue().getSharedURLs().isEmpty)
     }
 
     @Test

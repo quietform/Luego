@@ -49,7 +49,7 @@ private struct ReaderAnimatedImage: View {
                 guard image.frames.count > 1 else { return }
                 var loops = 0
                 do {
-                    while !Task.isCancelled {
+                    while true {
                         try await Task.sleep(for: .seconds(image.frameDurations[frame]))
                         if frame + 1 == image.frames.count {
                             loops += 1

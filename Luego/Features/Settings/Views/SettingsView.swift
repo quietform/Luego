@@ -42,10 +42,10 @@ struct SettingsView: View {
                     viewModel.beginPasteImport()
                 },
                 onExportAllArticles: {
-                    viewModel.prepareExport(scope: .allArticles)
+                    Task { await viewModel.prepareExport(scope: .allArticles) }
                 },
                 onExportReadingList: {
-                    viewModel.prepareExport(scope: .readingList)
+                    Task { await viewModel.prepareExport(scope: .readingList) }
                 }
             )
 
@@ -116,7 +116,7 @@ struct SettingsView: View {
         case .success(let url):
             Task {
                 do {
-                    let text = try readPlainTextFile(at: url)
+                    let text = try await ArticleTransferFile.read(url)
                     await viewModel.importArticlesFromFileText(text)
                 } catch {
                     await MainActor.run {
@@ -140,31 +140,7 @@ struct SettingsView: View {
             && nsError.code == CocoaError.Code.userCancelled.rawValue
     }
 
-    private func readPlainTextFile(at url: URL) throws -> String {
-        let didStartAccess = url.startAccessingSecurityScopedResource()
-        defer {
-            if didStartAccess {
-                url.stopAccessingSecurityScopedResource()
-            }
-        }
 
-        let data = try Data(contentsOf: url)
-        let encodings: [String.Encoding] = [
-            .utf8,
-            .unicode,
-            .utf16,
-            .utf16LittleEndian,
-            .utf16BigEndian
-        ]
-
-        for encoding in encodings {
-            if let string = String(data: data, encoding: encoding) {
-                return string
-            }
-        }
-
-        throw CocoaError(.fileReadInapplicableStringEncoding)
-    }
 }
 
 struct IOSSettingsRow<TitleAccessory: View, Trailing: View>: View {

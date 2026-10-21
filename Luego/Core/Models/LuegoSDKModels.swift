@@ -1,15 +1,15 @@
 import Foundation
 
-struct SDKVersionsResponse: Codable, Sendable {
+nonisolated struct SDKVersionsResponse: Codable, Sendable {
     let bundles: [String: BundleInfo]
     let rules: RulesInfo
 
-    struct BundleInfo: Codable, Sendable {
+    nonisolated struct BundleInfo: Codable, Sendable {
         let version: String
         let size: Int
     }
 
-    struct RulesInfo: Codable, Sendable {
+    nonisolated struct RulesInfo: Codable, Sendable {
         let version: String
     }
 }

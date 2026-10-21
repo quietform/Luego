@@ -1,7 +1,13 @@
 import Foundation
 
-@MainActor
-final class OPMLDataSource: NSObject, Sendable {
+nonisolated struct OPMLDataSource: Sendable {
+    @concurrent
+    func parse(_ data: Data) async -> [SmallWebArticleEntry] {
+        OPMLParser().parse(data)
+    }
+}
+
+private nonisolated final class OPMLParser: NSObject, XMLParserDelegate {
     private var articles: [SmallWebArticleEntry] = []
 
     func parse(_ data: Data) -> [SmallWebArticleEntry] {
@@ -11,9 +17,7 @@ final class OPMLDataSource: NSObject, Sendable {
         parser.parse()
         return articles
     }
-}
 
-extension OPMLDataSource: XMLParserDelegate {
     func parser(
         _ parser: XMLParser,
         didStartElement elementName: String,

@@ -9,7 +9,7 @@ struct SharedStorageContentionTests {
         let fixture = try SharedQueueFixture()
         defer { fixture.remove() }
         let queue = fixture.makeQueue()
-        _ = try queue.getSharedURLs()
+        _ = try await queue.getSharedURLs()
         let writer = try DatabaseQueue(path: fixture.directory.appendingPathComponent("queue.sqlite").path)
         let (lockEvents, lockSignal) = AsyncStream<Void>.makeStream()
         let competingWrite = Task {
@@ -40,15 +40,15 @@ struct SharedStorageContentionTests {
         #expect(progressedWhileSaving)
         if lockDuration < 1 {
             #expect(saveError == nil)
-            #expect(try queue.getSharedURLs().count == 1)
+            #expect(try await queue.getSharedURLs().count == 1)
         } else {
             #expect(saveError?.contains("database is locked") == true)
-            #expect(try queue.getSharedURLs().isEmpty)
+            #expect(try await queue.getSharedURLs().isEmpty)
         }
     }
 
     @Test
-    func cancelledShareIsNotQueued() async throws {
+    func frameworkCancellationDoesNotPartiallyQueueAShare() async throws {
         let fixture = try SharedQueueFixture()
         defer { fixture.remove() }
         let queue = fixture.makeQueue()
@@ -60,6 +60,6 @@ struct SharedStorageContentionTests {
         await #expect(throws: CancellationError.self) {
             try await save.value
         }
-        #expect(try queue.getSharedURLs().isEmpty)
+        #expect(try await queue.getSharedURLs().isEmpty)
     }
 }

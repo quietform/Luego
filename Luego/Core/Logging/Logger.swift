@@ -45,7 +45,7 @@ extension Logger {
     static let api = Logger(category: "API")
     nonisolated static let parser = Logger(category: "Parser")
     static let content = Logger(category: "Content")
-    static let cache = Logger(category: "Cache")
+    nonisolated static let cache = Logger(category: "Cache")
     static let article = Logger(category: "Article")
     static let sharing = Logger(category: "Sharing")
     static let cloudKit = Logger(category: "CloudKit")

@@ -7,7 +7,9 @@ struct ReaderView: View {
     @State private var scrollPosition: CGFloat = 0
     @State private var contentHeight: CGFloat = 0
     @State private var viewHeight: CGFloat = 0
-    @State private var saveTask: Task<Void, Never>?
+    @State private var saveTask: Task<Void, Error>?
+    @State private var restorationTask: Task<Void, Never>?
+    @State private var isDocumentPrepared = false
     @State private var hasRestoredPosition = false
     @State private var lastSavedPosition: Double = 0
     @State private var contentRequestID = UUID()
@@ -25,11 +27,11 @@ struct ReaderView: View {
                     scrollPosition: $scrollPosition,
                     contentHeight: $contentHeight,
                     viewHeight: $viewHeight,
-                    saveTask: $saveTask,
                     hasRestoredPosition: $hasRestoredPosition,
                     onUpdateReadPosition: updateReadPosition,
                     onRestoreScrollPosition: restoreScrollPosition,
-                    onDisappear: handleDisappear
+                    onDisappear: handleDisappear,
+                    onPreparationChanged: { isDocumentPrepared = $0 }
                 )
             } else if let error = viewModel.errorMessage {
                 ArticleErrorView(
@@ -80,11 +82,11 @@ struct ArticleReaderModeView: View {
     @Binding var scrollPosition: CGFloat
     @Binding var contentHeight: CGFloat
     @Binding var viewHeight: CGFloat
-    @Binding var saveTask: Task<Void, Never>?
     @Binding var hasRestoredPosition: Bool
     let onUpdateReadPosition: () -> Void
     let onRestoreScrollPosition: (ScrollViewProxy) -> Void
     let onDisappear: () -> Void
+    let onPreparationChanged: (Bool) -> Void
 
     var body: some View {
         GeometryReader { outerGeo in
@@ -103,7 +105,11 @@ struct ArticleReaderModeView: View {
                         ReaderMarkdownContentView(
                             markdown: content,
                             title: article.title,
-                            baseURL: article.url
+                            baseURL: article.url,
+                            onPreparationChanged: { prepared in
+                                onPreparationChanged(prepared)
+                                if prepared { onRestoreScrollPosition(scrollProxy) }
+                            }
                         )
                     }
                     .font(.lora(.body))
@@ -228,6 +234,16 @@ struct ScrollPositionTracker: View {
                     scrollPosition = max(0, -newValue)
                     onPositionChange()
                 }
+                .onChange(of: geo.size.height) { _, height in
+                    contentHeight = height
+                    onAppear()
+                    onPositionChange()
+                }
+                .onChange(of: outerGeometry.size.height) { _, height in
+                    viewHeight = height
+                    onAppear()
+                    onPositionChange()
+                }
                 .onAppear {
                     contentHeight = geo.size.height
                     viewHeight = outerGeometry.size.height
@@ -250,32 +266,36 @@ extension ReaderView {
     }
 
     private func updateReadPosition() {
+        saveTask?.cancel()
+        guard isDocumentPrepared, restorationTask == nil else { return }
         let newPosition = calculateReadPosition()
-
         guard abs(newPosition - lastSavedPosition) > 0.01 else { return }
 
-        saveTask?.cancel()
-
         saveTask = Task {
-            try? await Task.sleep(nanoseconds: 2_000_000_000)
-            guard !Task.isCancelled else { return }
+            try await Task.sleep(for: .seconds(2))
 
-            await viewModel.updateReadPosition(newPosition)
+            await viewModel.updateReadPosition(newPosition, documentPrepared: isDocumentPrepared)
+            try Task.checkCancellation()
             lastSavedPosition = newPosition
         }
     }
 
     private func restoreScrollPosition(scrollProxy: ScrollViewProxy) {
-        guard !hasRestoredPosition else { return }
+        guard isDocumentPrepared, !hasRestoredPosition, restorationTask == nil else { return }
         guard viewModel.article.readPosition > 0 else { return }
         guard contentHeight > 0 && viewHeight > 0 else { return }
 
         let savedPosition = viewModel.article.readPosition
         lastSavedPosition = savedPosition
 
-        Task {
-            try? await Task.sleep(nanoseconds: 100_000_000)
-
+        restorationTask = Task {
+            do {
+                try await Task.sleep(nanoseconds: 100_000_000)
+            } catch { return }
+            guard isDocumentPrepared else {
+                restorationTask = nil
+                return
+            }
             await MainActor.run {
                 let topAnchor = UnitPoint(x: 0, y: 0)
                 let bottomAnchor = UnitPoint(x: 0, y: 1)
@@ -289,16 +309,21 @@ extension ReaderView {
                     scrollProxy.scrollTo("articleContent", anchor: interpolatedAnchor)
                 }
                 hasRestoredPosition = true
+                restorationTask = nil
             }
         }
     }
 
     private func handleDisappear() {
         saveTask?.cancel()
-
+        if let restorationTask {
+            restorationTask.cancel()
+            self.restorationTask = nil
+            return
+        }
         let position = calculateReadPosition()
         Task {
-            await viewModel.updateReadPosition(position)
+            await viewModel.updateReadPosition(position, documentPrepared: isDocumentPrepared)
         }
     }
 

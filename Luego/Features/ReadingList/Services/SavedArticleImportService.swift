@@ -33,11 +33,11 @@ final class SavedArticleImportService: SavedArticleImportServiceProtocol {
     }
 
     func importArticles(fromPlainText text: String) async -> SavedArticleImportResult {
-        let detectedURLs = SharedTextURLExtractor.extractSupportedWebURLs(from: text)
-        let deduplicatedInput = deduplicateInputURLs(detectedURLs)
+        let input = await Self.prepareInput(text)
+        let deduplicatedInput = input.urls
         let baseSavedDate = Date()
 
-        var skippedDuplicateInputCount = detectedURLs.count - deduplicatedInput.count
+        var skippedDuplicateInputCount = input.detectedURLCount - deduplicatedInput.count
         var skippedExistingCount = 0
         var importedCount = 0
         var failedCount = 0
@@ -67,10 +67,10 @@ final class SavedArticleImportService: SavedArticleImportServiceProtocol {
             }
         }
 
-        let uniqueURLCount = max(0, detectedURLs.count - skippedDuplicateInputCount)
+        let uniqueURLCount = max(0, input.detectedURLCount - skippedDuplicateInputCount)
 
         return SavedArticleImportResult(
-            detectedURLCount: detectedURLs.count,
+            detectedURLCount: input.detectedURLCount,
             uniqueURLCount: uniqueURLCount,
             importedCount: importedCount,
             skippedExistingCount: skippedExistingCount,
@@ -80,7 +80,13 @@ final class SavedArticleImportService: SavedArticleImportServiceProtocol {
         )
     }
 
-    private func deduplicateInputURLs(_ urls: [URL]) -> [URL] {
+    @concurrent
+    static func prepareInput(_ text: String) async -> (detectedURLCount: Int, urls: [URL]) {
+        let detectedURLs = SharedTextURLExtractor.extractSupportedWebURLs(from: text)
+        return (detectedURLs.count, deduplicateInputURLs(detectedURLs))
+    }
+
+    private nonisolated static func deduplicateInputURLs(_ urls: [URL]) -> [URL] {
         var seen: Set<String> = []
         var deduplicated: [URL] = []
 

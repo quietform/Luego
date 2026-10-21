@@ -1,7 +1,7 @@
 import Foundation
 import GRDB
 
-struct AppDatabase {
+nonisolated struct AppDatabase: Sendable {
     let writer: any DatabaseWriter
 
     var reader: any DatabaseReader {
@@ -58,7 +58,8 @@ struct AppDatabase {
         return migrator
     }
 
-    static func makeDefault() throws -> AppDatabase {
+    @concurrent
+    static func makeDefault() async throws -> AppDatabase {
         try make(at: databaseURL())
     }
 
@@ -93,34 +94,33 @@ struct AppDatabase {
 }
 
 extension AppDatabase {
-    func syncEngineStatePayload() throws -> SyncEngineStatePayload? {
-        try reader.read { db in
-            guard let row = try Row.fetchOne(db, sql: "SELECT data FROM syncState WHERE id = 1") else {
-                return nil
-            }
-
-            let data: Data = row["data"]
-            let decoder = JSONDecoder()
-            decoder.dateDecodingStrategy = .iso8601
-            return try decoder.decode(SyncEngineStatePayload.self, from: data)
+    func syncEngineStatePayload() async throws -> SyncEngineStatePayload? {
+        try await reader.read { db in
+            try Self.syncEngineStatePayload(in: db)
         }
     }
 
-    func saveSyncEngineStatePayload(_ payload: SyncEngineStatePayload) throws {
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        let data = try encoder.encode(payload)
-
-        try writer.write { db in
-            try db.execute(
-                sql: "INSERT OR REPLACE INTO syncState (id, data) VALUES (1, ?)",
-                arguments: [data]
-            )
+    func updateSyncEngineStatePayload(_ update: @Sendable @escaping (inout SyncEngineStatePayload) -> Void) async throws {
+        try await writer.write { db in
+            var payload = try Self.syncEngineStatePayload(in: db) ?? SyncEngineStatePayload()
+            update(&payload)
+            let encoder = JSONEncoder()
+            encoder.dateEncodingStrategy = .iso8601
+            let data = try encoder.encode(payload)
+            try db.execute(sql: "INSERT OR REPLACE INTO syncState (id, data) VALUES (1, ?)", arguments: [data])
         }
     }
 
-    func migrationValue(for key: String) throws -> String? {
-        try reader.read { db in
+    private nonisolated static func syncEngineStatePayload(in db: Database) throws -> SyncEngineStatePayload? {
+        guard let row = try Row.fetchOne(db, sql: "SELECT data FROM syncState WHERE id = 1") else { return nil }
+        let data: Data = row["data"]
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return try decoder.decode(SyncEngineStatePayload.self, from: data)
+    }
+
+    func migrationValue(for key: String) async throws -> String? {
+        try await reader.read { db in
             try String.fetchOne(
                 db,
                 sql: "SELECT value FROM migrationState WHERE key = ?",
@@ -129,8 +129,8 @@ extension AppDatabase {
         }
     }
 
-    func saveMigrationValue(_ value: String, for key: String) throws {
-        try writer.write { db in
+    func saveMigrationValue(_ value: String, for key: String) async throws {
+        try await writer.write { db in
             try db.execute(
                 sql: "INSERT OR REPLACE INTO migrationState (key, value) VALUES (?, ?)",
                 arguments: [key, value]

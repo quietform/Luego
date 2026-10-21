@@ -6,15 +6,15 @@ struct BlogPostEntry: Sendable {
     let publishedDate: Date?
 }
 
-@MainActor
-final class GenericRSSDataSource {
-    func parse(_ data: Data) -> [BlogPostEntry] {
+nonisolated struct GenericRSSDataSource: Sendable {
+    @concurrent
+    func parse(_ data: Data) async -> [BlogPostEntry] {
         let parser = GenericRSSParser()
         return parser.parse(data.sanitizingXMLAmpersands())
     }
 }
 
-private final class GenericRSSParser: NSObject, XMLParserDelegate {
+private nonisolated final class GenericRSSParser: NSObject, XMLParserDelegate {
     private var posts: [BlogPostEntry] = []
     private var currentElement: String = ""
     private var currentTitle: String = ""

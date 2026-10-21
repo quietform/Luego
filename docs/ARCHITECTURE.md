@@ -4,9 +4,9 @@ Luego is a SwiftUI app for iOS and iPadOS 26+, organized by feature. It uses Obs
 
 ## Startup and dependencies
 
-[LuegoApp](../Luego/App/LuegoApp.swift) opens `AppDatabase`, creates `DIContainer`, starts sync, and runs the legacy article migration. It provides the container and sync-status observer through the SwiftUI environment.
+[LuegoApp](../Luego/App/LuegoApp.swift) opens and migrates `AppDatabase` asynchronously, creates `DIContainer`, starts sync, and runs the legacy article migration. A loading view remains responsive during startup. Once initialization finishes, it provides the container and sync-status observer through the SwiftUI environment.
 
-[DIContainer](../Luego/Core/DI/DIContainer.swift) owns shared dependencies and constructs view models. Feature services use protocols for injection. View models, feature services, article stores, and sync orchestration use `@MainActor` isolation.
+[DIContainer](../Luego/Core/DI/DIContainer.swift) owns shared dependencies and constructs view models. Feature services use protocols for injection. View models, feature services, article-store facades, and sync orchestration use `@MainActor` isolation. Expensive implementation work crosses explicit execution boundaries; making a service `async` alone does not move its computation off the main actor.
 
 ```text
 View -> ViewModel -> Service -> ArticleStoreProtocol -> GRDB / SQLite
@@ -18,6 +18,15 @@ GRDBArticleStore <-> SyncEngineManager <-> CloudKit private database
 
 [ContentView](../Luego/App/ContentView.swift) owns navigation and deep links, and asks `ArticleListViewModel` to refresh when active. The view model imports shared URLs independently of foreground CloudKit catch-up. Compact layouts use tabs; regular layouts use split navigation.
 
+## Execution boundaries
+
+- Observable `Article` objects and UI state stay on the main actor. Sendable value records cross background boundaries.
+- Article and shared-queue persistence use GRDB's asynchronous reads and writes. Database opening runs in `@concurrent` functions. Duplicate-URL saves, content merges, and sync-state merges each use a single transaction. CloudKit acknowledgements update only system fields, preserving concurrent local edits and tombstones.
+- One shared `FileCache` actor owns article-cache and parser-SDK file I/O and JSON coding. It reads JavaScript bundles as one snapshot and completes accepted writes and removals without inspecting task cancellation.
+- Markdown document preparation, image decoding, and RSS/OPML parsing use `@concurrent` functions with local parser state and run to completion. Cancellation is handled at the UI boundary before publishing a document or image. Progress saves wait until the document is rendered; height tracking follows placeholder replacement and image layout changes, and pending restoration is cancelled when leaving the reader.
+- Discovery feed-cache coding and seen-item filtering run in background functions. Generation checks prevent late cache work from undoing a clear. Import URL detection and text-file transfers also run off the main actor.
+- The existing parser actor owns JavaScriptCore. No actor is introduced per service or CPU operation.
+
 ## Storage and sync
 
 [AppDatabase](../Luego/Core/Database/AppDatabase.swift) opens a GRDB database pool at `Application Support/Luego/luego.sqlite` in the app sandbox. Migrations define the article, sync-state, and migration-marker tables.
@@ -27,11 +36,12 @@ GRDBArticleStore <-> SyncEngineManager <-> CloudKit private database
 [GRDBArticleStore](../Luego/Core/Stores/GRDBArticleStore.swift) implements two contracts: `ArticleStoreProtocol` for feature operations and `ArticleRecordStoreProtocol` for sync and migration. It handles queries, observation, duplicate URLs, and local mutations:
 
 - Local article changes enqueue sync. Deletion creates a tombstone.
+- `saveArticle` returns `ArticleSaveResult` with the stored article and an atomic `isNew` decision. Inserts and tombstone restorations count as new; existing active articles and updates do not. Duplicate URL saves reuse the stored identity without enqueueing another save.
 - `saveRecord` applies records without enqueueing sync; `deleteRecord` physically removes them when applying remote deletions.
 - Visible article queries exclude tombstones. Raw record queries can include them.
 - Observation preserves article object identity. Direct fetches and saves return detached objects.
 
-[SyncEngineManager](../Luego/Core/Services/SyncEngineManager.swift) sends local changes and applies incoming records using the store. Engine state is persisted in SQLite. Foreground catch-up and manual refresh fetch changes and perform a server backfill; Settings also exposes a full repair operation. The configured container is `iCloud.com.esoxjem.Luego`, using its private database.
+[SyncEngineManager](../Luego/Core/Services/SyncEngineManager.swift) sends local changes and applies incoming records using the store. Engine state is persisted in SQLite. Outbound batch preparation distinguishes confirmed missing records from read errors. Only confirmed missing records remove pending saves; a read error defers the batch and preserves pending changes for retry. Foreground catch-up and manual refresh fetch changes and perform a server backfill; Settings also exposes a full repair operation. The configured container is `iCloud.com.esoxjem.Luego`, using its private database.
 
 [SyncStatusObserver](../Luego/Core/Services/SyncStatusObserver.swift) receives status directly from the manager in the app's DI setup. It is the single observable owner of sync state and diagnostics.
 
@@ -59,9 +69,9 @@ Services receive [ContentDataSource](../Luego/Core/DataSources/ContentDataSource
 | [Sharing](../Luego/Features/Sharing/) | Queue shared URLs, import them into the app, and construct deep links |
 | [Settings](../Luego/Features/Settings/) | Preferences, parser updates, repair sync, import/export UI, and diagnostics |
 
-Adding a URL saves metadata and any body already returned by the parser or API, so the list can show an excerpt before the reader opens. `ReaderService` fetches the body when needed, reloads the current article from storage, and saves the content. Reader load, retry, and refresh requests share the view's task lifetime. Cancellation stops fallback and discards late results before cache or article writes. Saving a Discovery article includes its available content. Add, sharing, and plain-text import use `ArticleService.addArticle`, which reports whether it saved a new article or found an existing one.
+Adding a URL saves metadata, the available word count, and any body already returned by the parser or API, so the list can show an excerpt before the reader opens. `ReaderService` fetches the body when needed, reloads the current article from storage, and saves the content. Reader load, retry, and refresh requests run directly in the view's task. A request identity prevents an older request's cleanup from clearing a newer request's loading state. Workers and storage follow their normal result and error contracts, so completed content may still be cached or persisted after the reader leaves. The reader and Discovery discard cancelled requests before publishing results or errors, and Discovery does not retry a cancelled view request. URLSession and GRDB can still return their own cancellation errors; those propagate without extra worker policy. GRDB transactions preserve atomicity when a write fails or is cancelled. Saving a Discovery article includes its available content. Add, sharing, and plain-text import use `ArticleService.addArticle`, which forwards the store’s atomic save result to keep sharing and import counts accurate under concurrent saves.
 
-Reader Markdown is parsed once and rendered as separate top-level blocks. Text-only blocks stay rendered. Image-bearing blocks load within one viewport height above or below the screen and retain their attachments until they are more than two viewport heights away. Standalone photos own their decoded image state directly and retain only their dimensions after release, so reloading does not shrink their placeholders. Textual continues to render text and mixed markup. Geometry updates change state only when a block crosses one of these boundaries. Images are decoded off the main actor with ImageIO thumbnails capped at 1200 pixels; animated images share a 24 MiB frame budget. The reader uses URLSession caching for compressed responses and does not keep a global decoded-image cache.
+Reader Markdown is prepared off the main actor when content, title, or base URL changes, then rendered as separate top-level blocks. Text-only blocks stay rendered. Image-bearing blocks load within one viewport height above or below the screen and retain their attachments until they are more than two viewport heights away. Standalone photos own their decoded image state directly and retain only their dimensions after release, so reloading does not shrink their placeholders. Textual continues to render text and mixed markup. Geometry updates change state only when a block crosses one of these boundaries. Images are decoded off the main actor with ImageIO thumbnails capped at 1200 pixels; animated images share a 24 MiB frame budget. The reader uses URLSession caching for compressed responses and does not keep a global decoded-image cache.
 
 ## Share extension
 
@@ -71,6 +81,6 @@ When active, the app imports the queue through `SharingService` while foreground
 
 ## Legacy migration
 
-[LegacySwiftDataArticleMigration](../Luego/Core/Services/LegacySwiftDataArticleMigration.swift) reads the previous SwiftData SQLite store, imports records into GRDB, enqueues them for sync, and records completion in `migrationState`. Preserve this upgrade path for existing installs.
+[LegacySwiftDataArticleMigration](../Luego/Core/Services/LegacySwiftDataArticleMigration.swift) reads the previous SwiftData SQLite store in a background function and returns Sendable records, imports them into GRDB, enqueues them for sync, and records completion in `migrationState`. Preserve this upgrade path for existing installs.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for coding rules, [TESTING.md](TESTING.md) for verification, and [README.md](README.md) for setup.

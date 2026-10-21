@@ -4,27 +4,52 @@ struct ReaderMarkdownContentView: View {
     let markdown: String
     let title: String
     let baseURL: URL
+    var onPreparationChanged: (Bool) -> Void = { _ in }
 
     @State private var document: ReaderDocument?
+    @State private var preparationFailed = false
+    @State private var documentID = UUID()
 
-    private var cleanedMarkdown: String {
-        stripFirstH1FromMarkdown(markdown, matchingTitle: title)
+    private var request: Request {
+        Request(markdown: markdown, title: title, baseURL: baseURL)
     }
 
     var body: some View {
         Group {
             if let document {
                 ReaderBlocksView(document: document)
+                    .id(documentID)
+                    .onAppear { onPreparationChanged(true) }
+            } else if preparationFailed {
+                Text(markdown)
+                    .id(documentID)
+                    .onAppear { onPreparationChanged(true) }
             } else {
-                Text(cleanedMarkdown)
+                ProgressView()
             }
         }
         .readerContentStyle()
-        .onChange(of: baseURL) {
-            document = try? ReaderDocument(markdown: cleanedMarkdown, baseURL: baseURL)
+        .task(id: request) {
+            onPreparationChanged(false)
+            document = nil
+            preparationFailed = false
+            do {
+                let prepared = try await ReaderDocument.prepare(markdown: markdown, title: title, baseURL: baseURL)
+                try Task.checkCancellation()
+                documentID = UUID()
+                document = prepared
+            } catch is CancellationError {
+            } catch {
+                guard !Task.isCancelled else { return }
+                documentID = UUID()
+                preparationFailed = true
+            }
         }
-        .onChange(of: cleanedMarkdown, initial: true) {
-            document = try? ReaderDocument(markdown: cleanedMarkdown, baseURL: baseURL)
-        }
+    }
+
+    private struct Request: Equatable {
+        let markdown: String
+        let title: String
+        let baseURL: URL
     }
 }

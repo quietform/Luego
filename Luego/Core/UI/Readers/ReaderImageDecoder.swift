@@ -11,7 +11,6 @@ nonisolated struct ReaderImage: Sendable, Hashable {
 enum ReaderImageDecoder {
     @concurrent
     static func decode(_ data: Data) async throws -> ReaderImage {
-        try Task.checkCancellation()
         guard let source = CGImageSourceCreateWithData(data as CFData, [kCGImageSourceShouldCache: false] as CFDictionary),
               let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
               let width = properties[kCGImagePropertyPixelWidth] as? Int,
@@ -30,7 +29,6 @@ enum ReaderImageDecoder {
         var frames: [CGImage] = []
         var durations: [TimeInterval] = []
         for index in 0..<count {
-            try Task.checkCancellation()
             guard let image = CGImageSourceCreateThumbnailAtIndex(source, index, options as CFDictionary) else {
                 throw URLError(.cannotDecodeContentData)
             }

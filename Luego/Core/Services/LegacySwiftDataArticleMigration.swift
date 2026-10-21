@@ -21,36 +21,37 @@ struct LegacySwiftDataArticleMigration {
         self.legacyArticleDataSource = legacyArticleDataSource
     }
 
-    func needsMigration() throws -> Bool {
-        try database.migrationValue(for: Self.migrationKey) == nil
+    func needsMigration() async throws -> Bool {
+        try await database.migrationValue(for: Self.migrationKey) == nil
     }
 
-    func migrateIfNeeded() throws -> Int {
-        guard try needsMigration() else { return 0 }
+    func migrateIfNeeded() async throws -> Int {
+        guard try await needsMigration() else { return 0 }
 
-        let importedCount = try importArticles(legacyArticleDataSource.fetchArticles())
-        try database.saveMigrationValue(ISO8601DateFormatter().string(from: Date()), for: Self.migrationKey)
+        let records = try await legacyArticleDataSource.fetchRecords()
+        let importedCount = try await importRecords(records)
+        try await database.saveMigrationValue(ISO8601DateFormatter().string(from: Date()), for: Self.migrationKey)
         return importedCount
     }
 
-    func migrate(_ articles: [Article]) throws -> Int {
-        guard try needsMigration() else { return 0 }
+    func migrate(_ articles: [Article]) async throws -> Int {
+        guard try await needsMigration() else { return 0 }
 
-        let importedCount = try importArticles(articles)
-        try database.saveMigrationValue(ISO8601DateFormatter().string(from: Date()), for: Self.migrationKey)
+        let importedCount = try await importRecords(articles.map { ArticleRecord($0) })
+        try await database.saveMigrationValue(ISO8601DateFormatter().string(from: Date()), for: Self.migrationKey)
         return importedCount
     }
 
-    private func importArticles(_ articles: [Article]) throws -> Int {
+    private func importRecords(_ records: [ArticleRecord]) async throws -> Int {
         var importedCount = 0
-        for article in articles {
-            if let existingRecord = try store.fetchRecord(url: article.url) {
+        for record in records {
+            if let existingRecord = try await store.fetchRecord(url: record.url) {
                 syncEngineManager.enqueueSave(for: ArticleRecord.makeRecordID(for: existingRecord.id))
                 continue
             }
 
-            try store.saveRecord(ArticleRecord(article))
-            syncEngineManager.enqueueSave(for: ArticleRecord.makeRecordID(for: article.id.uuidString))
+            try await store.saveRecord(record)
+            syncEngineManager.enqueueSave(for: ArticleRecord.makeRecordID(for: record.id))
             importedCount += 1
         }
 

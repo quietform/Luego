@@ -3,10 +3,10 @@ import Foundation
 protocol LuegoSDKManagerProtocol: Sendable {
     func ensureSDKReady() async
     func checkForUpdates() async -> SDKUpdateResult
-    func isSDKAvailable() -> Bool
-    func loadBundles() -> [String: String]?
-    func loadRules() -> Data?
-    func getVersionInfo() -> SDKVersionInfo?
+    func isSDKAvailable() async -> Bool
+    func loadBundles() async -> [String: String]?
+    func loadRules() async -> Data?
+    func getVersionInfo() async -> SDKVersionInfo?
 }
 
 struct SDKVersionInfo: Sendable {
@@ -43,7 +43,7 @@ final class LuegoSDKManager: LuegoSDKManagerProtocol {
             Logger.sdk.debug("Checking for updates...")
 
             let remoteVersions = try await sdkDataSource.fetchVersions()
-            let localVersions = cacheDataSource.loadVersions()
+            let localVersions = await cacheDataSource.loadVersions()
 
             logVersionComparison(remote: remoteVersions, local: localVersions)
 
@@ -53,7 +53,7 @@ final class LuegoSDKManager: LuegoSDKManagerProtocol {
             for bundleName in AppConfiguration.sdkBundleNames {
                 let remoteVersion = remoteVersions.bundles[bundleName]?.version
                 let localVersion = localVersions?.bundles[bundleName]?.version
-                let fileExists = cacheDataSource.bundleExists(name: bundleName)
+                let fileExists = await cacheDataSource.bundleExists(name: bundleName)
 
                 let versionMismatch = localVersion != remoteVersion
                 let needsDownload = versionMismatch || !fileExists
@@ -63,7 +63,7 @@ final class LuegoSDKManager: LuegoSDKManagerProtocol {
                     Logger.sdk.debug("↓ Downloading \(bundleName) (\(reason))")
 
                     let data = try await sdkDataSource.downloadBundle(name: bundleName)
-                    cacheDataSource.saveBundle(name: bundleName, data: data)
+                    await cacheDataSource.saveBundle(name: bundleName, data: data)
                     downloadedBundles.append(bundleName)
                 } else {
                     skippedBundles.append(bundleName)
@@ -74,7 +74,7 @@ final class LuegoSDKManager: LuegoSDKManagerProtocol {
                 remoteVersion: remoteVersions.rules.version,
                 localVersion: localVersions?.rules.version
             )
-            cacheDataSource.saveVersions(remoteVersions)
+            await cacheDataSource.saveVersions(remoteVersions)
 
             logReadySummary(
                 remoteVersions: remoteVersions,
@@ -105,7 +105,7 @@ final class LuegoSDKManager: LuegoSDKManagerProtocol {
 
     private func refreshRulesIfNeeded(remoteVersion: String, localVersion: String?) async -> Bool {
         let versionMismatch = localVersion != remoteVersion
-        let fileExists = cacheDataSource.rulesExist()
+        let fileExists = await cacheDataSource.rulesExist()
 
         guard versionMismatch || !fileExists else { return false }
 
@@ -114,7 +114,7 @@ final class LuegoSDKManager: LuegoSDKManagerProtocol {
 
         do {
             let rules = try await sdkDataSource.fetchRules()
-            cacheDataSource.saveRules(rules)
+            await cacheDataSource.saveRules(rules)
             return true
         } catch {
             Logger.sdk.warning("⚠ Rules refresh failed: \(error)")
@@ -122,31 +122,20 @@ final class LuegoSDKManager: LuegoSDKManagerProtocol {
         }
     }
 
-    func isSDKAvailable() -> Bool {
-        cacheDataSource.allBundlesExist()
+    func isSDKAvailable() async -> Bool {
+        await cacheDataSource.allBundlesExist()
     }
 
-    func loadBundles() -> [String: String]? {
-        guard isSDKAvailable() else { return nil }
-
-        var bundles: [String: String] = [:]
-        for name in AppConfiguration.sdkBundleNames {
-            guard let data = cacheDataSource.loadBundle(name: name),
-                  let script = String(data: data, encoding: .utf8) else {
-                Logger.sdk.warning("⚠ Failed to load bundle: \(name)")
-                return nil
-            }
-            bundles[name] = script
-        }
-        return bundles
+    func loadBundles() async -> [String: String]? {
+        await cacheDataSource.loadBundles(names: AppConfiguration.sdkBundleNames)
     }
 
-    func loadRules() -> Data? {
-        cacheDataSource.loadRules()
+    func loadRules() async -> Data? {
+        await cacheDataSource.loadRules()
     }
 
-    func getVersionInfo() -> SDKVersionInfo? {
-        guard let versions = cacheDataSource.loadVersions(),
+    func getVersionInfo() async -> SDKVersionInfo? {
+        guard let versions = await cacheDataSource.loadVersions(),
               let parserInfo = versions.bundles["parser"] else {
             return nil
         }

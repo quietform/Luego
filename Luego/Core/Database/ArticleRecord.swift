@@ -7,7 +7,7 @@ enum ArticleRecordError: Error {
     case missingTitle
 }
 
-struct ArticleRecord: Codable, FetchableRecord, PersistableRecord, Sendable {
+nonisolated struct ArticleRecord: Codable, FetchableRecord, PersistableRecord, Sendable {
     static let databaseTableName = "articles"
     static let recordType = "Article"
 

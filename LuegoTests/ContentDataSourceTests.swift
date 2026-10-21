@@ -7,6 +7,35 @@ struct ContentDataSourceTests {
     private let url = URL(string: "https://example.com/article")!
 
     @Test(arguments: [false, true])
+    func savedArticleIncludesPrecomputedWordCount(useLocalParser: Bool) async throws {
+        let parser = TestParser()
+        if useLocalParser {
+            parser.result = ParserResult(success: true, content: "Local article body", metadata: ParserMetadata(title: "Local title", publishedDate: nil, excerpt: nil, siteName: nil, thumbnail: nil), error: nil)
+        }
+        let source = makeSource(parser: parser, api: TestArticleAPI(isAvailable: !useLocalParser))
+        let store = GRDBArticleStore(database: try AppDatabase(DatabaseQueue()))
+        let service = ArticleService(articleStore: store, contentDataSource: source, syncEngineManager: TestSyncEngine())
+
+        let saved = try await service.addArticle(url: url, savedDate: Date()).article
+
+        #expect(saved.wordCount == 3)
+        #expect(try await store.fetchRecord(id: saved.id)?.wordCount == 3)
+    }
+
+    @Test
+    func cacheReadReturnsCompletedContentInCancelledTask() async throws {
+        let cache = SuspendedContentCache()
+        let source = ContentDataSource(parserDataSource: TestParser(), parsedContentCache: cache, luegoAPIDataSource: TestArticleAPI(isAvailable: false), webPageDataSource: TestHTMLSource(), sdkManager: TestSDKStatus())
+        let fetch = Task { try await source.fetchContent(for: url) }
+        var events = cache.started.stream.makeAsyncIterator()
+        _ = await events.next()
+        fetch.cancel()
+        cache.completeRead()
+
+        #expect(try await fetch.value.content == "Late cached body")
+    }
+
+    @Test(arguments: [false, true])
     func newlySavedArticleHasAnExcerptBeforeOpeningTheReader(useLocalParser: Bool) async throws {
         let body = "Fresh article body"
         let parser = TestParser()
@@ -20,7 +49,7 @@ struct ContentDataSourceTests {
         let service = ArticleService(articleStore: store, contentDataSource: source, syncEngineManager: TestSyncEngine())
 
         let result = try await service.addArticle(url: url, savedDate: Date())
-        let reloaded = try #require(try GRDBArticleStore(database: database).fetchArticle(id: result.article.id))
+        let reloaded = try #require(try await GRDBArticleStore(database: database).fetchArticle(id: result.article.id))
 
         #expect(reloaded.excerpt == body)
         #expect(reloaded.content == body)
@@ -50,7 +79,7 @@ struct ContentDataSourceTests {
 
         #expect(metadata.title == "Local title")
         #expect(metadata.description == "Local excerpt")
-        #expect(metadata.wordCount == nil)
+        #expect(metadata.wordCount == (body?.isEmpty == false ? 3 : nil))
         #expect(metadata.content == (body?.isEmpty == false ? body : nil))
 
         if let body, !body.isEmpty {
@@ -135,7 +164,7 @@ struct ContentDataSourceTests {
     }
 
     @Test(arguments: ["content", "refresh", "skip", "metadata"])
-    func canceledHTMLFetchDoesNotFallBackToAPI(operation: String) async {
+    func failedHTMLFetchUsesNormalFallbackInCancelledTask(operation: String) async throws {
         let html = TestHTMLSource()
         html.waitForCancellation = true
         let api = TestArticleAPI()
@@ -150,19 +179,13 @@ struct ContentDataSourceTests {
         }
         for await _ in html.started.stream { break }
         task.cancel()
-        let result = await task.result
-
-        if case .failure(let error) = result {
-            #expect(error is CancellationError)
-        } else {
-            Issue.record("Canceled HTML fetch returned a result")
-        }
-        #expect(await api.fetchCount == 0)
-        #expect(cache.get(for: url) == nil)
+        try await task.value
+        #expect(await api.fetchCount == 1)
+        #expect(cache.get(for: url)?.content == (operation == "skip" ? nil : "API article body"))
     }
 
     @Test(arguments: ["content", "refresh", "skip", "metadata"])
-    func canceledParsingDoesNotCacheResult(operation: String) async {
+    func completedParsingUsesNormalCachePolicyInCancelledTask(operation: String) async throws {
         let parser = TestParser()
         parser.waitForCompletion = true
         parser.result = ParserResult(success: true, content: "Local body", metadata: ParserMetadata(title: "Local", publishedDate: nil, excerpt: nil, siteName: nil, thumbnail: nil), error: nil)
@@ -179,19 +202,13 @@ struct ContentDataSourceTests {
         for await _ in parser.started.stream { break }
         task.cancel()
         parser.completeParsing()
-        let result = await task.result
-
-        if case .failure(let error) = result {
-            #expect(error is CancellationError)
-        } else {
-            Issue.record("Canceled parsing returned a result")
-        }
-        #expect(cache.get(for: url) == nil)
+        try await task.value
+        #expect(cache.get(for: url)?.content == (operation == "skip" ? nil : "Local body"))
         #expect(await api.fetchCount == 0)
     }
 
     @Test(arguments: ["content", "refresh", "skip", "metadata"], [false, true])
-    func canceledAPIFetchDoesNotCacheResult(operation: String, networkError: Bool) async {
+    func apiCompletionUsesNormalResultAndCachePolicyInCancelledTask(operation: String, networkError: Bool) async {
         let api = TestArticleAPI(waitForCompletion: true)
         let cache = TestContentCache()
         let source = makeSource(cache: cache, api: api)
@@ -205,18 +222,22 @@ struct ContentDataSourceTests {
         for await _ in api.started.stream { break }
         task.cancel()
         await api.completeFetch(networkError: networkError)
-        let result = await task.result
-
-        if case .failure(let error) = result {
-            #expect(error is CancellationError)
-        } else {
-            Issue.record("Canceled API fetch returned a result")
+        switch await task.result {
+        case .failure(let error):
+            #expect(networkError)
+            if let apiError = error as? LuegoAPIError, case .networkError(let underlying) = apiError {
+                #expect((underlying as? URLError)?.code == .cancelled)
+            } else {
+                Issue.record("Expected the original API error, received \(error)")
+            }
+        case .success:
+            #expect(!networkError)
         }
-        #expect(cache.get(for: url) == nil)
+        #expect(cache.get(for: url)?.content == (networkError || operation == "skip" ? nil : "API article body"))
     }
 
     @Test(arguments: ["content", "refresh", "skip", "metadata"])
-    func alreadyCanceledFetchLeavesCachedContentUntouched(operation: String) async {
+    func alreadyCancelledFetchUsesNormalCachePolicy(operation: String) async throws {
         let cache = TestContentCache()
         cache.save(ArticleContent(title: "Cached", content: "Old body"), for: url)
         let parser = TestParser()
@@ -230,16 +251,12 @@ struct ContentDataSourceTests {
                 _ = try await source.fetchContent(for: url, timeout: nil, forceRefresh: operation == "refresh", skipCache: operation == "skip")
             }
         }
-        let result = await task.result
-
-        if case .failure(let error) = result {
-            #expect(error is CancellationError)
-        } else {
-            Issue.record("Already canceled fetch returned a result")
-        }
-        #expect(cache.get(for: url)?.content == "Old body")
-        #expect(parser.parseCount == 0)
-        #expect(await api.fetchCount == 0)
+        try await task.value
+        let fetchesFreshContent = operation != "content"
+        let updatesCache = operation == "refresh" || operation == "metadata"
+        #expect(cache.get(for: url)?.content == (updatesCache ? "API article body" : "Old body"))
+        #expect(parser.parseCount == (fetchesFreshContent ? 1 : 0))
+        #expect(await api.fetchCount == (fetchesFreshContent ? 1 : 0))
     }
 
     private func makeSource(parser: TestParser = TestParser(), cache: TestContentCache = TestContentCache(), api: TestArticleAPI = TestArticleAPI(), html: TestHTMLSource = TestHTMLSource()) -> ContentDataSource {
@@ -344,4 +361,27 @@ private struct TestSDKStatus: LuegoSDKManagerProtocol {
     func loadBundles() -> [String: String]? { nil }
     func loadRules() -> Data? { nil }
     func getVersionInfo() -> SDKVersionInfo? { nil }
+}
+
+@MainActor
+private final class SuspendedContentCache: ParsedContentCacheDataSourceProtocol {
+    let started = AsyncStream<Void>.makeStream()
+    private var completion: CheckedContinuation<Void, Never>?
+
+    func get(for url: URL) async -> ArticleContent? {
+        await withCheckedContinuation { continuation in
+            completion = continuation
+            started.continuation.yield(())
+        }
+        return ArticleContent(title: "Cached", content: "Late cached body")
+    }
+
+    func completeRead() {
+        completion?.resume()
+        completion = nil
+    }
+
+    func save(_ content: ArticleContent, for url: URL) {}
+    func clear() {}
+    func remove(for url: URL) {}
 }

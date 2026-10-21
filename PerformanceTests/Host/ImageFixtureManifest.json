@@ -1,0 +1,197 @@
+{
+  "source": "https://a.wholelottanothing.org/travelogue-a-week-in/",
+  "images": [
+    {
+      "name": "photo-001.jpg",
+      "url": "https://storage.ghost.io/c/91/15/9115e440-4672-4090-9706-8335a7b154ee/content/images/2026/10/IMG_8342.JPG",
+      "sha256": "7db044853b9a5194fe693afa09324110d6821deec05d852ee722dc14ac2ed7f5",
+      "bytes": 494347,
+      "pixelWidth": 2000,
+      "pixelHeight": 2667
+    },
+    {
+      "name": "photo-002.jpg",
+      "url": "https://storage.ghost.io/c/91/15/9115e440-4672-4090-9706-8335a7b154ee/content/images/2026/10/IMG_8348.JPG",
+      "sha256": "00ccf91905319b56fb93613a8b03081de8b0b69741e766879df432f22a64ca3c",
+      "bytes": 347553,
+      "pixelWidth": 2000,
+      "pixelHeight": 1397
+    },
+    {
+      "name": "photo-003.jpg",
+      "url": "https://storage.ghost.io/c/91/15/9115e440-4672-4090-9706-8335a7b154ee/content/images/2026/10/IMG_8360.JPG",
+      "sha256": "ecb747c8dc8934be2cd33b0144f7eadb48dfa59a97a1d24b3b0154c34564921c",
+      "bytes": 606528,
+      "pixelWidth": 2000,
+      "pixelHeight": 1660
+    },
+    {
+      "name": "photo-004.jpg",
+      "url": "https://storage.ghost.io/c/91/15/9115e440-4672-4090-9706-8335a7b154ee/content/images/2026/10/IMG_8364.JPG",
+      "sha256": "9b2665f2a892e48ff9acd24827be47960b25a1ebd66fa52c7686f08485de7b25",
+      "bytes": 763643,
+      "pixelWidth": 2000,
+      "pixelHeight": 2817
+    },
+    {
+      "name": "photo-005.jpg",
+      "url": "https://storage.ghost.io/c/91/15/9115e440-4672-4090-9706-8335a7b154ee/content/images/2026/10/IMG_8394.JPG",
+      "sha256": "d8075c13e938135c0bbf9869febed20f254c36166aeb736370311e9942c45e49",
+      "bytes": 1060333,
+      "pixelWidth": 2000,
+      "pixelHeight": 2427
+    },
+    {
+      "name": "photo-006.jpg",
+      "url": "https://storage.ghost.io/c/91/15/9115e440-4672-4090-9706-8335a7b154ee/content/images/2026/10/IMG_8396.JPG",
+      "sha256": "13b3afa8257135672bb3b022f8ff9a2604b889d316cae7ea53cfda4bd3e66a81",
+      "bytes": 486470,
+      "pixelWidth": 2000,
+      "pixelHeight": 1500
+    },
+    {
+      "name": "photo-007.jpg",
+      "url": "https://storage.ghost.io/c/91/15/9115e440-4672-4090-9706-8335a7b154ee/content/images/2026/10/IMG_8403.JPG",
+      "sha256": "e6dda31b233bc573ba22099760ae7105a1f387240604c3b2a7e26e02cdb2c364",
+      "bytes": 560997,
+      "pixelWidth": 2000,
+      "pixelHeight": 1500
+    },
+    {
+      "name": "photo-008.jpg",
+      "url": "https://storage.ghost.io/c/91/15/9115e440-4672-4090-9706-8335a7b154ee/content/images/2026/10/IMG_8421.JPG",
+      "sha256": "4ccd01daad8dd081ba927308a50e54f8ec042d621a9cf0ea1b3b76ae3c182583",
+      "bytes": 928480,
+      "pixelWidth": 2000,
+      "pixelHeight": 1673
+    },
+    {
+      "name": "photo-009.jpg",
+      "url": "https://storage.ghost.io/c/91/15/9115e440-4672-4090-9706-8335a7b154ee/content/images/2026/10/6f13d3552ed755977d8ba47865fc2eabda8e3941.jpeg",
+      "sha256": "97c5f4945ba03e809d1f213aa989129d1cf80a283eeb3eb574e288057d615cf1",
+      "bytes": 196196,
+      "pixelWidth": 2048,
+      "pixelHeight": 1152
+    },
+    {
+      "name": "photo-010.jpg",
+      "url": "https://storage.ghost.io/c/91/15/9115e440-4672-4090-9706-8335a7b154ee/content/images/2026/10/IMG_3379.jpeg",
+      "sha256": "159f3669318ba7939c0ff244c57897284aa4c7529798ba10526b2284f5f87cea",
+      "bytes": 443956,
+      "pixelWidth": 2000,
+      "pixelHeight": 1500
+    },
+    {
+      "name": "photo-011.jpg",
+      "url": "https://storage.ghost.io/c/91/15/9115e440-4672-4090-9706-8335a7b154ee/content/images/2026/10/IMG_3551.jpeg",
+      "sha256": "45c96fd8738dede3d5900eb9a7677939abdc48f2d1a24801d93cba0b6b0338c7",
+      "bytes": 745340,
+      "pixelWidth": 2000,
+      "pixelHeight": 1870
+    },
+    {
+      "name": "photo-012.jpg",
+      "url": "https://storage.ghost.io/c/91/15/9115e440-4672-4090-9706-8335a7b154ee/content/images/2026/10/IMG_8447.JPG",
+      "sha256": "4407939c9aafb83b83331cd87b340b146e999307d58bb2c2ba19a97a1e425e8d",
+      "bytes": 433318,
+      "pixelWidth": 2000,
+      "pixelHeight": 1500
+    },
+    {
+      "name": "photo-013.jpg",
+      "url": "https://storage.ghost.io/c/91/15/9115e440-4672-4090-9706-8335a7b154ee/content/images/2026/10/IMG_8450.JPG",
+      "sha256": "a2f96ac8c0da003a65e0c5a4af9b3087579d17fba0b961085b03bc1dbf184347",
+      "bytes": 766649,
+      "pixelWidth": 2000,
+      "pixelHeight": 2378
+    },
+    {
+      "name": "photo-014.jpg",
+      "url": "https://storage.ghost.io/c/91/15/9115e440-4672-4090-9706-8335a7b154ee/content/images/2026/10/IMG_8454.JPG",
+      "sha256": "a8f7e4d304125029715ca58a177a6558afcdb3f3be1a405bcc2b4a46cf4cd3af",
+      "bytes": 410793,
+      "pixelWidth": 2000,
+      "pixelHeight": 1506
+    },
+    {
+      "name": "photo-015.jpg",
+      "url": "https://storage.ghost.io/c/91/15/9115e440-4672-4090-9706-8335a7b154ee/content/images/2026/10/IMG_8453.JPG",
+      "sha256": "43760ad972d68ca4c717b5b56fcac801cf8e162e889052f8ab4544d1b2b14f74",
+      "bytes": 286350,
+      "pixelWidth": 2000,
+      "pixelHeight": 1500
+    },
+    {
+      "name": "photo-016.jpg",
+      "url": "https://storage.ghost.io/c/91/15/9115e440-4672-4090-9706-8335a7b154ee/content/images/2026/10/IMG_8595.JPG",
+      "sha256": "9b40e5714f5b0250d91f7853410bb5d2fc86e34e13669899f9fa0e9ac90016b7",
+      "bytes": 786578,
+      "pixelWidth": 2000,
+      "pixelHeight": 2667
+    },
+    {
+      "name": "photo-017.jpg",
+      "url": "https://storage.ghost.io/c/91/15/9115e440-4672-4090-9706-8335a7b154ee/content/images/2026/10/IMG_8700.JPG",
+      "sha256": "711c237347470e310ac27fc79a2684e7ab018518567457c6dafef48620bbaa72",
+      "bytes": 217248,
+      "pixelWidth": 2000,
+      "pixelHeight": 1500
+    },
+    {
+      "name": "photo-018.jpg",
+      "url": "https://storage.ghost.io/c/91/15/9115e440-4672-4090-9706-8335a7b154ee/content/images/2026/10/IMG_8707.JPG",
+      "sha256": "f5b6c21b087ae772131b14570a5d4567ca06e62e46f5a9d7614213435e686bdd",
+      "bytes": 269281,
+      "pixelWidth": 2000,
+      "pixelHeight": 1500
+    },
+    {
+      "name": "photo-019.jpg",
+      "url": "https://storage.ghost.io/c/91/15/9115e440-4672-4090-9706-8335a7b154ee/content/images/2026/10/IMG_8712.JPG",
+      "sha256": "9a3792f2bcb2644e2c4afa7e66b0eaf0998095217ce1f3bada41a409127755e4",
+      "bytes": 549642,
+      "pixelWidth": 2000,
+      "pixelHeight": 1550
+    },
+    {
+      "name": "photo-020.jpg",
+      "url": "https://storage.ghost.io/c/91/15/9115e440-4672-4090-9706-8335a7b154ee/content/images/2026/10/IMG_8726.JPG",
+      "sha256": "415c5c115c27c39caa350b95ab61f8d85eb3bdfaa3dc7b3366ae4da0ab02dbc2",
+      "bytes": 387994,
+      "pixelWidth": 2000,
+      "pixelHeight": 1500
+    },
+    {
+      "name": "photo-021.jpg",
+      "url": "https://storage.ghost.io/c/91/15/9115e440-4672-4090-9706-8335a7b154ee/content/images/2026/10/IMG_8720-1.JPG",
+      "sha256": "853b54a0d9c4c79b989da49c69935d47d2a67949dd7febf2c8c49ffc62af91f8",
+      "bytes": 817042,
+      "pixelWidth": 2000,
+      "pixelHeight": 2667
+    },
+    {
+      "name": "photo-022.jpg",
+      "url": "https://storage.ghost.io/c/91/15/9115e440-4672-4090-9706-8335a7b154ee/content/images/2026/10/IMG_8745.JPG",
+      "sha256": "97e93915e71ba46f3ff36a03b706a88b5f1216e9a551462b99f06c092c36dcaf",
+      "bytes": 616833,
+      "pixelWidth": 2000,
+      "pixelHeight": 1564
+    },
+    {
+      "name": "photo-023.jpg",
+      "url": "https://storage.ghost.io/c/91/15/9115e440-4672-4090-9706-8335a7b154ee/content/images/2026/10/IMG_8748.JPG",
+      "sha256": "3037ed9a3933450f28756b6b73a59a8714801030545223e868ba5be7be5a0279",
+      "bytes": 284058,
+      "pixelWidth": 2000,
+      "pixelHeight": 1500
+    },
+    {
+      "name": "photo-024.jpg",
+      "url": "https://storage.ghost.io/c/91/15/9115e440-4672-4090-9706-8335a7b154ee/content/images/2026/10/IMG_8756.JPG",
+      "sha256": "f9038ef6a850ce8f7fd28aff0a9cd5525097b7fb6515143013d4fcf838611a29",
+      "bytes": 513869,
+      "pixelWidth": 2000,
+      "pixelHeight": 1500
+    }
+  ]
+}

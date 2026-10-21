@@ -1,14 +1,14 @@
 import Foundation
 
-@MainActor
-final class BlogrollRSSDataSource {
-    func parse(_ data: Data) -> [SmallWebArticleEntry] {
+nonisolated struct BlogrollRSSDataSource: Sendable {
+    @concurrent
+    func parse(_ data: Data) async -> [SmallWebArticleEntry] {
         let parser = BlogrollRSSParser()
         return parser.parse(data.sanitizingXMLAmpersands())
     }
 }
 
-private final class BlogrollRSSParser: NSObject, XMLParserDelegate {
+private nonisolated final class BlogrollRSSParser: NSObject, XMLParserDelegate {
     private var articles: [SmallWebArticleEntry] = []
     private var currentElement: String = ""
     private var currentTitle: String = ""

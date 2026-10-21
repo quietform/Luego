@@ -36,7 +36,7 @@ final class SyncEngineManager: SyncEngineManagerProtocol {
 
     private var syncEngine: CKSyncEngine?
 
-    private var idleTask: Task<Void, Never>?
+    private var idleTask: Task<Void, Error>?
 
     private var currentStateSerialization: CKSyncEngine.State.Serialization?
 
@@ -48,7 +48,7 @@ final class SyncEngineManager: SyncEngineManagerProtocol {
 
     private var currentOperation: SyncCoordinatorOperation = .idle
 
-    private var automaticSendTask: Task<Void, Never>?
+    private var automaticSendTask: Task<Void, Error>?
 
     private let statusObserver: SyncStatusObserver
 
@@ -64,10 +64,10 @@ final class SyncEngineManager: SyncEngineManagerProtocol {
         self.container = container
     }
 
-    func start() throws {
+    func start() async throws {
         guard syncEngine == nil else { return }
 
-        let payload = try database.syncEngineStatePayload()
+        let payload = try await database.syncEngineStatePayload()
         let initialLastSyncTime = payload?.lastSyncTime
         currentStateSerialization = payload?.stateSerialization
 
@@ -197,11 +197,9 @@ final class SyncEngineManager: SyncEngineManagerProtocol {
         syncEngine = nil
         currentStateSerialization = nil
 
-        var payload = (try? database.syncEngineStatePayload()) ?? SyncEngineStatePayload()
-        payload.stateSerialization = nil
-        try database.saveSyncEngineStatePayload(payload)
+        try await database.updateSyncEngineStatePayload { $0.stateSerialization = nil }
 
-        try start()
+        try await start()
 
         if !pendingChanges.isEmpty {
             syncEngine?.state.add(pendingRecordZoneChanges: pendingChanges)
@@ -248,7 +246,7 @@ final class SyncEngineManager: SyncEngineManagerProtocol {
                     let detail = structuredFailureLine(
                         recordID: recordID,
                         error: error,
-                        context: "storedRecord=\(fetchStoredRecord(recordName: recordID.recordName) == nil ? "missing" : "present")",
+                        context: "storedRecord=\(await fetchStoredRecord(recordName: recordID.recordName) == nil ? "missing" : "present")",
                         prefix: "Server backfill match failure",
                         eventSource: "repairSync.serverBackfill"
                     )
@@ -260,7 +258,7 @@ final class SyncEngineManager: SyncEngineManagerProtocol {
             cursor = nextCursor
         } while cursor != nil
 
-        try reconcileLocalRecordsMissingFromServer(fetchedRecordNames: fetchedRecordNames)
+        try await reconcileLocalRecordsMissingFromServer(fetchedRecordNames: fetchedRecordNames)
         isRepairSyncRecoveryEnabled = true
 
         return totalApplied
@@ -293,26 +291,35 @@ extension SyncEngineManager: CKSyncEngineDelegate {
         let pendingChanges = syncEngine.state.pendingRecordZoneChanges
             .filter { context.options.scope.contains($0) }
 
-        let recordsByID = Dictionary(uniqueKeysWithValues: pendingChanges.compactMap { change -> (CKRecord.ID, ArticleRecord)? in
-            guard case .saveRecord(let recordID) = change else {
-                return nil
-            }
-
-            guard let record = try? store.fetchRecord(recordName: recordID.recordName) else {
-                syncEngine.state.remove(
-                    pendingRecordZoneChanges: [.saveRecord(recordID)]
-                )
-                return nil
-            }
-
-            return (recordID, record)
-        })
-
-        return await CKSyncEngine.RecordZoneChangeBatch(
-            pendingChanges: pendingChanges
-        ) { recordID in
-            recordsByID[recordID]?.makeCKRecord(recordID: recordID)
+        do {
+            let prepared = try await Self.prepareRecordZoneChangeBatch(pendingChanges, store: store)
+            syncEngine.state.remove(pendingRecordZoneChanges: prepared.missingRecordIDs.map { .saveRecord($0) })
+            return prepared.batch
+        } catch {
+            Logger.cloudKit.warning("Deferring outbound changes after a local read failed: \(error.localizedDescription)")
+            return nil
         }
+    }
+
+    static func prepareRecordZoneChangeBatch(
+        _ pendingChanges: [CKSyncEngine.PendingRecordZoneChange],
+        store: ArticleRecordStoreProtocol
+    ) async throws -> (batch: CKSyncEngine.RecordZoneChangeBatch?, missingRecordIDs: [CKRecord.ID]) {
+        var recordsByID: [CKRecord.ID: ArticleRecord] = [:]
+        var missingRecordIDs: [CKRecord.ID] = []
+        for change in pendingChanges {
+            guard case .saveRecord(let recordID) = change else { continue }
+            guard let record = try await store.fetchRecord(recordName: recordID.recordName) else {
+                missingRecordIDs.append(recordID)
+                continue
+            }
+            recordsByID[recordID] = record
+        }
+        let batchRecords = recordsByID
+        let batch = await CKSyncEngine.RecordZoneChangeBatch(pendingChanges: pendingChanges) { recordID in
+            batchRecords[recordID]?.makeCKRecord(recordID: recordID)
+        }
+        return (batch, missingRecordIDs)
     }
 }
 
@@ -354,11 +361,11 @@ private extension SyncEngineManager {
     func processIncomingRecord(_ record: CKRecord) async throws {
         guard record.recordType == ArticleRecord.recordType else { return }
         let articleRecord = try ArticleRecord(record: record)
-        try store.saveRecord(articleRecord)
+        try await store.saveRecord(articleRecord)
     }
 
     func processIncomingDeletion(_ recordID: CKRecord.ID) async throws {
-        try store.deleteRecord(recordName: recordID.recordName)
+        try await store.deleteRecord(recordName: recordID.recordName)
         syncEngine?.state.remove(
             pendingRecordZoneChanges: [.saveRecord(recordID), .deleteRecord(recordID)]
         )
@@ -389,17 +396,9 @@ private extension SyncEngineManager {
 
     func updateSystemFields(for record: CKRecord) async {
         do {
-            guard let articleID = UUID(uuidString: record.recordID.recordName),
-                  var articleRecord = try store.fetchRecord(id: articleID) else {
-                return
-            }
-
-            articleRecord.cloudKitSystemFields = ArticleRecord.encodeSystemFields(record)
-            try store.saveRecord(articleRecord)
+            try await store.updateCloudKitSystemFields(recordName: record.recordID.recordName, fields: ArticleRecord.encodeSystemFields(record))
         } catch {
-            Logger.cloudKit.error(
-                "Failed to update system fields for \(record.recordID.recordName): \(error.localizedDescription)"
-            )
+            Logger.cloudKit.error("Failed to update system fields for \(record.recordID.recordName): \(error.localizedDescription)")
         }
     }
 
@@ -409,7 +408,7 @@ private extension SyncEngineManager {
     ) async -> Bool {
         let ckError = failedSave.error
         let recordID = failedSave.record.recordID
-        let storedRecord = fetchStoredRecord(recordName: recordID.recordName)
+        let storedRecord = await fetchStoredRecord(recordName: recordID.recordName)
         let recordContext = recordDiagnosticsContext(
             for: failedSave.record,
             storedRecord: storedRecord,
@@ -453,7 +452,7 @@ private extension SyncEngineManager {
                 appendRecentFailedSaveDetail(detail)
 
                 do {
-                    try store.deleteRecord(recordName: recordID.recordName)
+                    try await store.deleteRecord(recordName: recordID.recordName)
                     syncEngine.state.remove(
                         pendingRecordZoneChanges: [.saveRecord(recordID), .deleteRecord(recordID)]
                     )
@@ -479,7 +478,7 @@ private extension SyncEngineManager {
             appendRecentFailedSaveDetail(detail)
 
             do {
-                try store.clearCloudKitSystemFields(recordName: recordID.recordName)
+                try await store.updateCloudKitSystemFields(recordName: recordID.recordName, fields: nil)
                 syncEngine.state.remove(
                     pendingRecordZoneChanges: [.deleteRecord(recordID)]
                 )
@@ -573,8 +572,7 @@ private extension SyncEngineManager {
             return
         }
         idleTask = Task {
-            try? await Task.sleep(for: .seconds(3))
-            guard !Task.isCancelled else { return }
+            try await Task.sleep(for: .seconds(3))
             if state == .success {
                 publishStatus(.idle, lastSyncTime: lastSyncTime, accountStatus: nil)
             }
@@ -631,12 +629,13 @@ private extension SyncEngineManager {
         updateLastSyncTime: Bool
     ) async {
         do {
-            var payload = (try? database.syncEngineStatePayload()) ?? SyncEngineStatePayload()
-            payload.stateSerialization = serialization ?? payload.stateSerialization
-            if updateLastSyncTime {
-                payload.lastSyncTime = lastSyncTime
+            let timestamp = lastSyncTime
+            try await database.updateSyncEngineStatePayload { payload in
+                payload.stateSerialization = serialization ?? payload.stateSerialization
+                if updateLastSyncTime {
+                    payload.lastSyncTime = timestamp
+                }
             }
-            try database.saveSyncEngineStatePayload(payload)
         } catch {
             Logger.cloudKit.error("Failed to persist sync state: \(error.localizedDescription)")
         }
@@ -759,8 +758,8 @@ private extension SyncEngineManager {
         error.code == .unknownItem && storedRecord?.cloudKitSystemFields != nil
     }
 
-    func reconcileLocalRecordsMissingFromServer(fetchedRecordNames: Set<String>) throws {
-        let localRecords = try store.fetchAllRecords()
+    func reconcileLocalRecordsMissingFromServer(fetchedRecordNames: Set<String>) async throws {
+        let localRecords = try await store.fetchAllRecords()
 
         for record in localRecords {
             guard record.deletedAt == nil,
@@ -769,7 +768,7 @@ private extension SyncEngineManager {
                 continue
             }
 
-            try store.clearCloudKitSystemFields(recordName: record.id)
+            try await store.updateCloudKitSystemFields(recordName: record.id, fields: nil)
         }
     }
 
@@ -786,8 +785,8 @@ private extension SyncEngineManager {
         includeServerBackfill: Bool = false,
         publishFailures: Bool = true
     ) async throws -> Int {
-        let shouldRestore = try shouldAttemptBootstrapRestore()
-        let shouldRunInitialServerBackfill = try shouldAttemptInitialServerBackfill()
+        let shouldRestore = try await shouldAttemptBootstrapRestore()
+        let shouldRunInitialServerBackfill = try await shouldAttemptInitialServerBackfill()
         var didCompleteFetchChanges = false
         isVisibleRestoreInProgress = shouldRestore
         publishRefreshStartState(isRestoring: shouldRestore)
@@ -801,12 +800,12 @@ private extension SyncEngineManager {
             }
 
             if shouldRestore {
-                try markBootstrapRestoreCompleted()
+                try await markBootstrapRestoreCompleted()
                 isVisibleRestoreInProgress = false
             }
 
             if shouldRunInitialServerBackfill {
-                try markInitialServerBackfillCompleted()
+                try await markInitialServerBackfillCompleted()
             }
 
             markSyncSuccess()
@@ -883,19 +882,17 @@ private extension SyncEngineManager {
                 }
             }
 
-            try? await Task.sleep(for: .milliseconds(250))
+            try await Task.sleep(for: .milliseconds(250))
 
             for _ in 1...6 {
-                guard !Task.isCancelled else { return }
 
                 if self.currentOperation == .idle {
                     break
                 }
 
-                try? await Task.sleep(for: .milliseconds(250))
+                try await Task.sleep(for: .milliseconds(250))
             }
 
-            guard !Task.isCancelled else { return }
 
             guard self.currentOperation == .idle else {
                 return
@@ -918,7 +915,7 @@ private extension SyncEngineManager {
             try await resetSyncStateForFullRefetch()
             try await fetchChanges()
             _ = try await backfillAllArticlesFromServer()
-            let records = try store.fetchAllRecords()
+            let records = try await store.fetchAllRecords()
 
             for record in records {
                 enqueueSave(for: ArticleRecord.makeRecordID(for: record.id))
@@ -926,32 +923,32 @@ private extension SyncEngineManager {
 
             try await sendChanges()
             try await fetchChanges()
-            try markBootstrapRestoreCompleted()
-            try markInitialServerBackfillCompleted()
+            try await markBootstrapRestoreCompleted()
+            try await markInitialServerBackfillCompleted()
             return records.count
         } catch {
             throw error
         }
     }
 
-    func shouldAttemptBootstrapRestore() throws -> Bool {
-        try store.countArticles() == 0 &&
-        database.migrationValue(for: Self.bootstrapRestoreMarkerKey) == nil
+    func shouldAttemptBootstrapRestore() async throws -> Bool {
+        guard try await store.countArticles() == 0 else { return false }
+        return try await database.migrationValue(for: Self.bootstrapRestoreMarkerKey) == nil
     }
 
-    func shouldAttemptInitialServerBackfill() throws -> Bool {
-        try database.migrationValue(for: Self.initialServerBackfillMarkerKey) == nil
+    func shouldAttemptInitialServerBackfill() async throws -> Bool {
+        try await database.migrationValue(for: Self.initialServerBackfillMarkerKey) == nil
     }
 
-    func markBootstrapRestoreCompleted() throws {
-        try database.saveMigrationValue(
+    func markBootstrapRestoreCompleted() async throws {
+        try await database.saveMigrationValue(
             ISO8601DateFormatter().string(from: Date()),
             for: Self.bootstrapRestoreMarkerKey
         )
     }
 
-    func markInitialServerBackfillCompleted() throws {
-        try database.saveMigrationValue(
+    func markInitialServerBackfillCompleted() async throws {
+        try await database.saveMigrationValue(
             ISO8601DateFormatter().string(from: Date()),
             for: Self.initialServerBackfillMarkerKey
         )
@@ -992,7 +989,7 @@ private extension SyncEngineManager {
         return "storedRecord=\(storedState) | eventSource=\(eventSource) | \(payload)"
     }
 
-    func fetchStoredRecord(recordName: String) -> ArticleRecord? {
-        (try? store.fetchRecord(recordName: recordName)) ?? nil
+    func fetchStoredRecord(recordName: String) async -> ArticleRecord? {
+        (try? await store.fetchRecord(recordName: recordName)) ?? nil
     }
 }

@@ -3,6 +3,7 @@ import Foundation
 
 @MainActor
 final class DIContainer {
+    private let fileCache = FileCache()
     let database: AppDatabase
     let articleStore: GRDBArticleStore
     let syncEngineManager: SyncEngineManager
@@ -21,7 +22,7 @@ final class DIContainer {
     }()
 
     private lazy var luegoSDKCacheDataSource: LuegoSDKCacheDataSourceProtocol = {
-        LuegoSDKCacheDataSource()
+        LuegoSDKCacheDataSource(storage: fileCache)
     }()
 
     private lazy var luegoSDKManager: LuegoSDKManagerProtocol = {
@@ -36,7 +37,7 @@ final class DIContainer {
     }()
 
     private lazy var parsedContentCacheDataSource: ParsedContentCacheDataSourceProtocol = {
-        ParsedContentCacheDataSource()
+        ParsedContentCacheDataSource(storage: fileCache)
     }()
 
     private lazy var webPageDataSource: WebPageDataSourceProtocol = {

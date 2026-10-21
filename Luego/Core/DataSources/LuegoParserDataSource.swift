@@ -4,7 +4,7 @@ import JavaScriptCore
 @MainActor
 protocol LuegoParserDataSourceProtocol: Sendable {
     func parse(html: String, url: URL) async -> ParserResult?
-    var isReady: Bool { get }
+    var isReady: Bool { get async }
 }
 
 @MainActor
@@ -17,20 +17,20 @@ final class LuegoParserDataSource: LuegoParserDataSourceProtocol {
     }
 
     var isReady: Bool {
-        sdkManager.isSDKAvailable()
+        get async { await sdkManager.isSDKAvailable() }
     }
 
     func parse(html: String, url: URL) async -> ParserResult? {
         var bundles: [String: String]?
         if await worker.needsInitialization {
-            guard sdkManager.isSDKAvailable(), let loadedBundles = sdkManager.loadBundles() else {
+            guard await sdkManager.isSDKAvailable(), let loadedBundles = await sdkManager.loadBundles() else {
                 Logger.parser.debug("Failed to load bundles")
                 return nil
             }
             bundles = loadedBundles
         }
 
-        let rulesData = sdkManager.loadRules()
+        let rulesData = await sdkManager.loadRules()
         return await worker.parse(html: html, url: url, bundles: bundles, rulesData: rulesData)
     }
 }

@@ -9,49 +9,57 @@ import SwiftUI
 import CloudKit
 import Observation
 
+#if !LUEGO_BENCHMARK
 @main
+#endif
 struct LuegoApp: App {
-    let database: AppDatabase
-    @State private var diContainer: DIContainer
+    @State private var diContainer: DIContainer?
 
     init() {
         AppTypography.registerFonts()
         Self.configurePlatformAppearance()
+    }
 
+    var body: some Scene {
+        WindowGroup {
+            Group {
+                if let diContainer {
+                    ContentView()
+                        .environment(\.diContainer, diContainer)
+                        .environment(diContainer.syncObserver)
+                        .task(id: "sdkInit") {
+                            await diContainer.sdkManager.ensureSDKReady()
+                        }
+                        .task(id: "launchDiagnostics") {
+                            await logLaunchDiagnostics()
+                        }
+                } else {
+                    ProgressView()
+                        .task { await initialize() }
+                }
+            }
+        }
+    }
+
+    private func initialize() async {
         do {
-            let database = try AppDatabase.makeDefault()
-            self.database = database
+            let database = try await AppDatabase.makeDefault()
             let container = DIContainer(database: database)
-            _ = container.syncObserver
-            try container.syncEngineManager.start()
+            try await container.syncEngineManager.start()
             let legacyMigration = LegacySwiftDataArticleMigration(
                 database: database,
                 store: container.articleStore,
                 syncEngineManager: container.syncEngineManager
             )
             do {
-                let importedCount = try legacyMigration.migrateIfNeeded()
+                let importedCount = try await legacyMigration.migrateIfNeeded()
                 Logger.cloudKit.info("Launch migration — imported \(importedCount) legacy SwiftData articles")
             } catch {
                 Logger.cloudKit.error("Launch migration — failed to import legacy SwiftData articles: \(error.localizedDescription)")
             }
-            self._diContainer = State(initialValue: container)
+            diContainer = container
         } catch {
             fatalError("Could not create AppDatabase: \(error)")
-        }
-    }
-
-    var body: some Scene {
-        WindowGroup {
-            ContentView()
-                .environment(\.diContainer, diContainer)
-                .environment(diContainer.syncObserver)
-                .task(id: "sdkInit") {
-                    await diContainer.sdkManager.ensureSDKReady()
-                }
-                .task(id: "launchDiagnostics") {
-                    await logLaunchDiagnostics()
-                }
         }
     }
 }
@@ -65,6 +73,7 @@ private extension LuegoApp {
 extension LuegoApp {
     @MainActor
     private func logLaunchDiagnostics() async {
+        guard let diContainer else { return }
         let bundleID = Bundle.main.bundleIdentifier ?? "unknown"
         let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "unknown"
         let buildNumber = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "unknown"
@@ -92,12 +101,12 @@ extension LuegoApp {
         }
 
         do {
-            let count = try diContainer.articleStore.countArticles()
+            let count = try await diContainer.articleStore.countArticles()
             Logger.cloudKit.info("Launch diagnostics — article count at startup: \(count)")
 
             #if DEBUG
             do {
-                let articles = try diContainer.articleStore.fetchAllArticles()
+                let articles = try await diContainer.articleStore.fetchAllArticles()
                 let sortedArticles = articles.sorted { lhs, rhs in
                     let lhsURL = lhs.url.absoluteString
                     let rhsURL = rhs.url.absoluteString

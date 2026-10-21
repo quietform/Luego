@@ -1,10 +1,5 @@
 import Foundation
 
-struct ArticleSaveResult {
-    let article: Article
-    let isNew: Bool
-}
-
 @MainActor
 protocol ArticleServiceProtocol: Sendable {
     func getAllArticles() async throws -> [Article]
@@ -36,7 +31,7 @@ final class ArticleService: ArticleServiceProtocol {
     }
 
     func getAllArticles() async throws -> [Article] {
-        try articleStore.fetchAllArticles()
+        try await articleStore.fetchAllArticles()
     }
 
     func observeArticles() -> AsyncThrowingStream<[Article], Error> {
@@ -49,54 +44,43 @@ final class ArticleService: ArticleServiceProtocol {
 
     func isArticleSaved(url: URL) async throws -> Bool {
         let validatedURL = try await contentDataSource.validateURL(url)
-        return try articleStore.fetchArticle(url: validatedURL) != nil
+        return try await articleStore.fetchArticle(url: validatedURL) != nil
     }
 
     func addArticle(url: URL, savedDate: Date) async throws -> ArticleSaveResult {
         let validatedURL = try await contentDataSource.validateURL(url)
-        if let existing = try articleStore.fetchArticle(url: validatedURL) {
+        if let existing = try await articleStore.fetchArticle(url: validatedURL) {
             return ArticleSaveResult(article: existing, isNew: false)
         }
 
         let metadata = try await contentDataSource.fetchMetadata(for: validatedURL)
-        if let existing = try articleStore.fetchArticle(url: validatedURL) {
-            return ArticleSaveResult(article: existing, isNew: false)
-        }
-
         let article = Article(
             url: validatedURL,
             title: metadata.title,
             content: metadata.content,
             savedDate: savedDate,
             thumbnailURL: metadata.thumbnailURL,
-            publishedDate: metadata.publishedDate
+            publishedDate: metadata.publishedDate,
+            wordCount: metadata.wordCount
         )
 
-        do {
-            let savedArticle = try articleStore.saveArticle(article)
-            return ArticleSaveResult(article: savedArticle, isNew: true)
-        } catch {
-            if let existing = try articleStore.fetchArticle(url: validatedURL) {
-                return ArticleSaveResult(article: existing, isNew: false)
-            }
-            throw error
-        }
+        return try await articleStore.saveArticle(article)
     }
 
     func deleteArticle(id: UUID) async throws {
-        try articleStore.deleteArticle(id: id)
+        try await articleStore.deleteArticle(id: id)
     }
 
     func toggleFavorite(id: UUID) async throws {
-        try articleStore.toggleFavorite(id: id)
+        try await articleStore.toggleFavorite(id: id)
     }
 
     func toggleArchive(id: UUID) async throws {
-        try articleStore.toggleArchive(id: id)
+        try await articleStore.toggleArchive(id: id)
     }
 
     func saveEphemeralArticle(_ ephemeralArticle: EphemeralArticle) async throws -> Article {
-        if let existingArticle = try articleStore.fetchArticle(url: ephemeralArticle.url) {
+        if let existingArticle = try await articleStore.fetchArticle(url: ephemeralArticle.url) {
             return existingArticle
         }
 
@@ -108,15 +92,7 @@ final class ArticleService: ArticleServiceProtocol {
             publishedDate: ephemeralArticle.publishedDate
         )
 
-        do {
-            return try articleStore.saveArticle(article)
-        } catch {
-            if let existingArticle = try articleStore.fetchArticle(url: ephemeralArticle.url) {
-                Logger.article.debug("Duplicate detected via constraint: \(ephemeralArticle.url.absoluteString)")
-                return existingArticle
-            }
-            throw error
-        }
+        return try await articleStore.saveArticle(article).article
     }
 
     func forceReSyncAllArticles() async throws -> Int {

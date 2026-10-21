@@ -1,7 +1,7 @@
 import Foundation
 
-struct ReaderDocument {
-    struct Block: Identifiable {
+nonisolated struct ReaderDocument: Sendable {
+    struct Block: Identifiable, Sendable {
         let id: Int
         let content: AttributedString
 
@@ -17,6 +17,11 @@ struct ReaderDocument {
     }
 
     let blocks: [Block]
+
+    @concurrent
+    static func prepare(markdown: String, title: String, baseURL: URL) async throws -> ReaderDocument {
+        try ReaderDocument(markdown: stripFirstH1FromMarkdown(markdown, matchingTitle: title), baseURL: baseURL)
+    }
 
     init(markdown: String, baseURL: URL) throws {
         let content = try AttributedString(markdown: markdown, baseURL: baseURL)

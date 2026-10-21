@@ -27,7 +27,7 @@ struct SavedArticlePlainTextExport: Sendable, Equatable {
 
 @MainActor
 protocol SavedArticleExportServiceProtocol: Sendable {
-    func makePlainTextExport(scope: SavedArticleExportScope) throws -> SavedArticlePlainTextExport
+    func makePlainTextExport(scope: SavedArticleExportScope) async throws -> SavedArticlePlainTextExport
 }
 
 @MainActor
@@ -38,8 +38,8 @@ final class SavedArticleExportService: SavedArticleExportServiceProtocol {
         self.articleStore = articleStore
     }
 
-    func makePlainTextExport(scope: SavedArticleExportScope) throws -> SavedArticlePlainTextExport {
-        let articles = try articles(for: scope)
+    func makePlainTextExport(scope: SavedArticleExportScope) async throws -> SavedArticlePlainTextExport {
+        let articles = try await articles(for: scope)
 
         return SavedArticlePlainTextExport(
             filename: makeFilename(scope: scope),
@@ -49,8 +49,8 @@ final class SavedArticleExportService: SavedArticleExportServiceProtocol {
         )
     }
 
-    private func articles(for scope: SavedArticleExportScope) throws -> [Article] {
-        let articles = try articleStore.fetchAllArticles()
+    private func articles(for scope: SavedArticleExportScope) async throws -> [Article] {
+        let articles = try await articleStore.fetchAllArticles()
 
         switch scope {
         case .allArticles:

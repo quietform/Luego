@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 enum KagiLoadingGifRotator {
     private static let gifs = ["kagi-loading", "kagi-loading-2"]
@@ -24,6 +25,8 @@ final class DiscoveryViewModel {
     var pendingArticleURL: URL?
     var currentLoadingGif: String = KagiLoadingGifRotator.next()
     private var consecutiveFailures = 0
+    @ObservationIgnored
+    private var loadingRequestID = UUID()
 
     private let discoveryService: DiscoveryServiceProtocol
     private let articleService: ArticleServiceProtocol
@@ -43,7 +46,12 @@ final class DiscoveryViewModel {
     }
 
     func fetchRandomArticle() async {
+        let requestID = UUID()
+        loadingRequestID = requestID
         isLoading = true
+        defer {
+            if loadingRequestID == requestID { isLoading = false }
+        }
         errorMessage = nil
         ephemeralArticle = nil
         pendingArticleURL = nil
@@ -57,13 +65,17 @@ final class DiscoveryViewModel {
 
         do {
             let article = try await discoveryService.fetchRandomArticle(from: selectedSource) { [weak self] url in
+                guard !Task.isCancelled else { return }
                 self?.pendingArticleURL = url
             }
+            let saved = (try? await articleService.isArticleSaved(url: article.url)) ?? false
+            try Task.checkCancellation()
             consecutiveFailures = 0
             pendingArticleURL = nil
             ephemeralArticle = article
-            await checkIfAlreadySaved(url: article.url)
+            isSaved = saved
         } catch {
+            guard !Task.isCancelled else { return }
             consecutiveFailures += 1
             pendingArticleURL = nil
             if consecutiveFailures < 5 {
@@ -72,8 +84,6 @@ final class DiscoveryViewModel {
             }
             errorMessage = error.localizedDescription
         }
-
-        isLoading = false
     }
 
     func saveToReadingList() async {
@@ -89,13 +99,5 @@ final class DiscoveryViewModel {
 
     func loadAnotherArticle() async {
         await fetchRandomArticle()
-    }
-
-    private func checkIfAlreadySaved(url: URL) async {
-        do {
-            isSaved = try await articleService.isArticleSaved(url: url)
-        } catch {
-            isSaved = false
-        }
     }
 }
