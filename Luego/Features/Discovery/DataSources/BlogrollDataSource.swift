@@ -29,6 +29,7 @@ final class BlogrollDataSource: DiscoverySourceProtocol {
 
     private let blogrollRSSDataSource: BlogrollRSSDataSource
     private let genericRSSDataSource: GenericRSSDataSource
+    private let session: URLSession
     private let seenTracker: SeenItemTracker
     private let feedURL = URL(string: "https://blogroll.org/feed")!
     private let cacheKey = "blogroll_articles_v1"
@@ -39,9 +40,14 @@ final class BlogrollDataSource: DiscoverySourceProtocol {
     private var cacheGeneration = UUID()
     private var cachedBlogs: [SmallWebArticleEntry] = []
 
-    init(blogrollRSSDataSource: BlogrollRSSDataSource, genericRSSDataSource: GenericRSSDataSource) {
+    init(
+        blogrollRSSDataSource: BlogrollRSSDataSource,
+        genericRSSDataSource: GenericRSSDataSource,
+        session: URLSession = .shared
+    ) {
         self.blogrollRSSDataSource = blogrollRSSDataSource
         self.genericRSSDataSource = genericRSSDataSource
+        self.session = session
         self.seenTracker = SeenItemTracker(storageKey: "blogroll_shown_blogs")
     }
 
@@ -53,7 +59,7 @@ final class BlogrollDataSource: DiscoverySourceProtocol {
 
         let generation = cacheGeneration
         do {
-            let (data, _) = try await URLSession.shared.data(from: feedURL)
+            let (data, _) = try await session.data(from: feedURL)
             let blogs = await blogrollRSSDataSource.parse(data)
 
             guard !blogs.isEmpty else {
@@ -66,9 +72,9 @@ final class BlogrollDataSource: DiscoverySourceProtocol {
                 await saveBlogsToCache(blogs)
             }
             return blogs
-        } catch let error as BlogrollError {
-            throw error
         } catch {
+            if !cachedBlogs.isEmpty { return cachedBlogs }
+            if let error = error as? BlogrollError { throw error }
             throw BlogrollError.fetchFailed(error)
         }
     }
@@ -135,7 +141,7 @@ final class BlogrollDataSource: DiscoverySourceProtocol {
 
     private func fetchBlogFeed(_ feedURL: URL) async throws -> Data {
         do {
-            let (data, _) = try await URLSession.shared.data(from: feedURL)
+            let (data, _) = try await session.data(from: feedURL)
             return data
         } catch {
             throw BlogrollError.blogFeedFetchFailed(error)
