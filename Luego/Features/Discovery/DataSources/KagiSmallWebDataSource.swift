@@ -35,7 +35,9 @@ final class KagiSmallWebDataSource: DiscoverySourceProtocol {
     private let genericRSSDataSource: GenericRSSDataSource
     private let session: URLSession
     private let seenTracker: SeenItemTracker
+    private let seenRiverTracker: SeenItemTracker
     private let opmlURL = URL(string: "https://kagi.com/smallweb/opml")!
+    private let riverURL: URL
     private let cacheKey = "smallweb_articles_v2"
     private let cacheTimestampKey = "smallweb_cache_timestamp_v2"
     private let cacheDuration: TimeInterval = 24 * 60 * 60
@@ -46,12 +48,15 @@ final class KagiSmallWebDataSource: DiscoverySourceProtocol {
     init(
         opmlDataSource: OPMLDataSource,
         genericRSSDataSource: GenericRSSDataSource,
-        session: URLSession = .shared
+        session: URLSession = .shared,
+        riverURL: URL = URL(string: "https://kagi.com/api/v1/smallweb/feed/")!
     ) {
         self.opmlDataSource = opmlDataSource
         self.genericRSSDataSource = genericRSSDataSource
         self.session = session
+        self.riverURL = riverURL
         self.seenTracker = SeenItemTracker(storageKey: "smallweb_shown_articles")
+        self.seenRiverTracker = SeenItemTracker(storageKey: "smallweb_shown_river_posts")
     }
 
     func fetchArticles(forceRefresh: Bool = false) async throws -> [SmallWebArticleEntry] {
@@ -83,6 +88,27 @@ final class KagiSmallWebDataSource: DiscoverySourceProtocol {
     }
 
     func randomArticleEntry() async throws -> SmallWebArticleEntry {
+        if let post = try? await randomRiverPost() {
+            return post
+        }
+        return try await randomPostFromBlogList()
+    }
+
+    private func randomRiverPost() async throws -> SmallWebArticleEntry? {
+        let (data, _) = try await session.data(from: riverURL)
+        let posts = await genericRSSDataSource.parse(data)
+        let unseenPosts = await seenRiverTracker.filterUnseen(posts) { $0.postURL.absoluteString }
+        guard let post = unseenPosts.randomElement() else { return nil }
+        await seenRiverTracker.markAsSeen(post.postURL.absoluteString)
+        return SmallWebArticleEntry(title: post.title, articleUrl: post.postURL, htmlUrl: Self.siteURL(for: post.postURL))
+    }
+
+    private static func siteURL(for postURL: URL) -> URL? {
+        guard let scheme = postURL.scheme, let host = postURL.host() else { return nil }
+        return URL(string: "\(scheme)://\(host)/")
+    }
+
+    private func randomPostFromBlogList() async throws -> SmallWebArticleEntry {
         let articles = try await fetchArticles(forceRefresh: false)
 
         guard !articles.isEmpty else {
@@ -152,6 +178,7 @@ final class KagiSmallWebDataSource: DiscoverySourceProtocol {
         cacheGeneration = UUID()
         cachedArticles = []
         seenTracker.clear()
+        seenRiverTracker.clear()
         UserDefaults.standard.removeObject(forKey: cacheKey)
         UserDefaults.standard.removeObject(forKey: cacheTimestampKey)
     }

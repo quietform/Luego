@@ -20,13 +20,13 @@ Check adding an article and opening it, retry and refresh, dismissing the reader
 
 Verify changes on iPhone and iPad. Keep only one simulator running at a time to limit laptop memory use. Shut it down before switching devices.
 
-Build for the iOS simulator using `xcodebuildmcp`; never call raw `xcodebuild` for simulator builds. Run these commands from the repository root. [.xcodebuildmcp/config.yaml](../.xcodebuildmcp/config.yaml) configures the `Luego` project and scheme, Debug configuration, and iPhone 17 simulator.
+Build for the iOS simulator using `xcodebuildmcp`; never call raw `xcodebuild` for simulator builds. Run these commands from the repository root. [.xcodebuildmcp/config.yaml](../.xcodebuildmcp/config.yaml) configures the `Luego` project and scheme and the Debug configuration. It does not name a simulator, because available devices differ between machines. List the simulators on the current machine and pass the UDID of an available iPhone or iPad.
 
 ```bash
-xcodebuildmcp simulator build --use-latest-os
-xcodebuildmcp simulator build-and-run --use-latest-os
-xcodebuildmcp simulator test --scheme LuegoTests --use-latest-os --json '{"extraArgs":["-parallel-testing-enabled","NO"]}'
 xcodebuildmcp simulator list
+xcodebuildmcp simulator build --simulator-id <uuid>
+xcodebuildmcp simulator build-and-run --simulator-id <uuid>
+xcodebuildmcp simulator test --scheme LuegoTests --simulator-id <uuid> --json '{"extraArgs":["-parallel-testing-enabled","NO"]}'
 xcodebuildmcp simulator screenshot --simulator-id <uuid>
 xcodebuildmcp simulator snapshot-ui --simulator-id <uuid>
 ```
