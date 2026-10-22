@@ -6,7 +6,7 @@ import Testing
 struct DiscoveryArticleViewModelTests {
     @Test
     func openingAPostLoadsItsArticle() async throws {
-        let service = ListedDiscoveryService()
+        let service = StubDiscoveryArticleService()
         service.articleResult = .success(.first)
         let (viewModel, _) = try makeViewModel(service: service)
 
@@ -21,7 +21,7 @@ struct DiscoveryArticleViewModelTests {
 
     @Test
     func failedOpenExplainsWhatWentWrong() async throws {
-        let service = ListedDiscoveryService()
+        let service = StubDiscoveryArticleService()
         service.articleResult = .failure(DiscoveryError.contentFetchFailed(URLError(.timedOut)))
         let (viewModel, _) = try makeViewModel(service: service)
 
@@ -34,7 +34,7 @@ struct DiscoveryArticleViewModelTests {
 
     @Test
     func tryingAgainAfterAFailureShowsTheArticle() async throws {
-        let service = ListedDiscoveryService()
+        let service = StubDiscoveryArticleService()
         service.articleResult = .failure(URLError(.timedOut))
         let (viewModel, _) = try makeViewModel(service: service)
         await viewModel.load()
@@ -48,7 +48,7 @@ struct DiscoveryArticleViewModelTests {
 
     @Test(arguments: [false, true])
     func leavingWhileLoadingPublishesNothing(failed: Bool) async throws {
-        let service = ListedDiscoveryService()
+        let service = StubDiscoveryArticleService()
         service.articleResult = failed ? .failure(URLError(.timedOut)) : .success(.first)
         service.suspendsFetches = true
         let (viewModel, _) = try makeViewModel(service: service)
@@ -67,7 +67,7 @@ struct DiscoveryArticleViewModelTests {
 
     @Test
     func previouslySavedPostOpensAsSaved() async throws {
-        let service = ListedDiscoveryService()
+        let service = StubDiscoveryArticleService()
         service.articleResult = .success(.first)
         let (viewModel, articles) = try makeViewModel(service: service)
         _ = try await articles.saveEphemeralArticle(.first)
@@ -79,7 +79,7 @@ struct DiscoveryArticleViewModelTests {
 
     @Test
     func savingAddsTheArticleToTheReadingList() async throws {
-        let service = ListedDiscoveryService()
+        let service = StubDiscoveryArticleService()
         service.articleResult = .success(.first)
         let (viewModel, articles) = try makeViewModel(service: service)
         await viewModel.load()
@@ -90,10 +90,10 @@ struct DiscoveryArticleViewModelTests {
         #expect(try await articles.isArticleSaved(url: DiscoveryPost.first.url))
     }
 
-    private func makeViewModel(service: ListedDiscoveryService, post: DiscoveryPost = .first) throws -> (DiscoveryArticleViewModel, ArticleService) {
+    private func makeViewModel(service: StubDiscoveryArticleService, post: DiscoveryPost = .first) throws -> (DiscoveryArticleViewModel, ArticleService) {
         let store = GRDBArticleStore(database: try AppDatabase(DatabaseQueue()))
         let articles = ArticleService(articleStore: store, contentDataSource: UnusedContentSource(), syncEngineManager: TestSyncEngine())
-        return (DiscoveryArticleViewModel(post: post, discoveryService: service, articleService: articles), articles)
+        return (DiscoveryArticleViewModel(post: post, discoveryArticleService: service, articleService: articles), articles)
     }
 }
 
@@ -112,4 +112,30 @@ private struct UnusedContentSource: ContentDataSourceProtocol {
     func validateURL(_ url: URL) async throws -> URL { url }
     func fetchMetadata(for url: URL, timeout: TimeInterval?) async throws -> ArticleMetadata { throw URLError(.unsupportedURL) }
     func fetchContent(for url: URL, timeout: TimeInterval?, forceRefresh: Bool, skipCache: Bool) async throws -> ArticleContent { throw URLError(.unsupportedURL) }
+}
+
+@MainActor
+private final class StubDiscoveryArticleService: DiscoveryArticleServiceProtocol {
+    var articleResult: Result<EphemeralArticle, Error> = .failure(URLError(.unsupportedURL))
+    private(set) var requestedArticleURLs: [URL] = []
+    var suspendsFetches = false
+    let started = AsyncStream<Void>.makeStream()
+    private var suspension: CheckedContinuation<Void, Never>?
+
+    func fetchArticle(for post: DiscoveryPost) async throws -> EphemeralArticle {
+        requestedArticleURLs.append(post.url)
+        let result = articleResult
+        if suspendsFetches {
+            await withCheckedContinuation { continuation in
+                suspension = continuation
+                started.continuation.yield(())
+            }
+        }
+        return try result.get()
+    }
+
+    func resumeFetch() {
+        suspension?.resume()
+        suspension = nil
+    }
 }

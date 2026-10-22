@@ -10,12 +10,12 @@ final class DiscoveryArticleViewModel {
     var errorMessage: String?
     var isSaved = false
 
-    private let discoveryService: DiscoveryServiceProtocol
+    private let discoveryArticleService: DiscoveryArticleServiceProtocol
     private let articleService: ArticleServiceProtocol
 
-    init(post: DiscoveryPost, discoveryService: DiscoveryServiceProtocol, articleService: ArticleServiceProtocol) {
+    init(post: DiscoveryPost, discoveryArticleService: DiscoveryArticleServiceProtocol, articleService: ArticleServiceProtocol) {
         self.post = post
-        self.discoveryService = discoveryService
+        self.discoveryArticleService = discoveryArticleService
         self.articleService = articleService
     }
 
@@ -24,7 +24,7 @@ final class DiscoveryArticleViewModel {
         defer { isLoading = false }
         errorMessage = nil
         do {
-            let fetchedArticle = try await discoveryService.fetchArticle(for: post)
+            let fetchedArticle = try await discoveryArticleService.fetchArticle(for: post)
             let saved = (try? await articleService.isArticleSaved(url: post.url)) ?? false
             try Task.checkCancellation()
             article = fetchedArticle

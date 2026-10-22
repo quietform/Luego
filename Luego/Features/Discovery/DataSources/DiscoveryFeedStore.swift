@@ -32,14 +32,16 @@ private nonisolated struct StoredFeed: Codable {
     let url: URL
     let title: String?
     let isEnabled: Bool?
+    let postSelection: DiscoveryFeed.PostSelection?
 
     init(_ feed: DiscoveryFeed) {
         url = feed.url
         title = feed.title
         isEnabled = feed.isEnabled
+        postSelection = feed.postSelection
     }
 
     var feed: DiscoveryFeed {
-        DiscoveryFeed(url: url, title: title, isEnabled: isEnabled ?? true)
+        DiscoveryFeed(url: url, title: title, isEnabled: isEnabled ?? true, postSelection: postSelection)
     }
 }

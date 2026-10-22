@@ -40,7 +40,7 @@ struct DiscoveryFeedsView: View {
                         .foregroundStyle(.red)
                 }
             } footer: {
-                Text("Paste a blog's address or its RSS or Atom feed. Posts from feeds that are on appear in Discover.")
+                Text("Paste a blog's address or its RSS or Atom feed.")
             }
 
             Section("Feeds") {
@@ -83,7 +83,7 @@ struct DiscoveryFeedsView: View {
 
 struct DiscoveryFeedRow: View {
     let feed: DiscoveryFeed
-    let onToggle: (Bool) -> Void
+    let onToggle: @MainActor @Sendable (Bool) -> Void
 
     var body: some View {
         Toggle(isOn: Binding(get: { feed.isEnabled }, set: onToggle)) {

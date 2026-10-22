@@ -16,6 +16,18 @@ struct DiscoveryPostCacheTests {
     }
 
     @Test
+    func snapshotSavedBeforePostSelectionStillLoads() async throws {
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let data = Data(#"{"formatVersion":2,"snapshot":{"posts":[{"url":"https://river.luego.test/first","title":"First"}],"fetchedAt":0,"feeds":[{"url":"https://kagi.com/api/v1/smallweb/feed/","title":"Kagi Small Web","isEnabled":true},{"url":"https://blog.luego.test/feed","isEnabled":true}]}}"#.utf8)
+        try data.write(to: directory.appendingPathComponent("river.json"))
+
+        let snapshot = await DiscoveryPostCache(directory: directory).load()
+
+        #expect(snapshot?.posts == [.first])
+        #expect(snapshot?.feeds == [.kagiSmallWeb, DiscoveryFeed(url: URL(string: "https://blog.luego.test/feed")!)])
+    }
+
+    @Test
     func snapshotFromAnOlderFormatIsIgnored() async {
         let older = DiscoveryPostCache(directory: directory, formatVersion: 1)
         await older.save(DiscoveryPostSnapshot(posts: [.first], fetchedAt: .now))

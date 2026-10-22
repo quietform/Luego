@@ -80,10 +80,13 @@ final class DIContainer {
     private lazy var discoveryService: DiscoveryServiceProtocol = {
         DiscoveryService(
             postSource: discoveryPostSource,
-            contentDataSource: contentDataSource,
             postCache: DiscoveryPostCache(storage: fileCache),
             feedStore: DiscoveryFeedStore()
         )
+    }()
+
+    private lazy var discoveryArticleService: DiscoveryArticleServiceProtocol = {
+        DiscoveryArticleService(contentDataSource: contentDataSource)
     }()
 
     private lazy var sharingService: SharingServiceProtocol = {
@@ -148,7 +151,7 @@ final class DIContainer {
     func makeDiscoveryArticleViewModel(post: DiscoveryPost) -> DiscoveryArticleViewModel {
         DiscoveryArticleViewModel(
             post: post,
-            discoveryService: discoveryService,
+            discoveryArticleService: discoveryArticleService,
             articleService: articleService
         )
     }

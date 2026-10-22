@@ -4,9 +4,24 @@ import Testing
 @MainActor
 struct DiscoveryPostSourceTests {
     private let river = URL(string: "https://river.luego.test/feed")!
-    private var riverFeed: DiscoveryFeed { DiscoveryFeed(url: river) }
+    private var riverFeed: DiscoveryFeed { DiscoveryFeed(url: river, postSelection: .all) }
     private let blog = DiscoveryFeed(url: URL(string: "https://blog.luego.test/feed.xml")!)
     private let feeds = StubFeedPosts()
+
+    @Test(arguments: [
+        ("https://river.luego.test/feed", "latestFive", 5),
+        ("https://aggregator.luego.test/feed", "all", 8)
+    ])
+    func feedSelectionControlsHowManyPostsAreListed(address: String, selection: String, expectedCount: Int) async throws {
+        let data = Data("{\"url\":\"\(address)\",\"isEnabled\":true,\"postSelection\":\"\(selection)\"}".utf8)
+        let feed = try JSONDecoder().decode(DiscoveryFeed.self, from: data)
+        feeds.posts[feed.url] = (1...8).map { .dated("post-\($0)", hour: $0) }
+
+        let posts = try await makeSource().fetchPosts(from: [feed])
+
+        #expect(posts.count == expectedCount)
+        #expect(posts.first?.title == "post-8")
+    }
 
     @Test
     func postsFromYourFeedsAreMergedWithTheRiverNewestFirst() async throws {
@@ -88,7 +103,7 @@ struct DiscoveryPostSourceTests {
     }
 
     private func makeSource() -> DiscoveryPostSource {
-        DiscoveryPostSource(feedPosts: feeds, riverURL: river)
+        DiscoveryPostSource(feedPosts: feeds)
     }
 }
 

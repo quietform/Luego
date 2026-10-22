@@ -23,6 +23,18 @@ struct DiscoveryFeedStoreTests {
     }
 
     @Test
+    func savedFeedsKeepTheirPostSelectionOnNextLaunch() {
+        let feeds = [
+            DiscoveryFeed(url: URL(string: "https://aggregator.luego.test/feed")!, postSelection: .all),
+            DiscoveryFeed(url: DiscoveryFeed.kagiSmallWeb.url, isEnabled: false, postSelection: .latestFive)
+        ]
+
+        DiscoveryFeedStore(defaults: defaults).save(feeds)
+
+        #expect(DiscoveryFeedStore(defaults: defaults).feeds() == feeds)
+    }
+
+    @Test
     func feedsSavedBeforeFeedsHadTitlesOrSwitchesStillLoad() {
         defaults.set(Data(#"[{"url":"https:\/\/one.luego.test\/feed"}]"#.utf8), forKey: "discovery_feeds_v1")
 

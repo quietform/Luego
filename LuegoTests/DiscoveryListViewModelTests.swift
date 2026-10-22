@@ -195,8 +195,6 @@ final class ListedDiscoveryService: DiscoveryServiceProtocol {
     private var results: [Result<DiscoveryRefresh, Error>]
     var cached: [DiscoveryPost]?
     private(set) var refreshes: [Bool] = []
-    var articleResult: Result<EphemeralArticle, Error> = .failure(URLError(.unsupportedURL))
-    private(set) var requestedArticleURLs: [URL] = []
     var suspendsFetches = false
     let started = AsyncStream<Void>.makeStream()
     private var suspensions: [Int: CheckedContinuation<Void, Never>] = [:]
@@ -269,10 +267,4 @@ final class ListedDiscoveryService: DiscoveryServiceProtocol {
         suspensions.removeValue(forKey: index)?.resume()
     }
 
-    func fetchArticle(for post: DiscoveryPost) async throws -> EphemeralArticle {
-        requestedArticleURLs.append(post.url)
-        let result = articleResult
-        await suspendIfNeeded()
-        return try result.get()
-    }
 }

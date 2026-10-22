@@ -9,15 +9,10 @@ protocol DiscoveryPostSourceProtocol: Sendable {
 @MainActor
 final class DiscoveryPostSource: DiscoveryPostSourceProtocol {
     private let feedPosts: FeedPostsDataSourceProtocol
-    private let riverURL: URL
     private let postsPerFeed = 5
 
-    init(
-        feedPosts: FeedPostsDataSourceProtocol,
-        riverURL: URL = DiscoveryFeed.kagiSmallWeb.url
-    ) {
+    init(feedPosts: FeedPostsDataSourceProtocol) {
         self.feedPosts = feedPosts
-        self.riverURL = riverURL
     }
 
     func fetchPosts(from feeds: [DiscoveryFeed]) async throws -> [DiscoveryPost] {
@@ -50,7 +45,7 @@ final class DiscoveryPostSource: DiscoveryPostSourceProtocol {
     private func posts(from feed: DiscoveryFeed) async -> Result<[DiscoveryPost], Error> {
         do {
             let posts = try await feedPosts.posts(from: feed.url)
-            return .success(feed.url == riverURL ? posts : Array(newestFirst(posts).prefix(postsPerFeed)))
+            return .success(feed.postSelection == .all ? posts : Array(newestFirst(posts).prefix(postsPerFeed)))
         } catch {
             return .failure(error)
         }

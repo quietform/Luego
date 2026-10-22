@@ -19,10 +19,10 @@ struct SmallWebDiscoveryTests {
     func listedPostOpensAsItsArticle() async throws {
         try await withRiver(path: "river-single") { source, river in
             let content = SmallWebTestContentSource()
-            let service = DiscoveryService(postSource: source, contentDataSource: content, postCache: InMemoryDiscoveryPostCache(), feedStore: InMemoryFeedStore(saved: [river]))
+            let service = DiscoveryService(postSource: source, postCache: InMemoryDiscoveryPostCache(), feedStore: InMemoryFeedStore(saved: [river]))
 
             let post = try #require(try await service.refreshPosts(force: true).listedPosts.first)
-            let article = try await service.fetchArticle(for: post)
+            let article = try await DiscoveryArticleService(contentDataSource: content).fetchArticle(for: post)
 
             #expect(content.requestedURLs == [post.url])
             #expect(article.url == post.url)
@@ -62,10 +62,10 @@ struct SmallWebDiscoveryTests {
     @Test
     func openedArticleKeepsTheFeedImageWhenThePageHasNone() async throws {
         try await withRiver(path: "river-with-images") { source, river in
-            let service = DiscoveryService(postSource: source, contentDataSource: SmallWebTestContentSource(), postCache: InMemoryDiscoveryPostCache(), feedStore: InMemoryFeedStore(saved: [river]))
+            let service = DiscoveryService(postSource: source, postCache: InMemoryDiscoveryPostCache(), feedStore: InMemoryFeedStore(saved: [river]))
 
             let post = try #require(try await service.refreshPosts(force: true).listedPosts.first)
-            let article = try await service.fetchArticle(for: post)
+            let article = try await DiscoveryArticleService(contentDataSource: SmallWebTestContentSource()).fetchArticle(for: post)
 
             #expect(article.thumbnailURL?.absoluteString == "https://river.luego.test/images/photo.jpg")
         }
@@ -197,11 +197,8 @@ struct SmallWebDiscoveryTests {
         let session = URLSession(configuration: configuration)
         defer { session.invalidateAndCancel() }
 
-        let river = DiscoveryFeed(url: URL(string: "https://smallweb.luego.test/\(path)")!)
-        let source = DiscoveryPostSource(
-            feedPosts: FeedPostsDataSource(genericRSSDataSource: GenericRSSDataSource(), session: session),
-            riverURL: river.url
-        )
+        let river = DiscoveryFeed(url: URL(string: "https://smallweb.luego.test/\(path)")!, postSelection: .all)
+        let source = DiscoveryPostSource(feedPosts: FeedPostsDataSource(genericRSSDataSource: GenericRSSDataSource(), session: session))
         try await operation(source, river)
     }
 }

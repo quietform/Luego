@@ -195,7 +195,6 @@ struct DiscoveryServiceRefreshTests {
     private func makeService() -> DiscoveryService {
         DiscoveryService(
             postSource: source,
-            contentDataSource: TestContentDataSource(),
             postCache: cache,
             feedStore: feedStore,
             maxAge: 60 * 60,

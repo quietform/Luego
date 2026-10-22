@@ -128,6 +128,7 @@
 				"Features/Discovery/Models/DiscoveryPost.swift",
 				"Features/Discovery/Models/EphemeralArticle.swift",
 				"Features/Discovery/Services/DiscoveryService.swift",
+				"Features/Discovery/Services/DiscoveryArticleService.swift",
 				"Features/Discovery/Views/DiscoveryArticleViewModel.swift",
 				"Features/Discovery/Views/DiscoveryFeedsViewModel.swift",
 				"Features/Discovery/Views/DiscoveryListViewModel.swift",
