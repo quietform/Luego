@@ -3,6 +3,7 @@ import Foundation
 nonisolated struct DiscoveryPostSnapshot: Codable, Equatable, Sendable {
     let posts: [DiscoveryPost]
     let fetchedAt: Date
+    var feeds: [DiscoveryFeed] = []
 }
 
 @MainActor
@@ -17,7 +18,7 @@ final class DiscoveryPostCache: DiscoveryPostCacheProtocol {
     private let fileURL: URL
     private let formatVersion: Int
 
-    init(storage: FileCache = FileCache(), directory: URL? = nil, formatVersion: Int = 1) {
+    init(storage: FileCache = FileCache(), directory: URL? = nil, formatVersion: Int = 2) {
         self.storage = storage
         self.formatVersion = formatVersion
         let directory = directory ?? (FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first ?? FileManager.default.temporaryDirectory).appendingPathComponent("Discovery")

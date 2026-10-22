@@ -7,10 +7,13 @@ final class DiscoveryListViewModel {
     var posts: [DiscoveryPost] = []
     var isLoading = false
     var errorMessage: String?
+    var hasNoFeedsOn = false
     @ObservationIgnored
     private var loadingRequestID = UUID()
     @ObservationIgnored
     private var hasOpened = false
+    @ObservationIgnored
+    private var feedChangesTask: Task<Void, Never>?
 
     private let discoveryService: DiscoveryServiceProtocol
 
@@ -25,6 +28,16 @@ final class DiscoveryListViewModel {
 
     func refresh() async {
         await load(force: true)
+    }
+
+    func startObservingFeedChanges() {
+        guard feedChangesTask == nil else { return }
+        let feedChanges = discoveryService.feedChanges()
+        feedChangesTask = Task { [weak self] in
+            for await _ in feedChanges {
+                await self?.refreshIfStale()
+            }
+        }
     }
 
     func refreshIfStale() async {
@@ -43,15 +56,22 @@ final class DiscoveryListViewModel {
             posts = cachedPosts
         }
         do {
-            let refreshedPosts = try await discoveryService.refreshPosts(force: force)
+            let refresh = try await discoveryService.refreshPosts(force: force)
             try Task.checkCancellation()
-            if let refreshedPosts {
+            switch refresh {
+            case .posts(let refreshedPosts):
                 posts = refreshedPosts
+            case .unchanged:
+                break
+            case .noFeedsOn:
+                posts = []
             }
+            hasNoFeedsOn = refresh == .noFeedsOn
             errorMessage = nil
         } catch {
             guard !Task.isCancelled else { return }
             errorMessage = error.localizedDescription
+            hasNoFeedsOn = false
         }
     }
 }

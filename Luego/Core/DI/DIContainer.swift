@@ -58,8 +58,8 @@ final class DIContainer {
         GenericRSSDataSource()
     }()
 
-    private lazy var kagiSmallWebDataSource: DiscoveryPostSourceProtocol = {
-        KagiSmallWebDataSource(genericRSSDataSource: genericRSSDataSource)
+    private lazy var discoveryPostSource: DiscoveryPostSourceProtocol = {
+        DiscoveryPostSource(feedPosts: FeedPostsDataSource(genericRSSDataSource: genericRSSDataSource))
     }()
 
     private lazy var articleService: ArticleServiceProtocol = {
@@ -79,9 +79,10 @@ final class DIContainer {
 
     private lazy var discoveryService: DiscoveryServiceProtocol = {
         DiscoveryService(
-            postSource: kagiSmallWebDataSource,
+            postSource: discoveryPostSource,
             contentDataSource: contentDataSource,
-            postCache: DiscoveryPostCache(storage: fileCache)
+            postCache: DiscoveryPostCache(storage: fileCache),
+            feedStore: DiscoveryFeedStore()
         )
     }()
 
@@ -138,6 +139,10 @@ final class DIContainer {
 
     func makeDiscoveryListViewModel() -> DiscoveryListViewModel {
         DiscoveryListViewModel(discoveryService: discoveryService)
+    }
+
+    func makeDiscoveryFeedsViewModel() -> DiscoveryFeedsViewModel {
+        DiscoveryFeedsViewModel(discoveryService: discoveryService)
     }
 
     func makeDiscoveryArticleViewModel(post: DiscoveryPost) -> DiscoveryArticleViewModel {

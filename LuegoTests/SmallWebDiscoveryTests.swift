@@ -4,24 +4,24 @@ import Testing
 @MainActor
 struct SmallWebDiscoveryTests {
     @Test
-    func riverPostsAreListedInFeedOrder() async throws {
-        try await withRiver(path: "river") { source in
-            let posts = try await source.fetchPosts()
+    func riverPostsAreListedNewestFirst() async throws {
+        try await withRiver(path: "river") { source, river in
+            let posts = try await source.fetchPosts(from: [river])
 
-            #expect(posts.map(\.url.absoluteString) == ["https://river.luego.test/posts/first", "https://river.luego.test/posts/second"])
-            #expect(posts.map(\.title) == ["First river post", "Second river post"])
+            #expect(posts.map(\.url.absoluteString) == ["https://river.luego.test/posts/second", "https://river.luego.test/posts/first"])
+            #expect(posts.map(\.title) == ["Second river post", "First river post"])
             #expect(posts.first?.domain == "river.luego.test")
-            #expect(posts.first?.publishedDate == ISO8601DateFormatter().date(from: "2026-10-21T11:40:16Z"))
+            #expect(posts.first?.publishedDate == ISO8601DateFormatter().date(from: "2026-10-21T11:41:18Z"))
         }
     }
 
     @Test
     func listedPostOpensAsItsArticle() async throws {
-        try await withRiver(path: "river-single") { source in
+        try await withRiver(path: "river-single") { source, river in
             let content = SmallWebTestContentSource()
-            let service = DiscoveryService(postSource: source, contentDataSource: content, postCache: InMemoryDiscoveryPostCache())
+            let service = DiscoveryService(postSource: source, contentDataSource: content, postCache: InMemoryDiscoveryPostCache(), feedStore: InMemoryFeedStore(saved: [river]))
 
-            let post = try #require(try await service.refreshPosts(force: true)?.first)
+            let post = try #require(try await service.refreshPosts(force: true).listedPosts.first)
             let article = try await service.fetchArticle(for: post)
 
             #expect(content.requestedURLs == [post.url])
@@ -34,8 +34,8 @@ struct SmallWebDiscoveryTests {
 
     @Test
     func videoPostsAreLeftOutOfTheList() async throws {
-        try await withRiver(path: "river-with-video") { source in
-            let posts = try await source.fetchPosts()
+        try await withRiver(path: "river-with-video") { source, river in
+            let posts = try await source.fetchPosts(from: [river])
 
             #expect(posts.map(\.url.absoluteString) == ["https://river.luego.test/posts/first"])
         }
@@ -43,8 +43,8 @@ struct SmallWebDiscoveryTests {
 
     @Test
     func riverPostCarriesAPlainTextExcerpt() async throws {
-        try await withRiver(path: "river-with-summary") { source in
-            let post = try #require(try await source.fetchPosts().first)
+        try await withRiver(path: "river-with-summary") { source, river in
+            let post = try #require(try await source.fetchPosts(from: [river]).first)
 
             #expect(post.excerpt == "Hello & welcome, friends of the small web.")
         }
@@ -52,8 +52,8 @@ struct SmallWebDiscoveryTests {
 
     @Test
     func firstRealImageInTheSummaryBecomesTheThumbnail() async throws {
-        try await withRiver(path: "river-with-images") { source in
-            let posts = try await source.fetchPosts()
+        try await withRiver(path: "river-with-images") { source, river in
+            let posts = try await source.fetchPosts(from: [river])
 
             #expect(posts.map(\.thumbnailURL?.absoluteString) == ["https://river.luego.test/images/photo.jpg", nil])
         }
@@ -61,10 +61,10 @@ struct SmallWebDiscoveryTests {
 
     @Test
     func openedArticleKeepsTheFeedImageWhenThePageHasNone() async throws {
-        try await withRiver(path: "river-with-images") { source in
-            let service = DiscoveryService(postSource: source, contentDataSource: SmallWebTestContentSource(), postCache: InMemoryDiscoveryPostCache())
+        try await withRiver(path: "river-with-images") { source, river in
+            let service = DiscoveryService(postSource: source, contentDataSource: SmallWebTestContentSource(), postCache: InMemoryDiscoveryPostCache(), feedStore: InMemoryFeedStore(saved: [river]))
 
-            let post = try #require(try await service.refreshPosts(force: true)?.first)
+            let post = try #require(try await service.refreshPosts(force: true).listedPosts.first)
             let article = try await service.fetchArticle(for: post)
 
             #expect(article.thumbnailURL?.absoluteString == "https://river.luego.test/images/photo.jpg")
@@ -73,8 +73,8 @@ struct SmallWebDiscoveryTests {
 
     @Test
     func untitledRiverEntriesAreLeftOutOfTheList() async throws {
-        try await withRiver(path: "river-with-untitled") { source in
-            let posts = try await source.fetchPosts()
+        try await withRiver(path: "river-with-untitled") { source, river in
+            let posts = try await source.fetchPosts(from: [river])
 
             #expect(posts.map(\.title) == ["First river post"])
         }
@@ -82,9 +82,9 @@ struct SmallWebDiscoveryTests {
 
     @Test(arguments: ["unavailable-river", "empty", "json"])
     func unusableRiverReportsWhyNothingIsListed(riverPath: String) async throws {
-        try await withRiver(path: riverPath) { source in
+        try await withRiver(path: riverPath) { source, river in
             do {
-                _ = try await source.fetchPosts()
+                _ = try await source.fetchPosts(from: [river])
                 Issue.record("An unusable River should not produce a list")
             } catch SmallWebError.fetchFailed {
                 #expect(riverPath == "unavailable-river")
@@ -94,21 +94,115 @@ struct SmallWebDiscoveryTests {
         }
     }
 
+    @Test(arguments: [
+        ("https://smallweb.luego.test/blog/feed.xml", "https://smallweb.luego.test/blog/feed.xml"),
+        ("https://smallweb.luego.test/blog", "https://smallweb.luego.test/blog/feed.xml")
+    ])
+    func pastedBlogOrFeedResolvesToTheFeed(pasted: String, feed: String) async throws {
+        try await withFeedPosts { feedPosts in
+            let resolved = try await feedPosts.resolveFeedURL(from: URL(string: pasted)!)
+
+            #expect(resolved.absoluteString == feed)
+        }
+    }
+
+    @Test(arguments: ["feed", "feed.xml", "rss", "rss.xml", "atom.xml", "index.xml"])
+    func pageWithoutAnAdvertisedFeedFindsItsFeedPath(path: String) async throws {
+        try await withFeedPosts { feedPosts in
+            let page = URL(string: "https://\(path.replacingOccurrences(of: ".", with: "-")).fallback.luego.test/")!
+            let resolved = try await feedPosts.resolveFeedURL(from: page)
+
+            #expect(resolved == page.appendingPathComponent(path))
+        }
+    }
+
+    @Test
+    func pastedArticleFindsTheFeedAdvertisedOnItsHomepage() async throws {
+        try await withFeedPosts { feedPosts in
+            let resolved = try await feedPosts.resolveFeedURL(from: URL(string: "https://homepage.luego.test/posts/article?ref=email#text")!)
+
+            #expect(resolved.absoluteString == "https://homepage.luego.test/updates/latest.xml")
+        }
+    }
+
+    @Test
+    func pastedArticleFindsACommonFeedPathAtTheSiteRoot() async throws {
+        try await withFeedPosts { feedPosts in
+            let resolved = try await feedPosts.resolveFeedURL(from: URL(string: "https://feed-xml.fallback.luego.test/posts/article?ref=email#text")!)
+
+            #expect(resolved.absoluteString == "https://feed-xml.fallback.luego.test/feed.xml")
+        }
+    }
+
+    @Test
+    func redirectedPageResolvesItsFeedLinkFromTheFinalAddress() async throws {
+        try await withFeedPosts { feedPosts in
+            let resolved = try await feedPosts.resolveFeedURL(from: URL(string: "https://redirect.luego.test/start")!)
+
+            #expect(resolved.absoluteString == "https://redirect.luego.test/blog/updates.atom")
+        }
+    }
+
+    @Test
+    func redirectedPageFindsACommonFeedPathUnderTheFinalAddress() async throws {
+        try await withFeedPosts { feedPosts in
+            let resolved = try await feedPosts.resolveFeedURL(from: URL(string: "https://redirect.luego.test/moved")!)
+
+            #expect(resolved.absoluteString == "https://redirect.luego.test/journal/feed")
+        }
+    }
+
+    @Test
+    func pageWithoutAFeedIsRejected() async throws {
+        try await withFeedPosts { feedPosts in
+            await #expect(throws: DiscoveryFeedError.noFeedFound) {
+                try await feedPosts.resolveFeedURL(from: URL(string: "https://smallweb.luego.test/plain-page")!)
+            }
+        }
+    }
+
+    @Test
+    func failedHTTPResponseIsNotAcceptedAsAFeed() async throws {
+        try await withFeedPosts { feedPosts in
+            await #expect(throws: DiscoveryFeedError.noFeedFound) {
+                try await feedPosts.resolveFeedURL(from: URL(string: "https://http-error.luego.test/")!)
+            }
+        }
+    }
+
+    @Test
+    func unreachableAddressSaysSo() async throws {
+        try await withFeedPosts { feedPosts in
+            await #expect(throws: DiscoveryFeedError.unreachable) {
+                try await feedPosts.resolveFeedURL(from: URL(string: "https://smallweb.luego.test/offline")!)
+            }
+        }
+    }
+
+    private func withFeedPosts(operation: (FeedPostsDataSource) async throws -> Void) async throws {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [SmallWebFeedFixture.self]
+        let session = URLSession(configuration: configuration)
+        defer { session.invalidateAndCancel() }
+
+        try await operation(FeedPostsDataSource(genericRSSDataSource: GenericRSSDataSource(), session: session))
+    }
+
     private func withRiver(
         path: String,
-        operation: (KagiSmallWebDataSource) async throws -> Void
+        operation: (DiscoveryPostSource, DiscoveryFeed) async throws -> Void
     ) async throws {
         let configuration = URLSessionConfiguration.ephemeral
         configuration.protocolClasses = [SmallWebFeedFixture.self]
         let session = URLSession(configuration: configuration)
         defer { session.invalidateAndCancel() }
 
-        let source = KagiSmallWebDataSource(
-            genericRSSDataSource: GenericRSSDataSource(),
-            session: session,
-            riverURL: URL(string: "https://smallweb.luego.test/\(path)")!
+        let river = DiscoveryFeed(url: URL(string: "https://smallweb.luego.test/\(path)")!)
+        let source = DiscoveryPostSource(
+            feedPosts: FeedPostsDataSource(genericRSSDataSource: GenericRSSDataSource(), session: session),
+            riverURL: river.url
         )
-        try await operation(source)
+        try await operation(source, river)
     }
 }
 
@@ -137,6 +231,59 @@ private nonisolated final class SmallWebFeedFixture: URLProtocol, @unchecked Sen
 
     override func startLoading() {
         let body: String
+        if request.url?.host() == "redirect.luego.test" {
+            switch request.url?.path {
+            case "/start", "/moved":
+                let destination = URL(string: request.url?.path == "/start" ? "https://redirect.luego.test/blog/" : "https://redirect.luego.test/journal/")!
+                let redirect = HTTPURLResponse(url: request.url!, statusCode: 301, httpVersion: nil, headerFields: ["Location": destination.absoluteString])!
+                client?.urlProtocol(self, wasRedirectedTo: URLRequest(url: destination), redirectResponse: redirect)
+            case "/blog":
+                respond(with: #"<html><head><link rel="alternate" type="application/atom+xml" href="updates.atom"></head></html>"#)
+            case "/journal":
+                respond(with: "<html><body>A journal without a feed link</body></html>")
+            case "/journal/feed":
+                respond(with: "<rss><channel><item><title>Journal post</title><link>https://redirect.luego.test/journal/post</link></item></channel></rss>")
+            case "/blog/updates.atom":
+                respond(with: "<feed><entry><title>Blog post</title><link href=\"https://redirect.luego.test/blog/post\" /></entry></feed>")
+            default:
+                client?.urlProtocol(self, didFailWithError: URLError(.fileDoesNotExist))
+            }
+            return
+        }
+        if request.url?.host() == "http-error.luego.test" {
+            if request.url?.path == "/" {
+                respond(with: "<html><body>A blog</body></html>")
+            } else {
+                respond(with: "<rss><channel><item><title>Unavailable</title><link>https://http-error.luego.test/post</link></item></channel></rss>", statusCode: 404)
+            }
+            return
+        }
+        if request.url?.host() == "homepage.luego.test" {
+            switch request.url?.path {
+            case "/":
+                respond(with: #"<html><head><link rel="alternate" type="application/atom+xml" href="/updates/latest.xml"></head></html>"#)
+            case "/updates/latest.xml":
+                respond(with: "<feed><entry><title>Blog post</title><link href=\"https://homepage.luego.test/posts/article\" /></entry></feed>")
+            case "/posts/article":
+                respond(with: "<html><body>An article without a feed link</body></html>")
+            default:
+                client?.urlProtocol(self, didFailWithError: URLError(.fileDoesNotExist))
+            }
+            return
+        }
+        if let url = request.url, url.host()?.hasSuffix(".fallback.luego.test") == true {
+            let feedPath = ["feed", "feed.xml", "rss", "rss.xml", "atom.xml", "index.xml"].first {
+                url.host() == "\($0.replacingOccurrences(of: ".", with: "-")).fallback.luego.test"
+            }
+            if url.path == "/" || url.path == "/posts/article" {
+                respond(with: "<html><body>A blog without a feed link</body></html>")
+            } else if url.path == "/\(feedPath ?? "")" {
+                respond(with: "<rss><channel><item><title>Blog post</title><link>https://smallweb.luego.test/post</link></item></channel></rss>")
+            } else {
+                client?.urlProtocol(self, didFailWithError: URLError(.fileDoesNotExist))
+            }
+            return
+        }
         switch request.url?.path {
         case "/river":
             body = """
@@ -189,6 +336,20 @@ private nonisolated final class SmallWebFeedFixture: URLProtocol, @unchecked Sen
             <updated>2026-10-21T11:40:16+00:00</updated><link href="https://river.luego.test/posts/first" /></entry>
             </feed>
             """
+        case "/blog":
+            body = """
+            <html><head><title>A blog</title>
+            <link rel="alternate" type="application/rss+xml" title="A blog" href="/blog/feed.xml">
+            </head><body>Hello</body></html>
+            """
+        case "/blog/feed.xml":
+            body = """
+            <rss><channel><title>A blog</title>
+            <item><title>Blog post</title><link>https://smallweb.luego.test/blog/post</link></item>
+            </channel></rss>
+            """
+        case "/plain-page":
+            body = "<html><head><title>No feed here</title></head><body>Hello</body></html>"
         case "/empty":
             body = "<rss><channel><title>Empty blog</title></channel></rss>"
         case "/json":
@@ -197,12 +358,23 @@ private nonisolated final class SmallWebFeedFixture: URLProtocol, @unchecked Sen
             client?.urlProtocol(self, didFailWithError: URLError(.cannotConnectToHost))
             return
         }
+        respond(with: body)
+    }
+
+    private func respond(with body: String, statusCode: Int = 200) {
         let data = Data(body.utf8)
-        let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: ["Content-Type": "application/atom+xml"])!
+        let response = HTTPURLResponse(url: request.url!, statusCode: statusCode, httpVersion: nil, headerFields: ["Content-Type": "application/atom+xml"])!
         client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
         client?.urlProtocol(self, didLoad: data)
         client?.urlProtocolDidFinishLoading(self)
     }
 
     override func stopLoading() {}
+}
+
+private extension DiscoveryRefresh {
+    var listedPosts: [DiscoveryPost] {
+        guard case .posts(let posts) = self else { return [] }
+        return posts
+    }
 }

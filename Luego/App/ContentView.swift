@@ -257,6 +257,7 @@ struct ContentView: View {
     private func initializeArticleListViewModelIfNeeded() {
         if discoveryListViewModel == nil, let diContainer {
             discoveryListViewModel = diContainer.makeDiscoveryListViewModel()
+            discoveryListViewModel?.startObservingFeedChanges()
         }
 
         if articleListViewModel == nil, let diContainer {
