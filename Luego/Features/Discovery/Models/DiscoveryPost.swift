@@ -1,6 +1,6 @@
 import Foundation
 
-struct DiscoveryPost: Hashable, Identifiable, Sendable {
+nonisolated struct DiscoveryPost: Codable, Hashable, Identifiable, Sendable {
     let url: URL
     let title: String
     let publishedDate: Date?

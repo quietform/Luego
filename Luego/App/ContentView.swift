@@ -274,7 +274,13 @@ struct ContentView: View {
     private func handleScenePhaseChange(_ phase: ScenePhase) async {
         initializeArticleListViewModelIfNeeded()
         guard phase == .active, let articleListViewModel else { return }
+        async let discoveryRefresh: Void = refreshDiscoveryIfStale()
         await articleListViewModel.refreshOnForeground()
+        await discoveryRefresh
+    }
+
+    private func refreshDiscoveryIfStale() async {
+        await discoveryListViewModel?.refreshIfStale()
     }
 
     private func handleIncomingURL(_ url: URL) async {

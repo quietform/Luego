@@ -80,7 +80,8 @@ final class DIContainer {
     private lazy var discoveryService: DiscoveryServiceProtocol = {
         DiscoveryService(
             postSource: kagiSmallWebDataSource,
-            contentDataSource: contentDataSource
+            contentDataSource: contentDataSource,
+            postCache: DiscoveryPostCache(storage: fileCache)
         )
     }()
 

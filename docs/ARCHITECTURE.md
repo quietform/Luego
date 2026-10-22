@@ -65,9 +65,11 @@ Services receive [ContentDataSource](../Luego/Core/DataSources/ContentDataSource
 | --- | --- |
 | [ReadingList](../Luego/Features/ReadingList/) | Save, list, favorite, archive, delete, and import/export article URLs |
 | [Reader](../Luego/Features/Reader/) | Fetch and save article content, and persist reading position |
-| [Discovery](../Luego/Features/Discovery/) | List recent posts from the Kagi Small Web River feed; open a post in memory until it is saved |
+| [Discovery](../Luego/Features/Discovery/) | List recent posts from the Kagi Small Web River feed, kept in a cached snapshot; open a post in memory until it is saved |
 | [Sharing](../Luego/Features/Sharing/) | Queue shared URLs, import them into the app, and construct deep links |
 | [Settings](../Luego/Features/Settings/) | Preferences, parser updates, repair sync, import/export UI, and diagnostics |
+
+`DiscoveryService` owns the River freshness policy. `DiscoveryPostCache` stores the last fetched posts and fetch time as one versioned JSON snapshot in Caches through `FileCache`; a format mismatch or unreadable file is a cache miss. Opening Discovery shows the snapshot, then refreshes it if it is older than an hour. Returning to the app does the same once Discovery has been opened, and pull-to-refresh always fetches. Overlapping refreshes share one fetch, and a failed fetch leaves the snapshot and listed posts in place.
 
 Adding a URL saves metadata, the available word count, and any body already returned by the parser or API, so the list can show an excerpt before the reader opens. `ReaderService` fetches the body when needed, reloads the current article from storage, and saves the content. Reader load, retry, and refresh requests run directly in the view's task. A request identity prevents an older request's cleanup from clearing a newer request's loading state. Workers and storage follow their normal result and error contracts, so completed content may still be cached or persisted after the reader leaves. The reader and Discovery discard cancelled requests before publishing results or errors, and Discovery does not retry a cancelled view request. URLSession and GRDB can still return their own cancellation errors; those propagate without extra worker policy. GRDB transactions preserve atomicity when a write fails or is cancelled. Saving a Discovery article includes its available content. Add, sharing, and plain-text import use `ArticleService.addArticle`, which forwards the store’s atomic save result to keep sharing and import counts accurate under concurrent saves.
 

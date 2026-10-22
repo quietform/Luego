@@ -9,11 +9,11 @@ struct DiscoveryListView: View {
         Group {
             if !viewModel.posts.isEmpty {
                 DiscoveryPostList(posts: viewModel.posts, selection: selection) {
-                    await viewModel.loadPosts()
+                    await viewModel.refresh()
                 }
             } else if let error = viewModel.errorMessage, !viewModel.isLoading {
                 DiscoveryListErrorView(message: error) {
-                    Task { await viewModel.loadPosts() }
+                    Task { await viewModel.refresh() }
                 }
             } else {
                 KagiSmallWebLoadingView(
@@ -25,9 +25,7 @@ struct DiscoveryListView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .task {
-            if viewModel.posts.isEmpty {
-                await viewModel.loadPosts()
-            }
+            await viewModel.loadPosts()
         }
     }
 }

@@ -4,6 +4,7 @@ enabledWorkflows:
   - logging
   - debugging
   - project-discovery
+  - ui-automation
 sessionDefaults:
   projectPath: Luego.xcodeproj
   scheme: Luego

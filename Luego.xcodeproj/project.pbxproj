@@ -119,6 +119,7 @@
 				"Core/UI/Readers/ReaderImageDecoder.swift",
 				"Core/UI/Readers/ReaderImageLoader.swift",
 				"Features/Discovery/DataSources/DiscoveryLegacyStorage.swift",
+				"Features/Discovery/DataSources/DiscoveryPostCache.swift",
 				"Features/Discovery/DataSources/GenericRSSDataSource.swift",
 				"Features/Discovery/DataSources/KagiSmallWebDataSource.swift",
 				"Features/Discovery/Models/DiscoveryPost.swift",

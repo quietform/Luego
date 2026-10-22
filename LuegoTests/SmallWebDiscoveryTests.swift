@@ -19,9 +19,9 @@ struct SmallWebDiscoveryTests {
     func listedPostOpensAsItsArticle() async throws {
         try await withRiver(path: "river-single") { source in
             let content = SmallWebTestContentSource()
-            let service = DiscoveryService(postSource: source, contentDataSource: content)
+            let service = DiscoveryService(postSource: source, contentDataSource: content, postCache: InMemoryDiscoveryPostCache())
 
-            let post = try #require(try await service.fetchPosts().first)
+            let post = try #require(try await service.refreshPosts(force: true)?.first)
             let article = try await service.fetchArticle(for: post)
 
             #expect(content.requestedURLs == [post.url])
@@ -62,9 +62,9 @@ struct SmallWebDiscoveryTests {
     @Test
     func openedArticleKeepsTheFeedImageWhenThePageHasNone() async throws {
         try await withRiver(path: "river-with-images") { source in
-            let service = DiscoveryService(postSource: source, contentDataSource: SmallWebTestContentSource())
+            let service = DiscoveryService(postSource: source, contentDataSource: SmallWebTestContentSource(), postCache: InMemoryDiscoveryPostCache())
 
-            let post = try #require(try await service.fetchPosts().first)
+            let post = try #require(try await service.refreshPosts(force: true)?.first)
             let article = try await service.fetchArticle(for: post)
 
             #expect(article.thumbnailURL?.absoluteString == "https://river.luego.test/images/photo.jpg")

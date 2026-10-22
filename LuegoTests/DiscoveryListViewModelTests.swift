@@ -38,6 +38,59 @@ struct DiscoveryListViewModelTests {
         #expect(viewModel.posts == [.first])
     }
 
+    @Test
+    func savedPostsAppearBeforeTheRefreshFinishes() async {
+        let service = ListedDiscoveryService(results: [.success([.second])])
+        service.cached = [.first]
+        service.suspendsFetches = true
+        let viewModel = DiscoveryListViewModel(discoveryService: service)
+        var started = service.started.stream.makeAsyncIterator()
+
+        let load = Task { await viewModel.loadPosts() }
+        _ = await started.next()
+
+        #expect(viewModel.posts == [.first])
+
+        service.resumeFetch()
+        await load.value
+        #expect(viewModel.posts == [.second])
+    }
+
+    @Test
+    func pullToRefreshFetchesEvenWhenTheListIsFresh() async {
+        let service = ListedDiscoveryService(results: [.success(nil), .success([.second])])
+        let viewModel = DiscoveryListViewModel(discoveryService: service)
+
+        await viewModel.loadPosts()
+        await viewModel.refresh()
+
+        #expect(service.refreshes == [false, true])
+        #expect(viewModel.posts == [.second])
+    }
+
+    @Test
+    func returningToTheAppRefreshesAListAlreadyShown() async {
+        let service = ListedDiscoveryService(results: [.success([.first]), .success([.second])])
+        let viewModel = DiscoveryListViewModel(discoveryService: service)
+
+        await viewModel.loadPosts()
+        await viewModel.refreshIfStale()
+
+        #expect(service.refreshes == [false, false])
+        #expect(viewModel.posts == [.second])
+    }
+
+    @Test
+    func returningToTheAppLeavesDiscoveryAloneUntilItIsOpened() async {
+        let service = ListedDiscoveryService(results: [.success([.first])])
+        let viewModel = DiscoveryListViewModel(discoveryService: service)
+
+        await viewModel.refreshIfStale()
+
+        #expect(service.refreshes.isEmpty)
+        #expect(viewModel.posts.isEmpty)
+    }
+
     @Test(arguments: [false, true])
     func cancelledLoadPublishesNothing(failed: Bool) async {
         let service = ListedDiscoveryService(results: [failed ? .failure(URLError(.timedOut)) : .success([.first])])
@@ -87,7 +140,9 @@ extension DiscoveryPost {
 
 @MainActor
 final class ListedDiscoveryService: DiscoveryServiceProtocol {
-    private var results: [Result<[DiscoveryPost], Error>]
+    private var results: [Result<[DiscoveryPost]?, Error>]
+    var cached: [DiscoveryPost]?
+    private(set) var refreshes: [Bool] = []
     var articleResult: Result<EphemeralArticle, Error> = .failure(URLError(.unsupportedURL))
     private(set) var requestedArticleURLs: [URL] = []
     var suspendsFetches = false
@@ -95,11 +150,16 @@ final class ListedDiscoveryService: DiscoveryServiceProtocol {
     private var suspensions: [Int: CheckedContinuation<Void, Never>] = [:]
     private var fetchCount = 0
 
-    init(results: [Result<[DiscoveryPost], Error>] = []) {
+    init(results: [Result<[DiscoveryPost]?, Error>] = []) {
         self.results = results
     }
 
-    func fetchPosts() async throws -> [DiscoveryPost] {
+    func cachedPosts() async -> [DiscoveryPost]? {
+        cached
+    }
+
+    func refreshPosts(force: Bool) async throws -> [DiscoveryPost]? {
+        refreshes.append(force)
         let result = results.removeFirst()
         await suspendIfNeeded()
         return try result.get()
