@@ -45,7 +45,9 @@ final class KagiSmallWebDataSource: DiscoveryPostSourceProtocol {
         let posts = await genericRSSDataSource.parse(data)
             .filter { !Self.isVideoURL($0.postURL) }
             .compactMap { entry in
-                entry.title.map { DiscoveryPost(url: entry.postURL, title: $0, publishedDate: entry.publishedDate) }
+                entry.title.map {
+                    DiscoveryPost(url: entry.postURL, title: $0, publishedDate: entry.publishedDate, excerpt: entry.excerpt, thumbnailURL: entry.imageURL)
+                }
             }
         guard !posts.isEmpty else { throw SmallWebError.noArticlesAvailable }
         return posts

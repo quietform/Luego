@@ -42,6 +42,36 @@ struct SmallWebDiscoveryTests {
     }
 
     @Test
+    func riverPostCarriesAPlainTextExcerpt() async throws {
+        try await withRiver(path: "river-with-summary") { source in
+            let post = try #require(try await source.fetchPosts().first)
+
+            #expect(post.excerpt == "Hello & welcome, friends of the small web.")
+        }
+    }
+
+    @Test
+    func firstRealImageInTheSummaryBecomesTheThumbnail() async throws {
+        try await withRiver(path: "river-with-images") { source in
+            let posts = try await source.fetchPosts()
+
+            #expect(posts.map(\.thumbnailURL?.absoluteString) == ["https://river.luego.test/images/photo.jpg", nil])
+        }
+    }
+
+    @Test
+    func openedArticleKeepsTheFeedImageWhenThePageHasNone() async throws {
+        try await withRiver(path: "river-with-images") { source in
+            let service = DiscoveryService(postSource: source, contentDataSource: SmallWebTestContentSource())
+
+            let post = try #require(try await service.fetchPosts().first)
+            let article = try await service.fetchArticle(for: post)
+
+            #expect(article.thumbnailURL?.absoluteString == "https://river.luego.test/images/photo.jpg")
+        }
+    }
+
+    @Test
     func untitledRiverEntriesAreLeftOutOfTheList() async throws {
         try await withRiver(path: "river-with-untitled") { source in
             let posts = try await source.fetchPosts()
@@ -131,6 +161,25 @@ private nonisolated final class SmallWebFeedFixture: URLProtocol, @unchecked Sen
             <entry><title type="text"> </title><link href="https://river.luego.test/posts/untitled" /></entry>
             <entry><link href="https://river.luego.test/posts/no-title" /></entry>
             <entry><title type="text">First river post</title><link href="https://river.luego.test/posts/first" /></entry>
+            </feed>
+            """
+        case "/river-with-summary":
+            body = """
+            <feed xmlns="http://www.w3.org/2005/Atom"><title type="text">Kagi Small Web</title>
+            <entry><title type="text">First river post</title><link href="https://river.luego.test/posts/first" />
+            <summary type="html">&lt;p&gt;Hello &amp;amp; welcome,&lt;/p&gt;
+              &lt;p&gt;friends&amp;#160;of the&lt;br /&gt;small web.&lt;/p&gt;</summary></entry>
+            </feed>
+            """
+        case "/river-with-images":
+            body = """
+            <feed xmlns="http://www.w3.org/2005/Atom"><title type="text">Kagi Small Web</title>
+            <entry><title type="text">Pictured post</title><link href="https://river.luego.test/posts/pictured" />
+            <summary type="html">&lt;img src="https://stats.luego.test/pixel.gif" width="1" height="1" /&gt;
+              &lt;img src="data:image/gif;base64,R0lGOD" /&gt;
+              &lt;p&gt;Look:&lt;/p&gt;&lt;img alt="Photo" src="https://river.luego.test/images/photo.jpg" width="640" /&gt;</summary></entry>
+            <entry><title type="text">Plain post</title><link href="https://river.luego.test/posts/plain" />
+            <summary type="html">&lt;p&gt;No pictures here.&lt;/p&gt;</summary></entry>
             </feed>
             """
         case "/river-single":

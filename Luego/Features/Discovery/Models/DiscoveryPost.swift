@@ -4,6 +4,8 @@ struct DiscoveryPost: Hashable, Identifiable, Sendable {
     let url: URL
     let title: String
     let publishedDate: Date?
+    var excerpt: String?
+    var thumbnailURL: URL?
 
     var id: URL { url }
 

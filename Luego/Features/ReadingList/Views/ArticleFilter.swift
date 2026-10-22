@@ -12,7 +12,7 @@ enum ArticleFilter: CaseIterable, Hashable {
         case .readingList: "Reading List"
         case .favorites: "Favorites"
         case .archived: "Archived"
-        case .discovery: "Discovery"
+        case .discovery: "Discover"
         }
     }
 
@@ -21,7 +21,7 @@ enum ArticleFilter: CaseIterable, Hashable {
         case .readingList: "All Articles"
         case .favorites: "Favourites"
         case .archived: "Archived"
-        case .discovery: "Discovery"
+        case .discovery: "Discover"
         }
     }
 

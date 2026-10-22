@@ -9,7 +9,6 @@ struct ArticleListPane: View {
     let onEmptyStateAnimationConsumed: () -> Void
     @Environment(\.diContainer) private var diContainer
     @Environment(SyncStatusObserver.self) private var syncStatusObserver
-    @State private var showingSettings = false
 
     private var filteredArticles: [Article] {
         viewModel.filteredArticles(for: filter)
@@ -25,43 +24,23 @@ struct ArticleListPane: View {
     }
 
     var body: some View {
-        AddArticlePresenter(viewModel: viewModel) { addArticleButton in
-            Group {
-                if filteredArticles.isEmpty {
-                    emptyState(for: viewModel)
-                } else {
-                    SelectableArticleList(
-                        articles: filteredArticles,
-                        viewModel: viewModel,
-                        selection: $selectedArticle,
-                        filter: filter,
-                        onRefresh: { await viewModel.refreshArticles() }
-                    )
-                }
-            }
-            .background(Color.regularPanelBackground)
-            .appNavigationStyle(.contentLargeTitle)
-            .navigationTitle(filter.navigationTitle)
-            .toolbar {
-                ToolbarItemGroup(placement: .primaryAction) {
-                    addArticleButton
-
-                    Button {
-                        showingSettings = true
-                    } label: {
-                        Image(systemName: "gearshape")
-                    }
-                    .accessibilityIdentifier(ReadingListAccessibilityID.settingsButton)
-                }
+        Group {
+            if filteredArticles.isEmpty {
+                emptyState(for: viewModel)
+            } else {
+                SelectableArticleList(
+                    articles: filteredArticles,
+                    viewModel: viewModel,
+                    selection: $selectedArticle,
+                    filter: filter,
+                    onRefresh: { await viewModel.refreshArticles() }
+                )
             }
         }
-        .sheet(isPresented: $showingSettings) {
-            if let container = diContainer {
-                NavigationStack {
-                    SettingsView(viewModel: container.makeSettingsViewModel())
-                }
-            }
-        }
+        .background(Color.regularPanelBackground)
+        .appNavigationStyle(.contentLargeTitle)
+        .navigationTitle(filter.navigationTitle)
+        .articleListActions(viewModel: viewModel)
         .onChange(of: filteredArticleIDs) { _, newIDs in
             guard let selectedArticle else { return }
             if !newIDs.contains(selectedArticle.id) {

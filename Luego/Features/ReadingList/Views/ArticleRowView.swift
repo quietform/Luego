@@ -9,31 +9,28 @@ struct ArticleRowView: View {
     }
 
     private var iOSRowLayout: some View {
-        HStack(alignment: .top, spacing: 12) {
-            ArticleThumbnailView(url: article.thumbnailURL)
-
-            VStack(alignment: .leading, spacing: 4) {
-                ArticleTitleRow(
-                    article: article,
-                    title: article.title,
-                    excerpt: article.excerpt,
-                    isFavorite: article.isFavorite,
-                    isSelected: isSelected
-                )
-
-                ArticleMetadataRow(
-                    article: article,
-                    domain: article.domain,
-                    readPercentage: Int(article.readPosition * 100),
-                    formattedDate: formatDisplayDate(article),
-                    estimatedReadingTime: article.estimatedReadingTime,
-                    showReadingTime: article.content != nil
-                )
+        ArticleRowLayout(
+            thumbnailURL: article.thumbnailURL,
+            title: article.title,
+            excerpt: article.excerpt,
+            isSelected: isSelected
+        ) {
+            if article.isFavorite {
+                Image(systemName: "heart.fill")
+                    .font(.app(.listMetadata))
+                    .foregroundStyle(.pink)
+                    .accessibilityIdentifier(ReadingListAccessibilityID.favoriteBadge(article))
             }
+        } metadata: {
+            ArticleMetadataRow(
+                article: article,
+                domain: article.domain,
+                readPercentage: Int(article.readPosition * 100),
+                formattedDate: formatDisplayDate(article),
+                estimatedReadingTime: article.estimatedReadingTime,
+                showReadingTime: article.content != nil
+            )
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.vertical, 6)
-        .contentShape(Rectangle())
         .accessibilityIdentifier(ReadingListAccessibilityID.row(article))
     }
 
@@ -50,42 +47,6 @@ struct ArticleRowView: View {
             return DateFormatters.weekday.string(from: displayDate)
         } else {
             return DateFormatters.shortDate.string(from: displayDate)
-        }
-    }
-}
-
-struct ArticleTitleRow: View {
-    let article: Article
-    let title: String
-    let excerpt: String
-    let isFavorite: Bool
-    var isSelected: Bool = false
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 6) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.app(.listTitle))
-                    .foregroundStyle(isSelected ? Color.regularSelectionInk : Color.primary)
-                    .lineLimit(2)
-                    .lineSpacing(1)
-
-                if !excerpt.isEmpty {
-                    Text(excerpt)
-                        .font(.app(.listExcerpt))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-            }
-
-            Spacer(minLength: 4)
-
-            if isFavorite {
-                Image(systemName: "heart.fill")
-                    .font(.app(.listMetadata))
-                    .foregroundStyle(.pink)
-                    .accessibilityIdentifier(ReadingListAccessibilityID.favoriteBadge(article))
-            }
         }
     }
 }
@@ -127,62 +88,5 @@ struct ArticleMetadataRow: View {
         }
         .font(.app(.listMetadata))
         .foregroundStyle(.tertiary)
-    }
-}
-
-struct ArticleThumbnailView: View {
-    let url: URL?
-
-    private let thumbnailSize: CGFloat = 72
-
-    private var secureURL: URL? {
-        guard let url else { return nil }
-        guard url.scheme == "http" else { return url }
-        var components = URLComponents(url: url, resolvingAgainstBaseURL: false)
-        components?.scheme = "https"
-        return components?.url ?? url
-    }
-
-    var body: some View {
-        thumbnailContent
-            .frame(width: thumbnailSize, height: thumbnailSize)
-            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .strokeBorder(Color.primary.opacity(0.06), lineWidth: 0.5)
-            }
-            .shadow(color: .black.opacity(0.08), radius: 4, x: 0, y: 2)
-    }
-
-    @ViewBuilder
-    private var thumbnailContent: some View {
-        if let url = secureURL {
-            AsyncImage(url: url) { phase in
-                switch phase {
-                case .empty:
-                    placeholderView
-                case .success(let image):
-                    image
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                case .failure:
-                    placeholderView
-                @unknown default:
-                    placeholderView
-                }
-            }
-        } else {
-            placeholderView
-        }
-    }
-
-    private var placeholderView: some View {
-        Rectangle()
-            .fill(Color.secondary.opacity(0.1))
-            .overlay {
-                Image(systemName: "doc.richtext")
-                    .font(.system(size: 20, weight: .light))
-                    .foregroundStyle(.quaternary)
-            }
     }
 }

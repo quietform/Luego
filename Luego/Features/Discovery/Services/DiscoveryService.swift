@@ -44,7 +44,7 @@ final class DiscoveryService: DiscoveryServiceProtocol {
                 url: post.url,
                 title: post.title,
                 content: content.content,
-                thumbnailURL: content.thumbnailURL,
+                thumbnailURL: content.thumbnailURL ?? post.thumbnailURL,
                 publishedDate: content.publishedDate,
                 feedTitle: post.domain
             )

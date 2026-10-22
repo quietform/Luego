@@ -3,7 +3,6 @@ import SwiftUI
 struct ArticleListView: View {
     @Environment(\.diContainer) private var diContainer
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @State private var showingSettings = false
     let viewModel: ArticleListViewModel
     let filter: ArticleFilter
     let shouldAnimateEmptyStateOnFirstAppearance: Bool
@@ -29,38 +28,18 @@ struct ArticleListView: View {
     }
 
     var body: some View {
-        AddArticlePresenter(viewModel: viewModel) { addArticleButton in
-            ArticleListContent(
-                articles: filteredArticles,
-                viewModel: viewModel,
-                diContainer: diContainer,
-                filter: filter,
-                onDiscover: onDiscover,
-                shouldAnimateEmptyStateOnFirstAppearance: shouldAnimateEmptyStateOnFirstAppearance,
-                onEmptyStateAnimationConsumed: onEmptyStateAnimationConsumed
-            )
-            .navigationTitle(navigationTitle)
-            .appNavigationStyle(horizontalSizeClass == .compact ? .largeTransparent : .largePanel)
-            .toolbar {
-                ToolbarItemGroup(placement: .primaryAction) {
-                    addArticleButton
-
-                    Button {
-                        showingSettings = true
-                    } label: {
-                        Image(systemName: "gearshape")
-                    }
-                    .accessibilityIdentifier(ReadingListAccessibilityID.settingsButton)
-                }
-            }
-        }
-        .sheet(isPresented: $showingSettings) {
-            if let container = diContainer {
-                NavigationStack {
-                    SettingsView(viewModel: container.makeSettingsViewModel())
-                }
-            }
-        }
+        ArticleListContent(
+            articles: filteredArticles,
+            viewModel: viewModel,
+            diContainer: diContainer,
+            filter: filter,
+            onDiscover: onDiscover,
+            shouldAnimateEmptyStateOnFirstAppearance: shouldAnimateEmptyStateOnFirstAppearance,
+            onEmptyStateAnimationConsumed: onEmptyStateAnimationConsumed
+        )
+        .navigationTitle(navigationTitle)
+        .appNavigationStyle(horizontalSizeClass == .compact ? .largeTransparent : .largePanel)
+        .articleListActions(viewModel: viewModel)
     }
 
     private var navigationTitle: String {

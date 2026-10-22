@@ -68,39 +68,6 @@ struct DiscoveryPostList: View {
     }
 }
 
-struct DiscoveryPostRow: View {
-    let post: DiscoveryPost
-    var isSelected = false
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(post.title)
-                .font(.app(.listTitle))
-                .foregroundStyle(isSelected ? Color.regularSelectionInk : Color.primary)
-                .lineLimit(2)
-                .lineSpacing(1)
-
-            HStack(spacing: 0) {
-                Text(post.domain)
-                    .lineLimit(1)
-
-                if let publishedDate = post.displayDate(relativeTo: .now) {
-                    Text(" · ")
-                        .foregroundStyle(.quaternary)
-                        .accessibilityHidden(true)
-                    Text(publishedDate, format: .relative(presentation: .named))
-                        .lineLimit(1)
-                }
-            }
-            .font(.app(.listMetadata))
-            .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.vertical, 6)
-        .contentShape(Rectangle())
-    }
-}
-
 struct DiscoveryListErrorView: View {
     let message: String
     let onTryAgain: () -> Void

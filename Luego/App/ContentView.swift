@@ -76,6 +76,7 @@ struct ContentView: View {
                     .navigationSplitViewColumnWidth(min: 200, ideal: 220, max: 260)
             } content: {
                 DiscoveryListPane(viewModel: discoveryListViewModel, selectedPost: $selectedDiscoveryPost)
+                    .articleListActions(viewModel: viewModel)
                     .navigationSplitViewColumnWidth(min: 300, ideal: 320, max: 400)
             } detail: {
                 DiscoveryDetailPane(post: selectedDiscoveryPost)
@@ -111,7 +112,7 @@ struct ContentView: View {
             Tab(ArticleFilter.discovery.navigationTitle, systemImage: ArticleFilter.discovery.icon, value: 3) {
                 iPhoneTabBackground {
                     if let discoveryListViewModel {
-                        iPhoneDiscoveryNavigationStack(viewModel: discoveryListViewModel)
+                        iPhoneDiscoveryNavigationStack(viewModel: discoveryListViewModel, articleListViewModel: viewModel)
                     }
                 }
             }
@@ -178,12 +179,16 @@ struct ContentView: View {
         .toolbar(.hidden, for: .tabBar)
     }
 
-    private func iPhoneDiscoveryNavigationStack(viewModel: DiscoveryListViewModel) -> some View {
+    private func iPhoneDiscoveryNavigationStack(
+        viewModel: DiscoveryListViewModel,
+        articleListViewModel: ArticleListViewModel
+    ) -> some View {
         NavigationStack(path: $discoveryPath) {
             DiscoveryListView(viewModel: viewModel)
                 .background(Color.appBackground)
                 .navigationTitle(ArticleFilter.discovery.navigationTitle)
                 .appNavigationStyle(.largeTransparent)
+                .articleListActions(viewModel: articleListViewModel)
                 .navigationDestination(for: DiscoveryPost.self) { post in
                     DiscoveryArticleDestination(post: post)
                 }
