@@ -2,10 +2,10 @@ import Foundation
 import SwiftUI
 
 enum ArticleFilter: CaseIterable, Hashable {
+    case discovery
     case readingList
     case favorites
     case archived
-    case discovery
 
     var navigationTitle: String {
         switch self {
@@ -30,7 +30,7 @@ enum ArticleFilter: CaseIterable, Hashable {
         case .readingList: "list.bullet"
         case .favorites: "heart"
         case .archived: "archivebox.fill"
-        case .discovery: "die.face.5"
+        case .discovery: "globe"
         }
     }
 
@@ -39,7 +39,7 @@ enum ArticleFilter: CaseIterable, Hashable {
         case .readingList: "doc.text.fill"
         case .favorites: "heart.fill"
         case .archived: "archivebox.fill"
-        case .discovery: "die.face.5"
+        case .discovery: "globe"
         }
     }
 
@@ -65,7 +65,7 @@ enum ArticleFilter: CaseIterable, Hashable {
         case .archived:
             ["Archived articles will appear here"]
         case .discovery:
-            ["Tap shuffle to find interesting articles"]
+            ["Recent posts from the small web will appear here"]
         }
     }
 

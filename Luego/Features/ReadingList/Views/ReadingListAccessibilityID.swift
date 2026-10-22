@@ -1,7 +1,6 @@
 import Foundation
 
 enum ReadingListAccessibilityID {
-    static let discoverButton = "articleList.toolbar.discover"
     static let addButton = "articleList.toolbar.add"
     static let settingsButton = "articleList.toolbar.settings"
 

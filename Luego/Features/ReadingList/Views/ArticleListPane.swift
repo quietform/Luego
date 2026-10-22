@@ -44,14 +44,6 @@ struct ArticleListPane: View {
             .navigationTitle(filter.navigationTitle)
             .toolbar {
                 ToolbarItemGroup(placement: .primaryAction) {
-                    if filter == .readingList {
-                        Button(action: onDiscover) {
-                            Image(systemName: "die.face.5")
-                        }
-                        .accessibilityIdentifier(ReadingListAccessibilityID.discoverButton)
-                        .accessibilityLabel("Inspire Me")
-                    }
-
                     addArticleButton
 
                     Button {

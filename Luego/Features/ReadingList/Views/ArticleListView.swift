@@ -3,13 +3,12 @@ import SwiftUI
 struct ArticleListView: View {
     @Environment(\.diContainer) private var diContainer
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @State private var discoveryViewModel: DiscoveryViewModel?
-    @State private var showingDiscovery = false
     @State private var showingSettings = false
     let viewModel: ArticleListViewModel
     let filter: ArticleFilter
     let shouldAnimateEmptyStateOnFirstAppearance: Bool
     let onEmptyStateAnimationConsumed: () -> Void
+    let onDiscover: () -> Void
 
     private var filteredArticles: [Article] {
         viewModel.filteredArticles(for: filter)
@@ -19,12 +18,14 @@ struct ArticleListView: View {
         viewModel: ArticleListViewModel,
         filter: ArticleFilter,
         shouldAnimateEmptyStateOnFirstAppearance: Bool = false,
-        onEmptyStateAnimationConsumed: @escaping () -> Void = {}
+        onEmptyStateAnimationConsumed: @escaping () -> Void = {},
+        onDiscover: @escaping () -> Void = {}
     ) {
         self.viewModel = viewModel
         self.filter = filter
         self.shouldAnimateEmptyStateOnFirstAppearance = shouldAnimateEmptyStateOnFirstAppearance
         self.onEmptyStateAnimationConsumed = onEmptyStateAnimationConsumed
+        self.onDiscover = onDiscover
     }
 
     var body: some View {
@@ -34,7 +35,7 @@ struct ArticleListView: View {
                 viewModel: viewModel,
                 diContainer: diContainer,
                 filter: filter,
-                onDiscover: { showingDiscovery = true },
+                onDiscover: onDiscover,
                 shouldAnimateEmptyStateOnFirstAppearance: shouldAnimateEmptyStateOnFirstAppearance,
                 onEmptyStateAnimationConsumed: onEmptyStateAnimationConsumed
             )
@@ -42,16 +43,6 @@ struct ArticleListView: View {
             .appNavigationStyle(horizontalSizeClass == .compact ? .largeTransparent : .largePanel)
             .toolbar {
                 ToolbarItemGroup(placement: .primaryAction) {
-                    if filter == .readingList {
-                        Button {
-                            showingDiscovery = true
-                        } label: {
-                            Image(systemName: "die.face.5")
-                        }
-                        .accessibilityIdentifier(ReadingListAccessibilityID.discoverButton)
-                        .accessibilityLabel("Inspire Me")
-                    }
-
                     addArticleButton
 
                     Button {
@@ -68,18 +59,6 @@ struct ArticleListView: View {
                 NavigationStack {
                     SettingsView(viewModel: container.makeSettingsViewModel())
                 }
-            }
-        }
-        .fullScreenCover(isPresented: $showingDiscovery) {
-            if let vm = discoveryViewModel {
-                DiscoveryReaderView(viewModel: vm)
-            }
-        }
-        .onChange(of: showingDiscovery) { _, isShowing in
-            if isShowing, discoveryViewModel == nil, let container = diContainer {
-                discoveryViewModel = container.makeDiscoveryViewModel()
-            } else if !isShowing {
-                discoveryViewModel = nil
             }
         }
     }

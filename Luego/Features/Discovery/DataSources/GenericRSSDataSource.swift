@@ -1,7 +1,7 @@
 import Foundation
 
 struct BlogPostEntry: Sendable {
-    let title: String
+    let title: String?
     let postURL: URL
     let publishedDate: Date?
 }
@@ -126,7 +126,7 @@ private nonisolated final class GenericRSSParser: NSObject, XMLParserDelegate {
         let date = parsePublishedDate(currentPubDate)
 
         posts.append(BlogPostEntry(
-            title: title.isEmpty ? "Untitled" : title,
+            title: title.isEmpty ? nil : title,
             postURL: postURL,
             publishedDate: date
         ))

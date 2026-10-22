@@ -54,31 +54,12 @@ final class DIContainer {
         )
     }()
 
-    private lazy var opmlDataSource: OPMLDataSource = {
-        OPMLDataSource()
-    }()
-
-    private lazy var blogrollRSSDataSource: BlogrollRSSDataSource = {
-        BlogrollRSSDataSource()
-    }()
-
     private lazy var genericRSSDataSource: GenericRSSDataSource = {
         GenericRSSDataSource()
     }()
 
-    private lazy var kagiSmallWebDataSource: DiscoverySourceProtocol = {
-        KagiSmallWebDataSource(opmlDataSource: opmlDataSource, genericRSSDataSource: genericRSSDataSource)
-    }()
-
-    private lazy var blogrollDataSource: DiscoverySourceProtocol = {
-        BlogrollDataSource(
-            blogrollRSSDataSource: blogrollRSSDataSource,
-            genericRSSDataSource: genericRSSDataSource
-        )
-    }()
-
-    private lazy var discoveryPreferencesDataSource: DiscoveryPreferencesDataSourceProtocol = {
-        DiscoveryPreferencesDataSource()
+    private lazy var kagiSmallWebDataSource: DiscoveryPostSourceProtocol = {
+        KagiSmallWebDataSource(genericRSSDataSource: genericRSSDataSource)
     }()
 
     private lazy var articleService: ArticleServiceProtocol = {
@@ -98,8 +79,7 @@ final class DIContainer {
 
     private lazy var discoveryService: DiscoveryServiceProtocol = {
         DiscoveryService(
-            kagiSmallWebDataSource: kagiSmallWebDataSource,
-            blogrollDataSource: blogrollDataSource,
+            postSource: kagiSmallWebDataSource,
             contentDataSource: contentDataSource
         )
     }()
@@ -155,18 +135,20 @@ final class DIContainer {
         )
     }
 
-    func makeDiscoveryViewModel() -> DiscoveryViewModel {
-        DiscoveryViewModel(
+    func makeDiscoveryListViewModel() -> DiscoveryListViewModel {
+        DiscoveryListViewModel(discoveryService: discoveryService)
+    }
+
+    func makeDiscoveryArticleViewModel(post: DiscoveryPost) -> DiscoveryArticleViewModel {
+        DiscoveryArticleViewModel(
+            post: post,
             discoveryService: discoveryService,
-            articleService: articleService,
-            preferencesDataSource: discoveryPreferencesDataSource
+            articleService: articleService
         )
     }
 
     func makeSettingsViewModel() -> SettingsViewModel {
         SettingsViewModel(
-            preferencesDataSource: discoveryPreferencesDataSource,
-            discoveryService: discoveryService,
             sdkManager: luegoSDKManager,
             articleService: articleService,
             savedArticleImportService: savedArticleImportService,

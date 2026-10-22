@@ -25,11 +25,6 @@ struct SettingsView: View {
                 onSync: { Task { await viewModel.forceReSync() } }
             )
 
-            DiscoverySettingsSection(
-                selectedSource: $viewModel.selectedDiscoverySource,
-                onSourceChanged: viewModel.updateDiscoverySource
-            )
-
             LibrarySettingsSection(
                 isImporting: viewModel.isImporting,
                 isPreparingExport: viewModel.isPreparingExport,
@@ -50,9 +45,7 @@ struct SettingsView: View {
             )
 
             TroubleshootingSettingsSection(
-                didRefresh: viewModel.didRefreshPool,
                 isChecking: viewModel.isCheckingForUpdates,
-                onRefresh: viewModel.refreshArticlePool,
                 onCheck: { Task { await viewModel.checkForSDKUpdates() } },
                 viewModel: viewModel,
                 syncStatusObserver: resolvedObserver
@@ -203,114 +196,14 @@ extension IOSSettingsRow where TitleAccessory == EmptyView {
     }
 }
 
-struct IOSDiscoverySourceRow: View {
-    let source: DiscoverySource
-    let isSelected: Bool
-    let onTap: () -> Void
-    @Environment(\.openURL) private var openURL
-
-    var body: some View {
-        Button(action: onTap) {
-            IOSSettingsRow(
-                title: source.displayName,
-                subtitle: source.descriptionText,
-                systemImage: "safari",
-                showsIcon: false
-            ) {
-                if let websiteURL = source.websiteURL {
-                    SourceWebsiteLinkButton(url: websiteURL, openURL: openURL)
-                }
-            } trailing: {
-                if isSelected {
-                    Image(systemName: "checkmark")
-                        .foregroundStyle(Color.regularSelectionInk)
-                        .font(.body.weight(.semibold))
-                }
-            }
-        }
-        .buttonStyle(.plain)
-    }
-}
-
-struct DiscoverySettingsSection: View {
-    @Binding var selectedSource: DiscoverySource
-    let onSourceChanged: (DiscoverySource) -> Void
-
-    var body: some View {
-        Section {
-            DiscoverySettingsContent(
-                selectedSource: $selectedSource,
-                onSourceChanged: onSourceChanged
-            )
-        } header: {
-            settingsSectionHeader("Discovery")
-        } footer: {
-            Text("Choose where new recommendations come from.")
-        }
-    }
-}
-
-struct DiscoverySettingsContent: View {
-    @Binding var selectedSource: DiscoverySource
-    let onSourceChanged: (DiscoverySource) -> Void
-
-    var body: some View {
-        ForEach(DiscoverySource.allCases, id: \.self) { source in
-            IOSDiscoverySourceRow(
-                source: source,
-                isSelected: selectedSource == source,
-                onTap: {
-                    selectedSource = source
-                    onSourceChanged(source)
-                }
-            )
-        }
-    }
-}
-
-struct SourceWebsiteLinkButton: View {
-    let url: URL
-    let openURL: OpenURLAction
-
-    var body: some View {
-        Button {
-            openURL(url)
-        } label: {
-            Image(systemName: "arrow.up.right.square")
-                .font(.caption2.weight(.semibold))
-                .foregroundStyle(.tertiary)
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Open source website")
-    }
-}
-
 struct TroubleshootingSettingsSection: View {
-    let didRefresh: Bool
     let isChecking: Bool
-    let onRefresh: () -> Void
     let onCheck: () -> Void
     let viewModel: SettingsViewModel
     let syncStatusObserver: SyncStatusObserver?
 
     var body: some View {
         Section {
-            Button(action: onRefresh) {
-                IOSSettingsRow(
-                    title: "Refresh Discovery Cache",
-                    subtitle: "Reloads discovery suggestions from the source.",
-                    systemImage: "arrow.clockwise",
-                    showsIcon: false
-                ) {
-                    SettingsActionAccessory(
-                        isLoading: false,
-                        isComplete: didRefresh
-                    )
-                }
-            }
-            .buttonStyle(.plain)
-            .disabled(didRefresh || isChecking)
-
             Button(action: onCheck) {
                 IOSSettingsRow(
                     title: "Update Parsing Rules",

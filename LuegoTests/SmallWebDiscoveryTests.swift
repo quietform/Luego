@@ -2,135 +2,81 @@ import Foundation
 import Testing
 
 @MainActor
-@Suite(.serialized)
 struct SmallWebDiscoveryTests {
-    @Test(arguments: ["rss", "atom"])
-    func discoveryParsesAPostFromTheSelectedFeed(format: String) async throws {
-        try await withFeed(path: format) { source in
+    @Test
+    func riverPostsAreListedInFeedOrder() async throws {
+        try await withRiver(path: "river") { source in
+            let posts = try await source.fetchPosts()
+
+            #expect(posts.map(\.url.absoluteString) == ["https://river.luego.test/posts/first", "https://river.luego.test/posts/second"])
+            #expect(posts.map(\.title) == ["First river post", "Second river post"])
+            #expect(posts.first?.domain == "river.luego.test")
+            #expect(posts.first?.publishedDate == ISO8601DateFormatter().date(from: "2026-10-21T11:40:16Z"))
+        }
+    }
+
+    @Test
+    func listedPostOpensAsItsArticle() async throws {
+        try await withRiver(path: "river-single") { source in
             let content = SmallWebTestContentSource()
-            let service = DiscoveryService(kagiSmallWebDataSource: source, blogrollDataSource: source, contentDataSource: content)
-            var announcedURL: URL?
+            let service = DiscoveryService(postSource: source, contentDataSource: content)
 
-            let article = try await service.fetchRandomArticle(from: .kagiSmallWeb) { announcedURL = $0 }
+            let post = try #require(try await service.fetchPosts().first)
+            let article = try await service.fetchArticle(for: post)
 
-            let postURL = URL(string: "https://smallweb.luego.test/posts/individual-article")!
-            #expect(content.requestedURLs == [postURL])
-            #expect(announcedURL == postURL)
-            #expect(article.url == postURL)
+            #expect(content.requestedURLs == [post.url])
+            #expect(article.url == post.url)
+            #expect(article.title == "First river post")
             #expect(article.content == "Article body")
+            #expect(article.feedTitle == "river.luego.test")
         }
     }
 
     @Test
-    func downloadedOPMLResolvesToAnIndividualPost() async throws {
-        try await withFeed(path: "rss", useCachedList: false) { source in
-            let post = try await source.randomArticleEntry()
+    func videoPostsAreLeftOutOfTheList() async throws {
+        try await withRiver(path: "river-with-video") { source in
+            let posts = try await source.fetchPosts()
 
-            #expect(post.articleUrl.absoluteString == "https://smallweb.luego.test/posts/individual-article")
-            #expect(post.title == "Individual article")
-            #expect(post.htmlUrl?.absoluteString == "https://smallweb.luego.test/")
+            #expect(posts.map(\.url.absoluteString) == ["https://river.luego.test/posts/first"])
         }
     }
 
     @Test
-    func riverPostIsDiscoveredWithoutResolvingABlogFeed() async throws {
-        try await withFeed(path: "network-error", riverPath: "river") { source in
-            let post = try await source.randomArticleEntry()
+    func untitledRiverEntriesAreLeftOutOfTheList() async throws {
+        try await withRiver(path: "river-with-untitled") { source in
+            let posts = try await source.fetchPosts()
 
-            #expect(["https://river.luego.test/posts/first", "https://river.luego.test/posts/second"].contains(post.articleUrl.absoluteString))
-            #expect(["First river post", "Second river post"].contains(post.title))
-            #expect(post.htmlUrl?.absoluteString == "https://river.luego.test/")
+            #expect(posts.map(\.title) == ["First river post"])
         }
     }
 
-    @Test(arguments: ["empty", "json"])
-    func unusableRiverFallsBackToTheBlogList(riverPath: String) async throws {
-        try await withFeed(path: "rss", riverPath: riverPath) { source in
-            let post = try await source.randomArticleEntry()
-
-            #expect(post.articleUrl.absoluteString == "https://smallweb.luego.test/posts/individual-article")
-        }
-    }
-
-    @Test
-    func shownRiverPostsGiveWayToTheBlogList() async throws {
-        try await withFeed(path: "rss", riverPath: "river-single") { source in
-            let riverPost = try await source.randomArticleEntry()
-            let blogPost = try await source.randomArticleEntry()
-
-            #expect(riverPost.articleUrl.absoluteString == "https://river.luego.test/posts/first")
-            #expect(blogPost.articleUrl.absoluteString == "https://smallweb.luego.test/posts/individual-article")
-        }
-    }
-
-    @Test
-    func clearingTheCacheMakesShownRiverPostsAvailableAgain() async throws {
-        try await withFeed(path: "rss", riverPath: "river-single") { source in
-            _ = try await source.randomArticleEntry()
-            source.clearCache()
-            let post = try await source.randomArticleEntry()
-
-            #expect(post.articleUrl.absoluteString == "https://river.luego.test/posts/first")
-        }
-    }
-
-    @Test(arguments: ["empty", "json", "network-error"])
-    func unusableFeedNeverReachesArticleParsing(path: String) async throws {
-        try await withFeed(path: path) { source in
-            let content = SmallWebTestContentSource()
-            let service = DiscoveryService(kagiSmallWebDataSource: source, blogrollDataSource: source, contentDataSource: content)
-            var announcedURL: URL?
-
+    @Test(arguments: ["unavailable-river", "empty", "json"])
+    func unusableRiverReportsWhyNothingIsListed(riverPath: String) async throws {
+        try await withRiver(path: riverPath) { source in
             do {
-                _ = try await service.fetchRandomArticle(from: .kagiSmallWeb) { announcedURL = $0 }
-                Issue.record("An unusable feed should fail before article parsing")
+                _ = try await source.fetchPosts()
+                Issue.record("An unusable River should not produce a list")
+            } catch SmallWebError.fetchFailed {
+                #expect(riverPath == "unavailable-river")
             } catch SmallWebError.noArticlesAvailable {
-                #expect(path != "network-error")
-            } catch {
-                #expect(path == "network-error")
-                #expect((error as? URLError)?.code == .cannotConnectToHost)
+                #expect(riverPath != "unavailable-river")
             }
-
-            #expect(content.requestedURLs.isEmpty)
-            #expect(announcedURL == nil)
-            #expect(UserDefaults.standard.data(forKey: "smallweb_shown_articles") == nil)
         }
     }
 
-    private func withFeed(
+    private func withRiver(
         path: String,
-        useCachedList: Bool = true,
-        riverPath: String = "unavailable-river",
         operation: (KagiSmallWebDataSource) async throws -> Void
     ) async throws {
-        let defaults = UserDefaults.standard
-        let keys = ["smallweb_articles_v2", "smallweb_cache_timestamp_v2", "smallweb_shown_articles", "smallweb_shown_river_posts"]
-        let previousValues = keys.map { defaults.object(forKey: $0) }
-        defer {
-            for (key, value) in zip(keys, previousValues) {
-                defaults.set(value, forKey: key)
-            }
-        }
         let configuration = URLSessionConfiguration.ephemeral
         configuration.protocolClasses = [SmallWebFeedFixture.self]
         let session = URLSession(configuration: configuration)
         defer { session.invalidateAndCancel() }
 
-        let encoded = try JSONSerialization.data(withJSONObject: [[
-            "title": "Example blog",
-            "articleUrl": "https://smallweb.luego.test/\(path)",
-            "htmlUrl": "https://smallweb.luego.test/"
-        ]])
-        defaults.set(useCachedList ? encoded : nil, forKey: keys[0])
-        defaults.set(useCachedList ? Date() : nil, forKey: keys[1])
-        defaults.removeObject(forKey: keys[2])
-        defaults.removeObject(forKey: keys[3])
-
         let source = KagiSmallWebDataSource(
-            opmlDataSource: OPMLDataSource(),
             genericRSSDataSource: GenericRSSDataSource(),
             session: session,
-            riverURL: URL(string: "https://smallweb.luego.test/\(riverPath)")!
+            riverURL: URL(string: "https://smallweb.luego.test/\(path)")!
         )
         try await operation(source)
     }
@@ -162,17 +108,6 @@ private nonisolated final class SmallWebFeedFixture: URLProtocol, @unchecked Sen
     override func startLoading() {
         let body: String
         switch request.url?.path {
-        case "/smallweb/opml":
-            body = """
-            <opml><body><outline title="Example blog" xmlUrl="https://smallweb.luego.test/rss" htmlUrl="https://smallweb.luego.test/"/></body></opml>
-            """
-        case "/atom":
-            body = """
-            <feed xmlns="http://www.w3.org/2005/Atom"><title>Example blog</title><entry><title>Individual article</title>
-            <link rel="alternate" type="text/html" href="https://smallweb.luego.test/posts/individual-article"/>
-            <link rel="self" type="application/atom+xml" href="https://smallweb.luego.test/posts/individual-article.atom"/>
-            </entry></feed>
-            """
         case "/river":
             body = """
             <feed xmlns="http://www.w3.org/2005/Atom"><title type="text">Kagi Small Web</title>
@@ -182,18 +117,28 @@ private nonisolated final class SmallWebFeedFixture: URLProtocol, @unchecked Sen
             <updated>2026-10-21T11:41:18+00:00</updated><link href="https://river.luego.test/posts/second" /></entry>
             </feed>
             """
+        case "/river-with-video":
+            body = """
+            <feed xmlns="http://www.w3.org/2005/Atom"><title type="text">Kagi Small Web</title>
+            <entry><title type="text">A video</title><link href="https://www.youtube.com/watch?v=abc" /></entry>
+            <entry><title type="text">A short</title><link href="https://youtu.be/def" /></entry>
+            <entry><title type="text">First river post</title><link href="https://river.luego.test/posts/first" /></entry>
+            </feed>
+            """
+        case "/river-with-untitled":
+            body = """
+            <feed xmlns="http://www.w3.org/2005/Atom"><title type="text">Kagi Small Web</title>
+            <entry><title type="text"> </title><link href="https://river.luego.test/posts/untitled" /></entry>
+            <entry><link href="https://river.luego.test/posts/no-title" /></entry>
+            <entry><title type="text">First river post</title><link href="https://river.luego.test/posts/first" /></entry>
+            </feed>
+            """
         case "/river-single":
             body = """
             <feed xmlns="http://www.w3.org/2005/Atom"><title type="text">Kagi Small Web</title>
             <entry><title type="text">First river post</title><id>https://river.luego.test/posts/first</id>
             <updated>2026-10-21T11:40:16+00:00</updated><link href="https://river.luego.test/posts/first" /></entry>
             </feed>
-            """
-        case "/rss":
-            body = """
-            <rss version="2.0"><channel><title>Example blog</title><link>https://smallweb.luego.test/</link>
-            <item><title>Individual article</title><link>https://smallweb.luego.test/posts/individual-article</link></item>
-            </channel></rss>
             """
         case "/empty":
             body = "<rss><channel><title>Empty blog</title></channel></rss>"
@@ -204,7 +149,7 @@ private nonisolated final class SmallWebFeedFixture: URLProtocol, @unchecked Sen
             return
         }
         let data = Data(body.utf8)
-        let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: ["Content-Type": "application/rss+xml"])!
+        let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: ["Content-Type": "application/atom+xml"])!
         client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
         client?.urlProtocol(self, didLoad: data)
         client?.urlProtocolDidFinishLoading(self)

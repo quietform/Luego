@@ -20,7 +20,7 @@ Luego uses SwiftUI and Observation, with services organized by feature and depen
 - **Content extraction**: Parse articles locally with a downloaded parser SDK, with API fallback.
 - **Offline reading**: Read previously fetched content with saved reading position and Markdown rendering.
 - **Reading lists**: Favorite and archive articles, with local SQLite storage and iCloud sync.
-- **Discovery**: Explore articles from Kagi Small Web and Blogroll.
+- **Discovery**: Browse recent posts from the Kagi Small Web.
 - **Import and export**: Transfer article URLs as plain text.
 
 ## Requirements

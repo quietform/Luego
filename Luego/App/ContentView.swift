@@ -21,6 +21,9 @@ struct ContentView: View {
     @State private var readingListPath: [Article] = []
     @State private var favoritesPath: [Article] = []
     @State private var archivedPath: [Article] = []
+    @State private var discoveryListViewModel: DiscoveryListViewModel?
+    @State private var discoveryPath: [DiscoveryPost] = []
+    @State private var selectedDiscoveryPost: DiscoveryPost?
     @State private var pendingDeepLink: ArticleDeepLink?
     @State private var deepLinkAlert: DeepLinkAlert?
 
@@ -67,12 +70,16 @@ struct ContentView: View {
 
     @ViewBuilder
     private func iPadLayout(viewModel: ArticleListViewModel) -> some View {
-        if selectedFilter == .discovery {
+        if selectedFilter == .discovery, let discoveryListViewModel {
             NavigationSplitView {
                 SidebarView(selection: $selectedFilter)
                     .navigationSplitViewColumnWidth(min: 200, ideal: 220, max: 260)
+            } content: {
+                DiscoveryListPane(viewModel: discoveryListViewModel, selectedPost: $selectedDiscoveryPost)
+                    .navigationSplitViewColumnWidth(min: 300, ideal: 320, max: 400)
             } detail: {
-                DiscoveryPane()
+                DiscoveryDetailPane(post: selectedDiscoveryPost)
+                    .navigationSplitViewColumnWidth(min: 500, ideal: 500)
             }
             .tint(Color.regularSelectionInk)
             .appNavigationChrome()
@@ -101,6 +108,14 @@ struct ContentView: View {
 
     private func iPhoneLayout(viewModel: ArticleListViewModel) -> some View {
         TabView(selection: $selectedTab) {
+            Tab(ArticleFilter.discovery.navigationTitle, systemImage: ArticleFilter.discovery.icon, value: 3) {
+                iPhoneTabBackground {
+                    if let discoveryListViewModel {
+                        iPhoneDiscoveryNavigationStack(viewModel: discoveryListViewModel)
+                    }
+                }
+            }
+
             Tab(ArticleFilter.readingList.navigationTitle, systemImage: "list.bullet", value: 0) {
                 iPhoneTabBackground {
                     iPhoneTabNavigationStack(for: .readingList, path: $readingListPath) {
@@ -108,7 +123,8 @@ struct ContentView: View {
                             viewModel: viewModel,
                             filter: .readingList,
                             shouldAnimateEmptyStateOnFirstAppearance: shouldAnimateHomeEmptyStateOnLaunch,
-                            onEmptyStateAnimationConsumed: { shouldAnimateHomeEmptyStateOnLaunch = false }
+                            onEmptyStateAnimationConsumed: { shouldAnimateHomeEmptyStateOnLaunch = false },
+                            onDiscover: { selectedTab = tabSelection(for: .discovery) }
                         )
                     }
                 }
@@ -162,9 +178,23 @@ struct ContentView: View {
         .toolbar(.hidden, for: .tabBar)
     }
 
+    private func iPhoneDiscoveryNavigationStack(viewModel: DiscoveryListViewModel) -> some View {
+        NavigationStack(path: $discoveryPath) {
+            DiscoveryListView(viewModel: viewModel)
+                .background(Color.appBackground)
+                .navigationTitle(ArticleFilter.discovery.navigationTitle)
+                .appNavigationStyle(.largeTransparent)
+                .navigationDestination(for: DiscoveryPost.self) { post in
+                    DiscoveryArticleDestination(post: post)
+                }
+        }
+        .toolbar(.hidden, for: .tabBar)
+    }
+
     private var iPhoneTabBar: some View {
         GlassEffectContainer(spacing: 6) {
             HStack(spacing: 4) {
+                iPhoneTabButton(systemImage: ArticleFilter.discovery.icon, label: ArticleFilter.discovery.navigationTitle, tab: 3)
                 iPhoneTabButton(systemImage: "list.bullet", label: "Reading List", tab: 0)
                 iPhoneTabButton(systemImage: "heart.fill", label: "Favorites", tab: 1)
                 iPhoneTabButton(systemImage: "archivebox.fill", label: "Archived", tab: 2)
@@ -174,7 +204,7 @@ struct ContentView: View {
             .glassEffect(.regular.interactive(), in: Capsule())
         }
         .shadow(color: .black.opacity(0.08), radius: 18, y: 10)
-        .padding(.horizontal, 60)
+        .padding(.horizontal, 40)
         .padding(.top, 4)
         .padding(.bottom, 8)
     }
@@ -220,6 +250,10 @@ struct ContentView: View {
     }
 
     private func initializeArticleListViewModelIfNeeded() {
+        if discoveryListViewModel == nil, let diContainer {
+            discoveryListViewModel = diContainer.makeDiscoveryListViewModel()
+        }
+
         if articleListViewModel == nil, let diContainer {
             articleListViewModel = diContainer.makeArticleListViewModel()
             if let pendingDeepLink {
@@ -333,7 +367,7 @@ struct ContentView: View {
         case .archived:
             return 2
         case .discovery:
-            return 0
+            return 3
         }
     }
 

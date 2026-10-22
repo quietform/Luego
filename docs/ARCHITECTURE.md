@@ -23,8 +23,8 @@ GRDBArticleStore <-> SyncEngineManager <-> CloudKit private database
 - Observable `Article` objects and UI state stay on the main actor. Sendable value records cross background boundaries.
 - Article and shared-queue persistence use GRDB's asynchronous reads and writes. Database opening runs in `@concurrent` functions. Duplicate-URL saves, content merges, and sync-state merges each use a single transaction. CloudKit acknowledgements update only system fields, preserving concurrent local edits and tombstones.
 - One shared `FileCache` actor owns article-cache and parser-SDK file I/O and JSON coding. It reads JavaScript bundles as one snapshot and completes accepted writes and removals without inspecting task cancellation.
-- Markdown document preparation, image decoding, and RSS/OPML parsing use `@concurrent` functions with local parser state and run to completion. Cancellation is handled at the UI boundary before publishing a document or image. Progress saves wait until the document is rendered; height tracking follows placeholder replacement and image layout changes, and pending restoration is cancelled when leaving the reader.
-- Discovery feed-cache coding and seen-item filtering run in background functions. Generation checks prevent late cache work from undoing a clear. Import URL detection and text-file transfers also run off the main actor.
+- Markdown document preparation, image decoding, and RSS/Atom parsing use `@concurrent` functions with local parser state and run to completion. Cancellation is handled at the UI boundary before publishing a document or image. Progress saves wait until the document is rendered; height tracking follows placeholder replacement and image layout changes, and pending restoration is cancelled when leaving the reader.
+- Import URL detection and text-file transfers run off the main actor.
 - The existing parser actor owns JavaScriptCore. No actor is introduced per service or CPU operation.
 
 ## Storage and sync
@@ -65,7 +65,7 @@ Services receive [ContentDataSource](../Luego/Core/DataSources/ContentDataSource
 | --- | --- |
 | [ReadingList](../Luego/Features/ReadingList/) | Save, list, favorite, archive, delete, and import/export article URLs |
 | [Reader](../Luego/Features/Reader/) | Fetch and save article content, and persist reading position |
-| [Discovery](../Luego/Features/Discovery/) | Fetch random articles from Kagi Small Web or Blogroll; hold them in memory until saved |
+| [Discovery](../Luego/Features/Discovery/) | List recent posts from the Kagi Small Web River feed; open a post in memory until it is saved |
 | [Sharing](../Luego/Features/Sharing/) | Queue shared URLs, import them into the app, and construct deep links |
 | [Settings](../Luego/Features/Settings/) | Preferences, parser updates, repair sync, import/export UI, and diagnostics |
 

@@ -1,83 +1,60 @@
 import SwiftUI
 
-struct DiscoveryPane: View {
-    @Environment(\.diContainer) private var diContainer
-    @Environment(\.openURL) private var openURL
-    @State private var viewModel: DiscoveryViewModel?
+struct DiscoveryListPane: View {
+    let viewModel: DiscoveryListViewModel
+    @Binding var selectedPost: DiscoveryPost?
+
+    var body: some View {
+        DiscoveryListView(viewModel: viewModel, selection: $selectedPost)
+            .background(Color.regularPanelBackground)
+            .appNavigationStyle(.contentLargeTitle)
+            .navigationTitle(ArticleFilter.discovery.navigationTitle)
+    }
+}
+
+struct DiscoveryDetailPane: View {
+    let post: DiscoveryPost?
 
     var body: some View {
         Group {
-            if let vm = viewModel {
-                DiscoveryInlineView(viewModel: vm, openURL: openURL)
+            if let post {
+                DiscoveryArticleDestination(post: post)
+                    .id(post)
+            } else {
+                EmptyDiscoveryDetailView()
+            }
+        }
+        .background(Color.regularPanelBackground)
+    }
+}
+
+struct DiscoveryArticleDestination: View {
+    let post: DiscoveryPost
+    @Environment(\.diContainer) private var diContainer
+    @State private var viewModel: DiscoveryArticleViewModel?
+
+    var body: some View {
+        Group {
+            if let viewModel {
+                DiscoveryArticleView(viewModel: viewModel)
             } else {
                 ProgressView()
             }
         }
-        .background(Color.regularPanelBackground)
-        .appNavigationStyle(.contentLargeTitle)
         .task {
-            if viewModel == nil, let container = diContainer {
-                viewModel = container.makeDiscoveryViewModel()
+            if viewModel == nil, let diContainer {
+                viewModel = diContainer.makeDiscoveryArticleViewModel(post: post)
             }
         }
-        .navigationTitle("Discovery")
     }
 }
 
-struct DiscoveryInlineView: View {
-    @Bindable var viewModel: DiscoveryViewModel
-    var openURL: OpenURLAction
-
+struct EmptyDiscoveryDetailView: View {
     var body: some View {
-        Group {
-            if viewModel.isLoading {
-                DiscoveryLoadingContentView(viewModel: viewModel)
-            } else if let article = viewModel.ephemeralArticle {
-                DiscoveryArticleContentView(article: article)
-            } else if let error = viewModel.errorMessage {
-                DiscoveryErrorView(
-                    message: error,
-                    onTryAnother: { Task { await viewModel.loadAnotherArticle() } }
-                )
-            } else {
-                DiscoveryLoadingContentView(viewModel: viewModel)
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.regularPanelBackground)
-        .safeAreaInset(edge: .bottom) {
-            if viewModel.ephemeralArticle != nil && !viewModel.isLoading {
-                HStack {
-                    Spacer()
-                    DiscoveryBottomBar(
-                        isSaved: viewModel.isSaved,
-                        onShuffle: { Task { await viewModel.loadAnotherArticle() } },
-                        onSave: { Task { await viewModel.saveToReadingList() } }
-                    )
-                }
-                .padding(.trailing)
-            }
-        }
-        .toolbar {
-            if let article = viewModel.ephemeralArticle {
-                ToolbarItem(placement: .primaryAction) {
-                    DiscoveryToolbarMenu(
-                        articleURL: article.url,
-                        articleTitle: article.title,
-                        onOpenInBrowser: openInBrowser
-                    )
-                }
-            }
-        }
-        .task {
-            if viewModel.ephemeralArticle == nil {
-                await viewModel.fetchRandomArticle()
-            }
-        }
-    }
-
-    private func openInBrowser() {
-        guard let article = viewModel.ephemeralArticle else { return }
-        openURL(article.url)
+        ContentUnavailableView(
+            "No Post Selected",
+            systemImage: ArticleFilter.discovery.icon,
+            description: Text("Pick a post from the small web to start reading")
+        )
     }
 }

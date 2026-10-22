@@ -20,8 +20,6 @@ struct SettingsExportPresentation: Identifiable {
 @Observable
 @MainActor
 final class SettingsViewModel {
-    var selectedDiscoverySource: DiscoverySource
-    var didRefreshPool = false
     var isCheckingForUpdates = false
     var updateResult: SDKUpdateResult?
     var showUpdateAlert = false
@@ -39,28 +37,21 @@ final class SettingsViewModel {
     var totalSavedArticleCount = 0
     var readingListArticleCount = 0
 
-    private let preferencesDataSource: DiscoveryPreferencesDataSourceProtocol
-    private let discoveryService: DiscoveryServiceProtocol
     private let sdkManager: LuegoSDKManagerProtocol
     private let articleService: ArticleServiceProtocol
     private let savedArticleImportService: SavedArticleImportServiceProtocol
     private let savedArticleExportService: SavedArticleExportServiceProtocol
 
     init(
-        preferencesDataSource: DiscoveryPreferencesDataSourceProtocol,
-        discoveryService: DiscoveryServiceProtocol,
         sdkManager: LuegoSDKManagerProtocol,
         articleService: ArticleServiceProtocol,
         savedArticleImportService: SavedArticleImportServiceProtocol,
         savedArticleExportService: SavedArticleExportServiceProtocol
     ) {
-        self.preferencesDataSource = preferencesDataSource
-        self.discoveryService = discoveryService
         self.sdkManager = sdkManager
         self.articleService = articleService
         self.savedArticleImportService = savedArticleImportService
         self.savedArticleExportService = savedArticleExportService
-        self.selectedDiscoverySource = preferencesDataSource.getSelectedSource()
     }
 
     private(set) var sdkVersionString: String?
@@ -71,16 +62,6 @@ final class SettingsViewModel {
             return
         }
         sdkVersionString = "Parser \(info.parserVersion) · Rules \(info.rulesVersion)"
-    }
-
-    func updateDiscoverySource(_ source: DiscoverySource) {
-        selectedDiscoverySource = source
-        preferencesDataSource.setSelectedSource(source)
-    }
-
-    func refreshArticlePool() {
-        discoveryService.clearAllCaches()
-        didRefreshPool = true
     }
 
     func checkForSDKUpdates() async {

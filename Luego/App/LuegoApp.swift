@@ -42,6 +42,7 @@ struct LuegoApp: App {
     }
 
     private func initialize() async {
+        DiscoveryLegacyStorage.remove(from: .standard)
         do {
             let database = try await AppDatabase.makeDefault()
             let container = DIContainer(database: database)
