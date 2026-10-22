@@ -32,6 +32,7 @@ final class BlogrollDataSource: DiscoverySourceProtocol {
     private let session: URLSession
     private let seenTracker: SeenItemTracker
     private let feedURL = URL(string: "https://blogroll.org/feed")!
+    private let homepageURL = URL(string: "https://blogroll.org/")!
     private let cacheKey = "blogroll_articles_v1"
     private let cacheTimestampKey = "blogroll_cache_timestamp_v1"
     private let cacheDuration: TimeInterval = 24 * 60 * 60
@@ -58,23 +59,40 @@ final class BlogrollDataSource: DiscoverySourceProtocol {
         }
 
         let generation = cacheGeneration
+        let blogs: [SmallWebArticleEntry]
         do {
-            let (data, _) = try await session.data(from: feedURL)
-            let blogs = await blogrollRSSDataSource.parse(data)
+            blogs = try await fetchBlogList(from: feedURL, parse: blogrollRSSDataSource.parse)
+        } catch {
+            if !cachedBlogs.isEmpty { return cachedBlogs }
+            blogs = try await fetchBlogList(from: homepageURL, parse: blogrollRSSDataSource.parseHomepage)
+        }
+
+        if generation == cacheGeneration {
+            cacheGeneration = UUID()
+            cachedBlogs = blogs
+            await saveBlogsToCache(blogs)
+        }
+        return blogs
+    }
+
+    private func fetchBlogList(
+        from url: URL,
+        parse: (Data) async -> [SmallWebArticleEntry]
+    ) async throws -> [SmallWebArticleEntry] {
+        do {
+            let (data, response) = try await session.data(from: url)
+            if let response = response as? HTTPURLResponse, !(200..<300).contains(response.statusCode) {
+                throw URLError(.badServerResponse)
+            }
+            let blogs = await parse(data)
 
             guard !blogs.isEmpty else {
                 throw BlogrollError.parsingFailed
             }
-
-            if generation == cacheGeneration {
-                cacheGeneration = UUID()
-                cachedBlogs = blogs
-                await saveBlogsToCache(blogs)
-            }
             return blogs
+        } catch let error as BlogrollError {
+            throw error
         } catch {
-            if !cachedBlogs.isEmpty { return cachedBlogs }
-            if let error = error as? BlogrollError { throw error }
             throw BlogrollError.fetchFailed(error)
         }
     }
@@ -126,7 +144,11 @@ final class BlogrollDataSource: DiscoverySourceProtocol {
 
     private func fetchRandomPostFromBlog(_ blog: SmallWebArticleEntry) async throws -> SmallWebArticleEntry {
         let feedData = try await fetchBlogFeed(blog.articleUrl)
-        let posts = await genericRSSDataSource.parse(feedData)
+        var posts = await genericRSSDataSource.parse(feedData)
+        if posts.isEmpty,
+           let discoveredFeedURL = await genericRSSDataSource.discoverFeedURL(in: feedData, baseURL: blog.articleUrl) {
+            posts = await genericRSSDataSource.parse(try await fetchBlogFeed(discoveredFeedURL))
+        }
 
         guard let randomPost = posts.randomElement() else {
             throw BlogrollError.noPostsInBlogFeed

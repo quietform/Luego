@@ -6,6 +6,25 @@ nonisolated struct BlogrollRSSDataSource: Sendable {
         let parser = BlogrollRSSParser()
         return parser.parse(data.sanitizingXMLAmpersands())
     }
+
+    @concurrent
+    func parseHomepage(_ data: Data) async -> [SmallWebArticleEntry] {
+        guard let html = String(data: data, encoding: .utf8),
+              let regex = try? NSRegularExpression(
+                  pattern: #"<a class="entry-main" href="([^"]+)"[^>]*>\s*<h1 class="entry-title">([^<]*)</h1>"#
+              ) else {
+            return []
+        }
+        return regex.matches(in: html, range: NSRange(html.startIndex..., in: html)).compactMap { match in
+            guard let urlRange = Range(match.range(at: 1), in: html),
+                  let titleRange = Range(match.range(at: 2), in: html),
+                  let siteURL = URL(string: String(html[urlRange])) else {
+                return nil
+            }
+            let title = html[titleRange].trimmingCharacters(in: .whitespacesAndNewlines)
+            return SmallWebArticleEntry(title: title, articleUrl: siteURL, htmlUrl: siteURL)
+        }
+    }
 }
 
 private nonisolated final class BlogrollRSSParser: NSObject, XMLParserDelegate {

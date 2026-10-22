@@ -12,6 +12,28 @@ nonisolated struct GenericRSSDataSource: Sendable {
         let parser = GenericRSSParser()
         return parser.parse(data.sanitizingXMLAmpersands())
     }
+
+    @concurrent
+    func discoverFeedURL(in data: Data, baseURL: URL) async -> URL? {
+        guard let html = String(data: data, encoding: .utf8),
+              let linkRegex = try? NSRegularExpression(pattern: #"<link\b[^>]*>"#, options: .caseInsensitive),
+              let hrefRegex = try? NSRegularExpression(pattern: #"href\s*=\s*["']([^"']+)["']"#, options: .caseInsensitive) else {
+            return nil
+        }
+        for match in linkRegex.matches(in: html, range: NSRange(html.startIndex..., in: html)) {
+            guard let tagRange = Range(match.range, in: html) else { continue }
+            let tag = String(html[tagRange])
+            let lowercasedTag = tag.lowercased()
+            guard lowercasedTag.contains("alternate"),
+                  lowercasedTag.contains("application/rss+xml") || lowercasedTag.contains("application/atom+xml"),
+                  let hrefMatch = hrefRegex.firstMatch(in: tag, range: NSRange(tag.startIndex..., in: tag)),
+                  let hrefRange = Range(hrefMatch.range(at: 1), in: tag) else {
+                continue
+            }
+            return URL(string: String(tag[hrefRange]), relativeTo: baseURL)?.absoluteURL
+        }
+        return nil
+    }
 }
 
 private nonisolated final class GenericRSSParser: NSObject, XMLParserDelegate {
