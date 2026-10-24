@@ -60,7 +60,7 @@
 
 ## Platform Rules
 
-- Implement and verify changes for iOS and iPadOS together.
+- Preserve support for iOS and iPadOS. Follow the [testing policy](TESTING.md#simulator-verification): use one relevant simulator by default and check both only when the second device adds coverage.
 - Use platform guards only where behavior truly differs.
 - Keep entitlements in sync with target capabilities:
   - `Luego/Luego.entitlements`

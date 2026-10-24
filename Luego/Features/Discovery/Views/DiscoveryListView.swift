@@ -3,7 +3,6 @@ import SwiftUI
 struct DiscoveryListView: View {
     @Bindable var viewModel: DiscoveryListViewModel
     var selection: Binding<DiscoveryPost?>?
-    @State private var loadingGif = KagiLoadingGifRotator.next()
     @State private var feedsViewModel: DiscoveryFeedsViewModel?
     @Environment(\.diContainer) private var diContainer
 
@@ -20,9 +19,8 @@ struct DiscoveryListView: View {
                     Task { await viewModel.refresh() }
                 }
             } else {
-                KagiSmallWebLoadingView(
+                DiscoveryLoadingView(
                     pendingURL: nil,
-                    gifName: loadingGif,
                     loadingText: "Finding something interesting..."
                 )
             }

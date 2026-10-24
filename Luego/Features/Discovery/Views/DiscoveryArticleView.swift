@@ -4,7 +4,6 @@ struct DiscoveryArticleView: View {
     @Bindable var viewModel: DiscoveryArticleViewModel
     @Environment(\.openURL) private var openURL
     @Environment(\.iPhoneTabBarVisibilityController) private var iPhoneTabBarVisibilityController
-    @State private var loadingGif = KagiLoadingGifRotator.next()
 
     var body: some View {
         Group {
@@ -17,9 +16,8 @@ struct DiscoveryArticleView: View {
                     onOpenInBrowser: openInBrowser
                 )
             } else {
-                KagiSmallWebLoadingView(
+                DiscoveryLoadingView(
                     pendingURL: viewModel.post.url,
-                    gifName: loadingGif,
                     loadingText: "Opening article..."
                 )
             }

@@ -18,7 +18,9 @@ Check adding an article and opening it, retry and refresh, dismissing the reader
 
 ## Simulator Verification
 
-Verify changes on iPhone and iPad. Keep only one simulator running at a time to limit laptop memory use. Shut it down before switching devices.
+Use one relevant iPhone or iPad simulator by default. Shared logic, copy, and simple styling changes do not need duplicate runs on both devices. Add a second device only when it covers a distinct risk, such as compact versus regular layouts, split-view navigation, sheets and popovers, or device-specific behavior. When checking both, state what the second device adds.
+
+Keep only one simulator running at a time to limit laptop memory use. Shut it down before switching devices.
 
 Build for the iOS simulator using `xcodebuildmcp`; never call raw `xcodebuild` for simulator builds. Run these commands from the repository root. [.xcodebuildmcp/config.yaml](../.xcodebuildmcp/config.yaml) configures the `Luego` project and scheme and the Debug configuration. It does not name a simulator, because available devices differ between machines. List the simulators on the current machine and pass the UDID of an available iPhone or iPad.
 
@@ -31,7 +33,7 @@ xcodebuildmcp simulator screenshot --simulator-id <uuid>
 xcodebuildmcp simulator snapshot-ui --simulator-id <uuid>
 ```
 
-Run the app via `xcodebuildmcp` and verify behavior with logs or screenshots on the relevant iPhone and iPad simulators.
+Run the app via `xcodebuildmcp` and verify behavior with logs or screenshots on the selected simulator.
 
 ## Automated Tests
 
@@ -45,4 +47,4 @@ Before claiming a responsiveness improvement, profile a Release build on a physi
 
 ## Hitch measurements
 
-[The reader hitch benchmark](../PerformanceTests/README.md) runs the production reader with an isolated offline fixture in a dedicated Release app and XCTest UI target. It records application hitch metrics and animation signposts covering dragging through deceleration. Validate the fixture on iPhone and iPad simulators, then collect comparable physical-device results and an Instruments trace before claiming smoothness or choosing an optimization.
+[The reader hitch benchmark](../PerformanceTests/README.md) runs the production reader with an isolated offline fixture in a dedicated Release app and XCTest UI target. It records application hitch metrics and animation signposts covering dragging through deceleration. Validate the fixture on a representative simulator; add another device only when it exercises a different layout or harness behavior. Then collect comparable physical-device results and an Instruments trace before claiming smoothness or choosing an optimization.

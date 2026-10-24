@@ -1,27 +1,14 @@
 import SwiftUI
 
-enum KagiLoadingGifRotator {
-    private static let gifs = ["kagi-loading", "kagi-loading-2"]
-    private static var lastIndex: Int?
-
-    static func next() -> String {
-        let availableIndices = gifs.indices.filter { $0 != lastIndex }
-        let nextIndex = availableIndices.randomElement() ?? 0
-        lastIndex = nextIndex
-        return gifs[nextIndex]
-    }
-}
-
-struct KagiSmallWebLoadingView: View {
+struct DiscoveryLoadingView: View {
     var pendingURL: URL?
-    var gifName: String
     var loadingText: String
 
     var body: some View {
         VStack {
             Spacer()
 
-            GIFImageView(gifName: gifName)
+            ProgressView()
                 .frame(width: 88, height: 31)
 
             Spacer()
