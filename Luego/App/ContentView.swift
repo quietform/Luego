@@ -78,7 +78,6 @@ struct ContentView: View {
                 DiscoveryListPane(viewModel: discoveryListViewModel, selectedPost: $selectedDiscoveryPost) {
                     shuffleDiscovery(using: discoveryListViewModel, excluding: selectedDiscoveryPost)
                 }
-                    .articleListActions(viewModel: viewModel)
                     .navigationSplitViewColumnWidth(min: 300, ideal: 320, max: 400)
             } detail: {
                 DiscoveryDetailPane(
@@ -119,7 +118,7 @@ struct ContentView: View {
             Tab(ArticleFilter.discovery.navigationTitle, systemImage: ArticleFilter.discovery.icon, value: 3) {
                 iPhoneTabBackground {
                     if let discoveryListViewModel {
-                        iPhoneDiscoveryNavigationStack(viewModel: discoveryListViewModel, articleListViewModel: viewModel)
+                        iPhoneDiscoveryNavigationStack(viewModel: discoveryListViewModel)
                     }
                 }
             }
@@ -186,10 +185,7 @@ struct ContentView: View {
         .toolbar(.hidden, for: .tabBar)
     }
 
-    private func iPhoneDiscoveryNavigationStack(
-        viewModel: DiscoveryListViewModel,
-        articleListViewModel: ArticleListViewModel
-    ) -> some View {
+    private func iPhoneDiscoveryNavigationStack(viewModel: DiscoveryListViewModel) -> some View {
         NavigationStack(path: $discoveryPath) {
             DiscoveryListView(viewModel: viewModel) {
                 shuffleDiscovery(using: viewModel)
@@ -197,7 +193,6 @@ struct ContentView: View {
                 .background(Color.appBackground)
                 .navigationTitle(ArticleFilter.discovery.navigationTitle)
                 .appNavigationStyle(.largeTransparent)
-                .articleListActions(viewModel: articleListViewModel)
                 .navigationDestination(for: DiscoveryPost.self) { post in
                     DiscoveryArticleDestination(post: post, canShuffle: viewModel.canShuffle(excluding: post)) {
                         shuffleDiscovery(using: viewModel, excluding: post)

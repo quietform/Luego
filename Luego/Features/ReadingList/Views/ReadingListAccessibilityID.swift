@@ -2,7 +2,6 @@ import Foundation
 
 enum ReadingListAccessibilityID {
     static let addButton = "articleList.toolbar.add"
-    static let settingsButton = "articleList.toolbar.settings"
 
     static func list(_ filter: ArticleFilter) -> String {
         "articleList.\(filterSegment(filter))"

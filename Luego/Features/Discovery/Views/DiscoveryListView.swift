@@ -31,18 +31,19 @@ struct DiscoveryListView: View {
             await viewModel.loadPosts()
         }
         .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button("Surprise Me", systemImage: "die.face.5", action: onShuffle)
-                    .labelStyle(.iconOnly)
-                    .disabled(!viewModel.canShuffle(excluding: selection?.wrappedValue))
-                    .accessibilityIdentifier("discovery.shuffle")
-            }
-            ToolbarItem(placement: .topBarTrailing) {
+            ToolbarItemGroup(placement: .primaryAction) {
                 Button(action: editFeeds) {
                     Image(systemName: "pencil")
                 }
                 .accessibilityLabel("Edit Feeds")
                 .accessibilityIdentifier("discovery.editFeeds")
+
+                Button("Surprise Me", systemImage: "die.face.5", action: onShuffle)
+                    .labelStyle(.iconOnly)
+                    .disabled(!viewModel.canShuffle(excluding: selection?.wrappedValue))
+                    .accessibilityIdentifier("discovery.shuffle")
+
+                SettingsToolbarButton()
             }
         }
         .sheet(item: $feedsViewModel) { feedsViewModel in
