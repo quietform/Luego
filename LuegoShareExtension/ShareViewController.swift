@@ -264,8 +264,8 @@ class SuccessView: UIView {
 
         actionButton.setTitle("Dismiss", for: .normal)
         actionButton.titleLabel?.font = .systemFont(ofSize: 17, weight: .semibold)
-        actionButton.backgroundColor = .systemBlue
-        actionButton.setTitleColor(.white, for: .normal)
+        actionButton.backgroundColor = AppUIColor.mascotPurple
+        actionButton.setTitleColor(.black, for: .normal)
         actionButton.layer.cornerRadius = 12
         actionButton.translatesAutoresizingMaskIntoConstraints = false
         actionButton.addTarget(self, action: #selector(actionTapped), for: .touchUpInside)

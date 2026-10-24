@@ -55,6 +55,7 @@
 		601506582EC4660200CADAFB /* Exceptions for "Luego" folder in "LuegoShareExtension" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				Core/UI/AppUIColor.swift,
 				Features/Sharing/DataSources/SharedStorage.swift,
 				Features/Sharing/Services/ArticleDeepLinkBuilder.swift,
 				Features/Sharing/Services/SharedTextURLExtractor.swift,
@@ -67,6 +68,13 @@
 				Info.plist,
 			);
 			target = 608D75682EC33EA6002DD532 /* LuegoShareExtension */;
+		};
+		C0DEC000000000000000000E /* Share extension sources in LuegoTests */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				ShareViewController.swift,
+			);
+			target = C0DEC0000000000000000001 /* LuegoTests */;
 		};
 		6094439C2F2CD929001F4AD5 /* Exceptions for "Luego" folder in "Luego" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
@@ -111,6 +119,7 @@
 				"Core/Stores/GRDBArticleStore.swift",
 				"Core/Utilities/DateFormatters.swift",
 				"Core/UI/AppTheme.swift",
+				"Core/UI/AppUIColor.swift",
 				"Core/UI/ArticleRowLayout.swift",
 				"Core/UI/AppTypography.swift",
 				"Core/UI/Readers/ReaderDocument.swift",
@@ -177,6 +186,7 @@
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				608D75742EC33EA6002DD532 /* Exceptions for "LuegoShareExtension" folder in "LuegoShareExtension" target */,
+				C0DEC000000000000000000E /* Share extension sources in LuegoTests */,
 			);
 			path = LuegoShareExtension;
 			sourceTree = "<group>";
