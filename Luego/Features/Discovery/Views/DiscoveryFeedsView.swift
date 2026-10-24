@@ -96,6 +96,7 @@ struct DiscoveryFeedRow: View {
                     .truncationMode(.middle)
             }
         }
+        .tint(Color.mascotPurple)
         .accessibilityIdentifier("discoveryFeeds.toggle")
     }
 }

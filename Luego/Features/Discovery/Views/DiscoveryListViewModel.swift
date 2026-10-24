@@ -14,11 +14,20 @@ final class DiscoveryListViewModel {
     private var hasOpened = false
     @ObservationIgnored
     private var feedChangesTask: Task<Void, Never>?
+    @ObservationIgnored
+    private var shuffledPostURLs: Set<URL> = []
+    @ObservationIgnored
+    private var lastShuffledPost: DiscoveryPost?
 
     private let discoveryService: DiscoveryServiceProtocol
+    private let choosePost: ([DiscoveryPost]) -> DiscoveryPost?
 
-    init(discoveryService: DiscoveryServiceProtocol) {
+    init(
+        discoveryService: DiscoveryServiceProtocol,
+        choosePost: @escaping ([DiscoveryPost]) -> DiscoveryPost? = { $0.randomElement() }
+    ) {
         self.discoveryService = discoveryService
+        self.choosePost = choosePost
     }
 
     func loadPosts() async {
@@ -28,6 +37,28 @@ final class DiscoveryListViewModel {
 
     func refresh() async {
         await load(force: true)
+    }
+
+    func canShuffle(excluding currentPost: DiscoveryPost? = nil) -> Bool {
+        !hasNoFeedsOn && posts.contains { $0.url != currentPost?.url }
+    }
+
+    func randomPost(excluding currentPost: DiscoveryPost? = nil) -> DiscoveryPost? {
+        guard canShuffle(excluding: currentPost) else { return nil }
+        if let currentPost { shuffledPostURLs.insert(currentPost.url) }
+        let availablePosts = posts.filter { $0.url != currentPost?.url }
+        let previousPost = currentPost ?? lastShuffledPost
+        var candidates = availablePosts.filter { !shuffledPostURLs.contains($0.url) }
+        if candidates.isEmpty {
+            shuffledPostURLs.removeAll()
+            candidates = availablePosts.filter { $0.url != previousPost?.url }
+            if candidates.isEmpty { candidates = availablePosts }
+        }
+        let otherDomains = candidates.filter { $0.domain != previousPost?.domain }
+        guard let post = choosePost(otherDomains.isEmpty ? candidates : otherDomains) else { return nil }
+        shuffledPostURLs.insert(post.url)
+        lastShuffledPost = post
+        return post
     }
 
     func startObservingFeedChanges() {

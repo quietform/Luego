@@ -4,6 +4,86 @@ import Testing
 @MainActor
 struct DiscoveryListViewModelTests {
     @Test
+    func shufflingChoosesALoadedPostWithoutRefreshingTheList() async {
+        let service = ListedDiscoveryService(results: [.success(.posts([.first, .second]))])
+        let viewModel = DiscoveryListViewModel(discoveryService: service)
+        await viewModel.loadPosts()
+
+        let post = viewModel.randomPost()
+
+        #expect(post != nil)
+        #expect(viewModel.posts.contains { $0.url == post?.url })
+        #expect(viewModel.posts == [.first, .second])
+        #expect(service.refreshes == [false])
+    }
+
+    @Test
+    func shufflingVisitsEveryPostBeforeStartingAnotherCycle() async {
+        let service = ListedDiscoveryService(results: [.success(.posts([.first, .second]))])
+        let viewModel = DiscoveryListViewModel(discoveryService: service, choosePost: { $0.first })
+        await viewModel.loadPosts()
+
+        let firstCycle = [viewModel.randomPost(), viewModel.randomPost()]
+        let secondCycle = [viewModel.randomPost(), viewModel.randomPost()]
+
+        #expect(firstCycle == [.first, .second])
+        #expect(secondCycle == [.first, .second])
+    }
+
+    @Test
+    func nextRandomSkipsTheCurrentArticleAcrossShuffleCycles() async {
+        let service = ListedDiscoveryService(results: [.success(.posts([.first, .second]))])
+        let viewModel = DiscoveryListViewModel(discoveryService: service, choosePost: { $0.first })
+        await viewModel.loadPosts()
+
+        #expect(viewModel.canShuffle(excluding: .first))
+        #expect(viewModel.randomPost(excluding: .first) == .second)
+        #expect(viewModel.randomPost(excluding: .second) == .first)
+        #expect(viewModel.randomPost(excluding: .first) == .second)
+    }
+
+    @Test(arguments: [false, true])
+    func shufflingChangesDomainsWhenAnUnseenAlternativeExists(startingFromListedPost: Bool) async {
+        let otherDomain = DiscoveryPost(url: URL(string: "https://other.luego.test/post")!, title: "Other", publishedDate: nil)
+        let service = ListedDiscoveryService(results: [.success(.posts([.first, .second, otherDomain]))])
+        let viewModel = DiscoveryListViewModel(discoveryService: service, choosePost: { $0.first })
+        await viewModel.loadPosts()
+
+        if startingFromListedPost {
+            #expect(viewModel.randomPost(excluding: .first) == otherDomain)
+        } else {
+            #expect(viewModel.randomPost() == .first)
+            #expect(viewModel.randomPost() == otherDomain)
+        }
+        #expect(viewModel.randomPost(excluding: otherDomain) == .second)
+    }
+
+    @Test
+    func aSinglePostCanBeDiscoveredButHasNoNextRandomArticle() async {
+        let service = ListedDiscoveryService(results: [.success(.posts([.first]))])
+        let viewModel = DiscoveryListViewModel(discoveryService: service)
+        await viewModel.loadPosts()
+
+        #expect(viewModel.canShuffle())
+        #expect(viewModel.randomPost() == .first)
+        #expect(!viewModel.canShuffle(excluding: .first))
+        #expect(viewModel.randomPost(excluding: .first) == nil)
+    }
+
+    @Test
+    func shufflingUsesTheRefreshedPool() async {
+        let service = ListedDiscoveryService(results: [.success(.posts([.first])), .success(.posts([.second]))])
+        let viewModel = DiscoveryListViewModel(discoveryService: service)
+        await viewModel.loadPosts()
+        #expect(viewModel.randomPost() == .first)
+
+        await viewModel.refresh()
+
+        #expect(viewModel.randomPost(excluding: .first) == .second)
+        #expect(!viewModel.canShuffle(excluding: .second))
+    }
+
+    @Test
     func loadingListsTheRiverPosts() async {
         let service = ListedDiscoveryService(results: [.success(.posts([.first, .second]))])
         let viewModel = DiscoveryListViewModel(discoveryService: service)
@@ -25,6 +105,8 @@ struct DiscoveryListViewModelTests {
         #expect(viewModel.posts.isEmpty)
         #expect(viewModel.errorMessage == "Could not load the article list")
         #expect(!viewModel.isLoading)
+        #expect(!viewModel.canShuffle())
+        #expect(viewModel.randomPost() == nil)
     }
 
     @Test
@@ -101,6 +183,8 @@ struct DiscoveryListViewModelTests {
 
         #expect(viewModel.posts.isEmpty)
         #expect(viewModel.hasNoFeedsOn)
+        #expect(!viewModel.canShuffle())
+        #expect(viewModel.randomPost() == nil)
     }
 
     @Test

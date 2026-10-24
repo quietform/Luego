@@ -2,6 +2,8 @@ import SwiftUI
 
 struct DiscoveryArticleView: View {
     @Bindable var viewModel: DiscoveryArticleViewModel
+    let canShuffle: Bool
+    let onShuffle: () -> Void
     @Environment(\.openURL) private var openURL
     @Environment(\.iPhoneTabBarVisibilityController) private var iPhoneTabBarVisibilityController
 
@@ -12,6 +14,8 @@ struct DiscoveryArticleView: View {
             } else if let error = viewModel.errorMessage, !viewModel.isLoading {
                 DiscoveryErrorView(
                     message: error,
+                    canShuffle: canShuffle,
+                    onTryAnother: onShuffle,
                     onTryAgain: { Task { await viewModel.load() } },
                     onOpenInBrowser: openInBrowser
                 )
@@ -25,16 +29,17 @@ struct DiscoveryArticleView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.regularPanelBackground)
         .safeAreaInset(edge: .bottom) {
-            if viewModel.article != nil {
-                HStack {
-                    Spacer()
-                    DiscoveryBottomBar(
-                        isSaved: viewModel.isSaved,
-                        onSave: { Task { await viewModel.save() } }
-                    )
-                }
-                .padding(.trailing)
+            HStack {
+                Spacer()
+                DiscoveryBottomBar(
+                    isSaved: viewModel.isSaved,
+                    canSave: viewModel.article != nil,
+                    canShuffle: canShuffle,
+                    onShuffle: onShuffle,
+                    onSave: { Task { await viewModel.save() } }
+                )
             }
+            .padding(.trailing)
         }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
@@ -68,6 +73,8 @@ struct DiscoveryArticleView: View {
 
 struct DiscoveryErrorView: View {
     let message: String
+    let canShuffle: Bool
+    let onTryAnother: () -> Void
     let onTryAgain: () -> Void
     let onOpenInBrowser: () -> Void
 
@@ -77,8 +84,13 @@ struct DiscoveryErrorView: View {
         } description: {
             Text(message)
         } actions: {
+            if canShuffle {
+                Button("Try Another", action: onTryAnother)
+                    .buttonStyle(.borderedProminent)
+            }
+
             Button("Try Again", action: onTryAgain)
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.bordered)
 
             Button("Open in Browser", action: onOpenInBrowser)
         }
@@ -87,19 +99,38 @@ struct DiscoveryErrorView: View {
 
 struct DiscoveryBottomBar: View {
     let isSaved: Bool
+    let canSave: Bool
+    let canShuffle: Bool
+    let onShuffle: () -> Void
     let onSave: () -> Void
 
     var body: some View {
-        Button(action: onSave) {
-            Image(systemName: isSaved ? "checkmark" : "plus")
-                .font(.title2)
-                .foregroundStyle(Color.barAccentInk)
-                .frame(width: 44, height: 44, alignment: .center)
-                .contentShape(Rectangle())
+        HStack(spacing: 8) {
+            Button(action: onShuffle) {
+                Image(systemName: "die.face.5")
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .disabled(!canShuffle)
+            .accessibilityLabel("Next Random Article")
+            .accessibilityIdentifier("discovery.nextRandom")
+
+            Divider()
+                .frame(height: 24)
+                .overlay(Color.barAccentInk.opacity(0.35))
+
+            Button(action: onSave) {
+                Image(systemName: isSaved ? "checkmark" : "plus")
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .disabled(!canSave || isSaved)
+            .accessibilityLabel(isSaved ? "Saved to Reading List" : "Save to Reading List")
+            .accessibilityIdentifier("discovery.save")
         }
+        .font(.title2)
+        .foregroundStyle(Color.barAccentInk)
         .buttonStyle(.plain)
-        .disabled(isSaved)
-        .accessibilityLabel(isSaved ? "Saved to Reading List" : "Save to Reading List")
         .glassEffect(.regular.interactive().tint(Color.barAccentFill))
     }
 }

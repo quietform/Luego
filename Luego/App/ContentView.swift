@@ -75,11 +75,18 @@ struct ContentView: View {
                 SidebarView(selection: $selectedFilter)
                     .navigationSplitViewColumnWidth(min: 200, ideal: 220, max: 260)
             } content: {
-                DiscoveryListPane(viewModel: discoveryListViewModel, selectedPost: $selectedDiscoveryPost)
+                DiscoveryListPane(viewModel: discoveryListViewModel, selectedPost: $selectedDiscoveryPost) {
+                    shuffleDiscovery(using: discoveryListViewModel, excluding: selectedDiscoveryPost)
+                }
                     .articleListActions(viewModel: viewModel)
                     .navigationSplitViewColumnWidth(min: 300, ideal: 320, max: 400)
             } detail: {
-                DiscoveryDetailPane(post: selectedDiscoveryPost)
+                DiscoveryDetailPane(
+                    post: selectedDiscoveryPost,
+                    canShuffle: discoveryListViewModel.canShuffle(excluding: selectedDiscoveryPost)
+                ) {
+                    shuffleDiscovery(using: discoveryListViewModel, excluding: selectedDiscoveryPost)
+                }
                     .navigationSplitViewColumnWidth(min: 500, ideal: 500)
             }
             .tint(Color.regularSelectionInk)
@@ -184,16 +191,30 @@ struct ContentView: View {
         articleListViewModel: ArticleListViewModel
     ) -> some View {
         NavigationStack(path: $discoveryPath) {
-            DiscoveryListView(viewModel: viewModel)
+            DiscoveryListView(viewModel: viewModel) {
+                shuffleDiscovery(using: viewModel)
+            }
                 .background(Color.appBackground)
                 .navigationTitle(ArticleFilter.discovery.navigationTitle)
                 .appNavigationStyle(.largeTransparent)
                 .articleListActions(viewModel: articleListViewModel)
                 .navigationDestination(for: DiscoveryPost.self) { post in
-                    DiscoveryArticleDestination(post: post)
+                    DiscoveryArticleDestination(post: post, canShuffle: viewModel.canShuffle(excluding: post)) {
+                        shuffleDiscovery(using: viewModel, excluding: post)
+                    }
+                    .id(post.id)
                 }
         }
         .toolbar(.hidden, for: .tabBar)
+    }
+
+    private func shuffleDiscovery(using viewModel: DiscoveryListViewModel, excluding currentPost: DiscoveryPost? = nil) {
+        guard let post = viewModel.randomPost(excluding: currentPost) else { return }
+        if horizontalSizeClass == .regular {
+            selectedDiscoveryPost = post
+        } else {
+            discoveryPath = [post]
+        }
     }
 
     private var iPhoneTabBar: some View {

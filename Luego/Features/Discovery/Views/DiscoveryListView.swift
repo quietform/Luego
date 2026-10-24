@@ -3,6 +3,7 @@ import SwiftUI
 struct DiscoveryListView: View {
     @Bindable var viewModel: DiscoveryListViewModel
     var selection: Binding<DiscoveryPost?>?
+    let onShuffle: () -> Void
     @State private var feedsViewModel: DiscoveryFeedsViewModel?
     @Environment(\.diContainer) private var diContainer
 
@@ -31,6 +32,12 @@ struct DiscoveryListView: View {
         }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
+                Button("Surprise Me", systemImage: "die.face.5", action: onShuffle)
+                    .labelStyle(.iconOnly)
+                    .disabled(!viewModel.canShuffle(excluding: selection?.wrappedValue))
+                    .accessibilityIdentifier("discovery.shuffle")
+            }
+            ToolbarItem(placement: .topBarTrailing) {
                 Button(action: editFeeds) {
                     Image(systemName: "pencil")
                 }
