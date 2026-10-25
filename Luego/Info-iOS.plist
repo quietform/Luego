@@ -24,5 +24,10 @@
 		<string>Lora.ttf</string>
 		<string>NunitoSans.ttf</string>
 	</array>
+	<key>UILaunchScreen</key>
+	<dict>
+		<key>UIColorName</key>
+		<string>LaunchBackground</string>
+	</dict>
 </dict>
 </plist>

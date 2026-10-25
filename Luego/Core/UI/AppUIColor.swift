@@ -9,6 +9,7 @@ enum AppUIColor {
     static let nightElevatedPanel = UIColor(red: 0x23 / 255.0, green: 0x24 / 255.0, blue: 0x2c / 255.0, alpha: 1)
     static let duskPurple = UIColor(red: 0xa0 / 255.0, green: 0x8e / 255.0, blue: 0xad / 255.0, alpha: 1)
     static let duskPurpleInk = UIColor(red: 0xe4 / 255.0, green: 0xda / 255.0, blue: 0xe8 / 255.0, alpha: 1)
+    // Mirrored by the LaunchBackground color asset so the launch screen matches the first frame; LaunchBackgroundTests keeps them in sync.
     static let appBackground = adaptive(light: paperCream, dark: nightBackground)
     static let regularPanelBackground = adaptive(light: paperCream, dark: nightPanel)
     static let elevatedPanelBackground = adaptive(

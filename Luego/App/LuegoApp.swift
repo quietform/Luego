@@ -34,10 +34,11 @@ struct LuegoApp: App {
                             await logLaunchDiagnostics()
                         }
                 } else {
-                    ProgressView()
+                    AppLaunchView()
                         .task { await initialize() }
                 }
             }
+            .animation(.easeOut(duration: 0.3), value: diContainer == nil)
         }
     }
 

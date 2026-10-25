@@ -40,7 +40,7 @@ struct ContentView: View {
                         iPhoneLayout(viewModel: articleListViewModel)
                     }
                 } else {
-                    ProgressView()
+                    Color.clear
                 }
             }
         }

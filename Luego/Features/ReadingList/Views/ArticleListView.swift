@@ -177,16 +177,7 @@ struct ArticleListEmptyState: View {
     @ViewBuilder
     private var artwork: some View {
         if filter == .readingList {
-            ZStack {
-                Circle()
-                    .fill(Color.paperCream)
-
-                Image("Kike")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 152, height: 152)
-            }
-            .frame(width: 180, height: 180)
+            MascotBadge(size: 180)
         } else {
             Image(systemName: filter.emptyStateIcon)
                 .font(.system(size: 64))
