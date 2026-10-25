@@ -38,7 +38,7 @@ final class DiscoveryArticleService: DiscoveryArticleServiceProtocol {
                 title: post.title,
                 content: content.content,
                 thumbnailURL: content.thumbnailURL ?? post.thumbnailURL,
-                publishedDate: content.publishedDate,
+                publishedDate: post.displayDate(relativeTo: .now) ?? content.publishedDate,
                 feedTitle: post.domain
             )
         } catch {

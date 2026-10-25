@@ -1,25 +1,27 @@
 import SwiftUI
 
 struct DiscoveryArticleContentView: View {
-    let article: EphemeralArticle
+    let post: DiscoveryPost
+    let publishedDate: Date?
+    let markdown: String?
 
     var body: some View {
         GeometryReader { geo in
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     DiscoveryArticleHeaderView(
-                        title: article.title,
-                        url: article.url,
-                        feedTitle: article.feedTitle,
+                        title: post.title,
+                        url: post.url,
+                        feedTitle: post.domain,
                         formattedDate: formattedDate
                     )
 
                     Divider()
 
                     ReaderMarkdownContentView(
-                        markdown: article.content,
-                        title: article.title,
-                        baseURL: article.url
+                        markdown: markdown,
+                        title: post.title,
+                        baseURL: post.url
                     )
                 }
                 .font(.lora(.body))
@@ -32,10 +34,10 @@ struct DiscoveryArticleContentView: View {
     }
 
     private var formattedDate: String {
-        guard let date = article.publishedDate else { return "" }
+        guard let publishedDate else { return "" }
         let formatter = DateFormatter()
         formatter.dateFormat = "dd-MMM-yy"
-        return formatter.string(from: date)
+        return formatter.string(from: publishedDate)
     }
 }
 

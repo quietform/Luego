@@ -10,6 +10,10 @@ final class DiscoveryArticleViewModel {
     var errorMessage: String?
     var isSaved = false
 
+    var publishedDate: Date? {
+        article?.publishedDate ?? post.displayDate(relativeTo: .now)
+    }
+
     private let discoveryArticleService: DiscoveryArticleServiceProtocol
     private let articleService: ArticleServiceProtocol
 

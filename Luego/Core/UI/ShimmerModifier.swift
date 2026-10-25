@@ -1,13 +1,19 @@
 import SwiftUI
 
 struct ShimmerModifier: ViewModifier {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var phase: CGFloat = 0
 
+    @ViewBuilder
     func body(content: Content) -> some View {
-        content
-            .overlay(shimmerGradient)
-            .mask(content)
-            .onAppear(perform: startAnimation)
+        if reduceMotion {
+            content
+        } else {
+            content
+                .overlay(shimmerGradient)
+                .mask(content)
+                .onAppear(perform: startAnimation)
+        }
     }
 
     private var shimmerGradient: some View {

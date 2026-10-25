@@ -66,6 +66,14 @@ struct DiscoveryArticleViewModelTests {
     }
 
     @Test
+    func futureFeedDateIsHiddenWhileTheArticleLoads() throws {
+        let post = DiscoveryPost(url: DiscoveryPost.first.url, title: "First", publishedDate: .distantFuture)
+        let (viewModel, _) = try makeViewModel(service: StubDiscoveryArticleService(), post: post)
+
+        #expect(viewModel.publishedDate == nil)
+    }
+
+    @Test
     func previouslySavedPostOpensAsSaved() async throws {
         let service = StubDiscoveryArticleService()
         service.articleResult = .success(.first)

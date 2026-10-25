@@ -1,7 +1,8 @@
 import SwiftUI
 
 struct ReaderMarkdownContentView: View {
-    let markdown: String
+    // Nil while the article is still downloading, so one placeholder covers downloading and preparing.
+    let markdown: String?
     let title: String
     let baseURL: URL
     var onPreparationChanged: (Bool) -> Void = { _ in }
@@ -21,11 +22,11 @@ struct ReaderMarkdownContentView: View {
                     .id(documentID)
                     .onAppear { onPreparationChanged(true) }
             } else if preparationFailed {
-                Text(markdown)
+                Text(markdown ?? "")
                     .id(documentID)
                     .onAppear { onPreparationChanged(true) }
             } else {
-                ProgressView()
+                ReaderBodyPlaceholder()
             }
         }
         .readerContentStyle()
@@ -33,6 +34,7 @@ struct ReaderMarkdownContentView: View {
             onPreparationChanged(false)
             document = nil
             preparationFailed = false
+            guard let markdown else { return }
             do {
                 let prepared = try await ReaderDocument.prepare(markdown: markdown, title: title, baseURL: baseURL)
                 try Task.checkCancellation()
@@ -48,7 +50,7 @@ struct ReaderMarkdownContentView: View {
     }
 
     private struct Request: Equatable {
-        let markdown: String
+        let markdown: String?
         let title: String
         let baseURL: URL
     }

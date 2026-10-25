@@ -34,6 +34,46 @@ struct DiscoveryArticleServiceTests {
         #expect(article.publishedDate == publishedDate)
         #expect(article.feedTitle == post.domain)
     }
+
+    @Test
+    func articleKeepsTheDateTheFeedListed() async throws {
+        let feedDate = Date(timeIntervalSince1970: 1_000)
+        let content = ArticleLoadingContentSource(response: ArticleContent(
+            title: "Parsed title",
+            content: "Article body",
+            publishedDate: Date(timeIntervalSince1970: 2_000)
+        ))
+        let post = DiscoveryPost(
+            url: URL(string: "https://article.luego.test/post")!,
+            title: "Feed title",
+            publishedDate: feedDate
+        )
+        let service = DiscoveryArticleService(contentDataSource: content)
+
+        let article = try await service.fetchArticle(for: post)
+
+        #expect(article.publishedDate == feedDate)
+    }
+
+    @Test
+    func futureFeedDateFallsBackToTheArticlesOwnDate() async throws {
+        let parsedDate = Date(timeIntervalSince1970: 2_000)
+        let content = ArticleLoadingContentSource(response: ArticleContent(
+            title: "Parsed title",
+            content: "Article body",
+            publishedDate: parsedDate
+        ))
+        let post = DiscoveryPost(
+            url: URL(string: "https://article.luego.test/post")!,
+            title: "Feed title",
+            publishedDate: .distantFuture
+        )
+        let service = DiscoveryArticleService(contentDataSource: content)
+
+        let article = try await service.fetchArticle(for: post)
+
+        #expect(article.publishedDate == parsedDate)
+    }
 }
 
 @MainActor

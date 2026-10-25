@@ -18,7 +18,7 @@ struct ReaderView: View {
     var body: some View {
         Group {
             if viewModel.isLoading {
-                ArticleLoadingView()
+                ArticleLoadingView(article: viewModel.article, formattedDate: formattedDate)
             } else if let content = viewModel.articleContent {
                 ArticleReaderModeView(
                     article: viewModel.article,
@@ -137,12 +137,30 @@ struct ArticleReaderModeView: View {
 }
 
 struct ArticleLoadingView: View {
+    let article: Article
+    let formattedDate: String
+
     var body: some View {
-        VStack(spacing: 16) {
-            ProgressView()
-            Text("Loading article...")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+        GeometryReader { geo in
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    ArticleHeaderView(
+                        title: article.title,
+                        domain: article.domain,
+                        url: article.url,
+                        formattedDate: formattedDate
+                    )
+
+                    Divider()
+
+                    ReaderBodyPlaceholder()
+                }
+                .font(.lora(.body))
+                .padding(.vertical)
+                .padding(.horizontal, ReaderLayout.horizontalPadding(for: geo.size.width))
+                .frame(maxWidth: .infinity)
+            }
+            .background(Color.readerBackground)
         }
     }
 }

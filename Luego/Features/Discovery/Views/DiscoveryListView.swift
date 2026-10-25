@@ -20,10 +20,7 @@ struct DiscoveryListView: View {
                     Task { await viewModel.refresh() }
                 }
             } else {
-                DiscoveryLoadingView(
-                    pendingURL: nil,
-                    loadingText: "Finding something interesting..."
-                )
+                DiscoveryLoadingView(loadingText: "Finding something interesting…")
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

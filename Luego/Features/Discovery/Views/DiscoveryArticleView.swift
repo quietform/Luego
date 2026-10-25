@@ -9,9 +9,7 @@ struct DiscoveryArticleView: View {
 
     var body: some View {
         Group {
-            if let article = viewModel.article {
-                DiscoveryArticleContentView(article: article)
-            } else if let error = viewModel.errorMessage, !viewModel.isLoading {
+            if let error = viewModel.errorMessage, !viewModel.isLoading {
                 DiscoveryErrorView(
                     message: error,
                     canShuffle: canShuffle,
@@ -20,9 +18,10 @@ struct DiscoveryArticleView: View {
                     onOpenInBrowser: openInBrowser
                 )
             } else {
-                DiscoveryLoadingView(
-                    pendingURL: viewModel.post.url,
-                    loadingText: "Opening article..."
+                DiscoveryArticleContentView(
+                    post: viewModel.post,
+                    publishedDate: viewModel.publishedDate,
+                    markdown: viewModel.article?.content
                 )
             }
         }
