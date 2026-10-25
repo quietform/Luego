@@ -20,7 +20,7 @@ struct DiscoveryListView: View {
                     Task { await viewModel.refresh() }
                 }
             } else {
-                DiscoveryLoadingView(loadingText: "Finding something interesting…")
+                DiscoveryPostPlaceholderList(showsSelection: selection != nil)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

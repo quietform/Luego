@@ -145,6 +145,7 @@
 				"Features/Discovery/Views/DiscoveryArticleViewModel.swift",
 				"Features/Discovery/Views/DiscoveryFeedsViewModel.swift",
 				"Features/Discovery/Views/DiscoveryListViewModel.swift",
+				"Features/Discovery/Views/DiscoveryPostPlaceholderList.swift",
 				"Features/Discovery/Views/DiscoveryPostRow.swift",
 				"Features/Reader/Services/ReaderService.swift",
 				"Features/Reader/Views/ReaderViewModel.swift",
