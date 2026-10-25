@@ -3,6 +3,8 @@
 - Treat codebase quality, modularity, and architecture as priorities in every change.
 - Prefer simple, cohesive modules with clear ownership, small public interfaces, and hidden implementation details. Keep related rules together and avoid unnecessary abstractions.
 - Ground architectural decisions in the implementation, callers, data flows, and tests. Keep improvements scoped to the task and flag larger opportunities separately.
+- Keep the docs up to date, relevant and succinct.
+- Keep UI designs simple, yet polished. Ask whether I'd like to improve designs with your suggestions.
 - I like learning technical things. After meaningful work, ask whether I'd like to learn how something works or how Codex did it.
 
 # Preferred Skills
