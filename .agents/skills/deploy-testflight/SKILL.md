@@ -1,6 +1,6 @@
 ---
 name: deploy-testflight
-description: iOS TestFlight deployment workflow for Luego using Xcode-managed signing, simulator verification, archive/export upload, and CalVer build coordination. Use when archiving and uploading Luego iOS builds to TestFlight, troubleshooting Apple account or provisioning issues, or fixing duplicate build-number rejections by updating `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION`.
+description: iOS TestFlight deployment workflow for Luego using Xcode-managed signing, simulator verification, archive/export upload, tester-group distribution, and CalVer build coordination. Use when archiving and uploading Luego iOS builds to TestFlight, troubleshooting Apple account or provisioning issues, or fixing duplicate build-number rejections by updating `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION`.
 ---
 
 # deploy-testflight
@@ -69,11 +69,23 @@ Ship Luego iOS builds to TestFlight with Xcode-managed signing and Xcode-authent
      -exportPath build/Export \
      -allowProvisioningUpdates
    ```
-6. Report the result.
+6. Distribute the build to testers.
+   - Wait until the new build's processing state is `VALID`:
+     ```bash
+     asc builds list --platform IOS --limit 3 --sort -uploadedDate --output table
+     ```
+   - `Friends-Internal` receives every build automatically. Add `External-Testers` and submit for beta app review:
+     ```bash
+     asc builds add-groups --build-id "BUILD_ID" --group "External-Testers" --submit --confirm
+     asc builds beta-app-review-submission view --build-id "BUILD_ID" --output table
+     ```
+   - External testers, including public-link testers, get the build once review approves it.
+7. Report the result.
    - Return the archive path, export path, and upload status.
    - Return the final `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION`.
-   - Return any actionable error output when archive or upload fails.
-7. Optionally clean local artifacts.
+   - Return the tester groups on the build and the beta review state.
+   - Return any actionable error output when archive, upload, or distribution fails.
+8. Optionally clean local artifacts.
    ```bash
    rm -rf build/Luego.xcarchive build/Export build/ExportOptions.plist
    ```
