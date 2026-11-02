@@ -8,15 +8,21 @@ final class LuegoAPIDataSource: LuegoAPIDataSourceProtocol, Sendable {
     private let baseURL: URL
     private let apiKey: String
     private let timeout: TimeInterval
+    private let userAgent: String
+    private let session: URLSession
 
     init(
         baseURL: URL = AppConfiguration.luegoAPIBaseURL,
         apiKey: String = AppConfiguration.luegoAPIKey,
-        timeout: TimeInterval = AppConfiguration.luegoAPITimeout
+        timeout: TimeInterval = AppConfiguration.luegoAPITimeout,
+        userAgent: String = AppConfiguration.luegoAPIUserAgent,
+        session: URLSession = .shared
     ) {
         self.baseURL = baseURL
         self.apiKey = apiKey
         self.timeout = timeout
+        self.userAgent = userAgent
+        self.session = session
     }
 
     func fetchArticle(for url: URL) async throws -> LuegoAPIResponse {
@@ -26,6 +32,7 @@ final class LuegoAPIDataSource: LuegoAPIDataSourceProtocol, Sendable {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue(apiKey, forHTTPHeaderField: "X-API-Key")
+        request.setValue(userAgent, forHTTPHeaderField: "User-Agent")
         request.timeoutInterval = timeout
 
         let body = ["url": url.absoluteString]
@@ -37,7 +44,7 @@ final class LuegoAPIDataSource: LuegoAPIDataSourceProtocol, Sendable {
         let response: URLResponse
 
         do {
-            (data, response) = try await URLSession.shared.data(for: request)
+            (data, response) = try await session.data(for: request)
         } catch {
             Logger.api.error("Network error: \(error.localizedDescription)")
             throw LuegoAPIError.networkError(error)

@@ -55,6 +55,8 @@ Services receive [ContentDataSource](../Luego/Core/DataSources/ContentDataSource
 2. Fetch HTML through `WebPageDataSource` and parse it with `LuegoParserDataSource` when the SDK is ready.
 3. Fall back to `LuegoAPIDataSource` if local parsing is unavailable or fails.
 
+`LuegoAPIDataSource` and `LuegoSDKDataSource` send `AppConfiguration.luegoAPIUserAgent`, such as `Luego/2026.10.25 (build 1; iOS 26.1.0)`, so server logs show which release made each request. Third-party page fetches keep the system user agent.
+
 `WebPageDataSource` handles URL validation and HTML fetching. `ContentDataSource` implements metadata and content requests. Force refresh clears cached content for the URL; Discovery skips cache reads and writes. Metadata requests fetch fresh metadata and cache any usable article body returned by the local parser or API for later reading.
 
 [LuegoSDKManager](../Luego/Core/DataSources/LuegoSDKManager.swift) downloads parser bundles and rules through `LuegoSDKDataSource`, storing them in `LuegoSDKCacheDataSource`. `LuegoParserDataSource` coordinates SDK snapshots on the main actor and passes them to a private parser actor that owns and reuses the JavaScriptCore context. JavaScript execution stays serialized, and only Swift values cross the actor boundary. SDK files and parsed article content have separate caches.
