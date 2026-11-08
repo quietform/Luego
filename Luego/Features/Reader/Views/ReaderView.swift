@@ -277,10 +277,7 @@ extension ReaderView {
     }
 
     private var formattedDate: String {
-        let displayDate = viewModel.article.publishedDate ?? viewModel.article.savedDate
-        let formatter = DateFormatter()
-        formatter.dateFormat = "dd-MMM-yy"
-        return formatter.string(from: displayDate)
+        DateFormatters.articleDate(viewModel.article.publishedDate ?? viewModel.article.savedDate)
     }
 
     private func updateReadPosition() {

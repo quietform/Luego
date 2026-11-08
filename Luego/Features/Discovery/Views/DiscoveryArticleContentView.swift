@@ -34,10 +34,7 @@ struct DiscoveryArticleContentView: View {
     }
 
     private var formattedDate: String {
-        guard let publishedDate else { return "" }
-        let formatter = DateFormatter()
-        formatter.dateFormat = "dd-MMM-yy"
-        return formatter.string(from: publishedDate)
+        publishedDate.map { DateFormatters.articleDate($0) } ?? ""
     }
 }
 

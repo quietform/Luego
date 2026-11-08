@@ -18,4 +18,8 @@ enum DateFormatters {
         f.dateFormat = "MMM d"
         return f
     }()
+
+    static func articleDate(_ date: Date, locale: Locale = .autoupdatingCurrent) -> String {
+        date.formatted(.dateTime.day().month(.abbreviated).year().locale(locale))
+    }
 }

@@ -111,6 +111,7 @@ enum AppTypography {
     static let loraPostScriptName = "Lora-Regular"
     static let nunitoPostScriptName = "NunitoSans-12ptRegular"
     private static let loraFileName = "Lora"
+    private static let loraItalicFileName = "Lora-Italic"
     private static let nunitoFileName = "NunitoSans"
     private static let loraFileExtension = "ttf"
     private static let nunitoFileExtension = "ttf"
@@ -119,6 +120,7 @@ enum AppTypography {
 
     static func registerFonts() {
         registerFont(named: loraFileName, extension: loraFileExtension)
+        registerFont(named: loraItalicFileName, extension: loraFileExtension)
         registerFont(named: nunitoFileName, extension: nunitoFileExtension)
     }
 
@@ -149,6 +151,13 @@ enum AppTypography {
         @unknown default:
             17
         }
+    }
+
+    static func defaultPointSize(for textStyle: UIFont.TextStyle) -> CGFloat {
+        UIFontDescriptor.preferredFontDescriptor(
+            withTextStyle: textStyle,
+            compatibleWith: UITraitCollection(preferredContentSizeCategory: .large)
+        ).pointSize
     }
 
     static func variableFontAxisValue(for weight: Font.Weight) -> CGFloat {
@@ -216,7 +225,12 @@ extension Font {
     }
 
     static func lora(_ textStyle: Font.TextStyle, weight: Font.Weight = .regular) -> Font {
-        Font(UIFont.lora(forTextStyle: textStyle.uiTextStyle, weight: weight))
+        .custom(
+            AppTypography.loraPostScriptName,
+            size: AppTypography.defaultPointSize(for: textStyle.uiTextStyle),
+            relativeTo: textStyle
+        )
+        .weight(weight)
     }
 
     static func nunito(_ textStyle: Font.TextStyle, weight: Font.Weight = .regular) -> Font {
@@ -233,15 +247,8 @@ extension UIFont {
         AppTypography.uiFont(for: role, isEmphasized: emphasized, scalesWithDynamicType: false)
     }
 
-    static func lora(forTextStyle textStyle: UIFont.TextStyle, pointSize: CGFloat? = nil, weight: Font.Weight = .regular) -> UIFont {
-        lora(forTextStyle: textStyle, pointSize: pointSize, weight: weight, scalesWithDynamicType: true)
-    }
-
     static func lora(forTextStyle textStyle: UIFont.TextStyle, pointSize: CGFloat? = nil, weight: Font.Weight = .regular, scalesWithDynamicType: Bool, compatibleWith traitCollection: UITraitCollection? = nil) -> UIFont {
-        let pointSize = pointSize ?? UIFontDescriptor.preferredFontDescriptor(
-            withTextStyle: textStyle,
-            compatibleWith: UITraitCollection(preferredContentSizeCategory: .large)
-        ).pointSize
+        let pointSize = pointSize ?? AppTypography.defaultPointSize(for: textStyle)
         let axisValue = AppTypography.variableFontAxisValue(for: weight)
         let variationAttributeName = UIFontDescriptor.AttributeName(rawValue: kCTFontVariationAttribute as String)
         let descriptor = UIFontDescriptor(fontAttributes: [
@@ -261,10 +268,7 @@ extension UIFont {
     }
 
     static func nunito(forTextStyle textStyle: UIFont.TextStyle, pointSize: CGFloat? = nil, weight: Font.Weight = .regular, scalesWithDynamicType: Bool, compatibleWith traitCollection: UITraitCollection? = nil) -> UIFont {
-        let pointSize = pointSize ?? UIFontDescriptor.preferredFontDescriptor(
-            withTextStyle: textStyle,
-            compatibleWith: UITraitCollection(preferredContentSizeCategory: .large)
-        ).pointSize
+        let pointSize = pointSize ?? AppTypography.defaultPointSize(for: textStyle)
         let axisValue = AppTypography.variableFontAxisValue(for: weight)
         let variationAttributeName = UIFontDescriptor.AttributeName(rawValue: kCTFontVariationAttribute as String)
         let descriptor = UIFontDescriptor(fontAttributes: [

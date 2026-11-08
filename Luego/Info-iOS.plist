@@ -22,6 +22,7 @@
 	<key>UIAppFonts</key>
 	<array>
 		<string>Lora.ttf</string>
+		<string>Lora-Italic.ttf</string>
 		<string>NunitoSans.ttf</string>
 	</array>
 	<key>UILaunchScreen</key>
