@@ -51,15 +51,17 @@ final class LuegoSDKManager: LuegoSDKManagerProtocol {
             var skippedBundles: [String] = []
 
             for bundleName in AppConfiguration.sdkBundleNames {
-                let remoteVersion = remoteVersions.bundles[bundleName]?.version
+                let remoteBundle = remoteVersions.bundles[bundleName]
                 let localVersion = localVersions?.bundles[bundleName]?.version
-                let fileExists = await cacheDataSource.bundleExists(name: bundleName)
+                let cachedSize = await cacheDataSource.bundleSize(name: bundleName)
 
-                let versionMismatch = localVersion != remoteVersion
-                let needsDownload = versionMismatch || !fileExists
+                let isMissing = cachedSize == nil
+                let versionMismatch = localVersion != remoteBundle?.version
+                let sizeMismatch = remoteBundle.map { $0.size != cachedSize } ?? false
+                let needsDownload = isMissing || versionMismatch || sizeMismatch
 
                 if needsDownload {
-                    let reason = !fileExists ? "missing" : "outdated"
+                    let reason = isMissing ? "missing" : versionMismatch ? "outdated" : "size differs from server"
                     Logger.sdk.debug("↓ Downloading \(bundleName) (\(reason))")
 
                     let data = try await sdkDataSource.downloadBundle(name: bundleName)

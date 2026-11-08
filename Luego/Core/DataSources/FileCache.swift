@@ -48,6 +48,10 @@ actor FileCache {
         urls.allSatisfy { fileManager.fileExists(atPath: $0.path) }
     }
 
+    func size(of url: URL) -> Int? {
+        (try? fileManager.attributesOfItem(atPath: url.path)[.size] as? NSNumber)?.intValue
+    }
+
     func remove(_ url: URL) {
         try? fileManager.removeItem(at: url)
     }

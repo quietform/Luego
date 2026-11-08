@@ -35,7 +35,6 @@ final class LuegoSDKDataSource: LuegoSDKDataSourceProtocol {
         request.httpMethod = "GET"
         request.setValue(apiKey, forHTTPHeaderField: "X-API-Key")
         request.timeoutInterval = timeout
-        request.cachePolicy = .reloadIgnoringLocalCacheData
 
         let (data, response) = try await performRequest(request)
 
@@ -94,6 +93,7 @@ final class LuegoSDKDataSource: LuegoSDKDataSourceProtocol {
     private func performRequest(_ request: URLRequest) async throws -> (Data, URLResponse) {
         var request = request
         request.setValue(userAgent, forHTTPHeaderField: "User-Agent")
+        request.cachePolicy = .reloadIgnoringLocalCacheData
         do {
             return try await session.data(for: request)
         } catch {

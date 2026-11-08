@@ -7,7 +7,7 @@ protocol LuegoSDKCacheDataSourceProtocol: Sendable {
     func saveRules(_ data: Data) async
     func loadVersions() async -> SDKVersionsResponse?
     func saveVersions(_ versions: SDKVersionsResponse) async
-    func bundleExists(name: String) async -> Bool
+    func bundleSize(name: String) async -> Int?
     func rulesExist() async -> Bool
     func allBundlesExist() async -> Bool
     func clearAll() async
@@ -51,8 +51,8 @@ final class LuegoSDKCacheDataSource: LuegoSDKCacheDataSourceProtocol {
         await storage.writeJSON(versions, to: sdkDirectory.appendingPathComponent("versions.json"))
     }
 
-    func bundleExists(name: String) async -> Bool {
-        await storage.contains([bundleURL(name)])
+    func bundleSize(name: String) async -> Int? {
+        await storage.size(of: bundleURL(name))
     }
 
     func rulesExist() async -> Bool {
