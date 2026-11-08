@@ -39,6 +39,12 @@ Run the app via `xcodebuildmcp` and verify behavior with logs or screenshots on 
 
 Keep automated tests deterministic with local fixtures and mocks. The `LuegoTests` scheme runs service and persistence tests with isolated storage, without launching the app or contacting CloudKit.
 
+`ReaderRestorationTests` in the separate benchmark app exercises the production iPad detail pane and iPhone reader destination with cached text and an in-memory database. The fixture never starts CloudKit sync or fetches content. Simulator builds reuse the app's entitlements so its dependency container can be constructed; these functional tests skip physical devices. iPad checks cover article switching, interrupted restoration, unread articles, completed and short articles, repeated no-scroll reopening without progress drift, and saving after a swipe without shifting the viewport. The separate iPhone check covers push/pop restoration. Tests for the other layout skip automatically.
+
+```bash
+xcodebuildmcp simulator test --project-path PerformanceTests/LuegoPerformance.xcodeproj --scheme LuegoPerformance --configuration Release --simulator-id <uuid> --json '{"extraArgs":["-parallel-testing-enabled","NO","-only-testing:LuegoPerformanceUITests/ReaderRestorationTests"]}'
+```
+
 ## Responsiveness regression coverage
 
 Tests queue main-actor work while exercising real document preparation, database contention, shared-queue reads, caches, and feed parsing. They assert that the queued work progresses rather than using machine-dependent millisecond thresholds. Concurrency cases cover duplicate URL saves and their creation results, atomic sync-state merges, worker completion and cache mutations in cancelled tasks, and rejection of late results and errors at the UI boundary. Framework cancellation tests verify that GRDB leaves stored data intact; workers do not add cancellation checks around it. Outbound sync tests use local database failures and cancelled GRDB reads to verify that failed batch preparation preserves upload intent for retry, while confirmed missing records are identified separately.

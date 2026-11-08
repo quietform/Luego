@@ -192,6 +192,7 @@
 			"buildSettings" = {
 				"PRODUCT_NAME" = "$(TARGET_NAME)";
 				"PRODUCT_BUNDLE_IDENTIFIER" = "com.esoxjem.Luego.performance";
+				"CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]" = "../Luego/Luego.entitlements";
 				"GENERATE_INFOPLIST_FILE" = "YES";
 				"INFOPLIST_FILE" = "Host/Info.plist";
 				"INFOPLIST_KEY_UILaunchScreen_Generation" = "YES";

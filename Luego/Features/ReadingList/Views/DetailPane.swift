@@ -32,6 +32,7 @@ struct DetailPane: View {
     private func readerContent(for article: Article) -> some View {
         if let vm = readerViewModel {
             ReaderView(viewModel: vm)
+                .id(vm.article.id)
         } else {
             ProgressView()
         }

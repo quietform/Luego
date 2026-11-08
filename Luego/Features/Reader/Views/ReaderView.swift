@@ -27,7 +27,6 @@ struct ReaderView: View {
                     scrollPosition: $scrollPosition,
                     contentHeight: $contentHeight,
                     viewHeight: $viewHeight,
-                    hasRestoredPosition: $hasRestoredPosition,
                     onUpdateReadPosition: updateReadPosition,
                     onRestoreScrollPosition: restoreScrollPosition,
                     onDisappear: handleDisappear,
@@ -82,7 +81,6 @@ struct ArticleReaderModeView: View {
     @Binding var scrollPosition: CGFloat
     @Binding var contentHeight: CGFloat
     @Binding var viewHeight: CGFloat
-    @Binding var hasRestoredPosition: Bool
     let onUpdateReadPosition: () -> Void
     let onRestoreScrollPosition: (ScrollViewProxy) -> Void
     let onDisappear: () -> Void
@@ -116,13 +114,13 @@ struct ArticleReaderModeView: View {
                     .padding(.vertical)
                     .padding(.horizontal, ReaderLayout.horizontalPadding(for: outerGeo.size.width))
                     .frame(maxWidth: .infinity)
-                    .id("articleContent")
                     .background(
                         ScrollPositionTracker(
                             contentHeight: $contentHeight,
                             viewHeight: $viewHeight,
                             scrollPosition: $scrollPosition,
                             outerGeometry: outerGeo,
+                            readPosition: article.readPosition,
                             onPositionChange: onUpdateReadPosition,
                             onAppear: { onRestoreScrollPosition(scrollProxy) }
                         )
@@ -240,6 +238,7 @@ struct ScrollPositionTracker: View {
     @Binding var viewHeight: CGFloat
     @Binding var scrollPosition: CGFloat
     let outerGeometry: GeometryProxy
+    let readPosition: Double
     let onPositionChange: () -> Void
     let onAppear: () -> Void
 
@@ -266,6 +265,12 @@ struct ScrollPositionTracker: View {
                     contentHeight = geo.size.height
                     viewHeight = outerGeometry.size.height
                     onAppear()
+                }
+                .overlay(alignment: .top) {
+                    Color.clear
+                        .frame(height: 1)
+                        .id("readPosition")
+                        .frame(height: geo.size.height * CGFloat(min(1, max(0, readPosition))), alignment: .bottom)
                 }
         }
     }
@@ -312,16 +317,8 @@ extension ReaderView {
                 return
             }
             await MainActor.run {
-                let topAnchor = UnitPoint(x: 0, y: 0)
-                let bottomAnchor = UnitPoint(x: 0, y: 1)
-
-                let interpolatedAnchor = UnitPoint(
-                    x: 0,
-                    y: topAnchor.y + (bottomAnchor.y - topAnchor.y) * savedPosition
-                )
-
                 withAnimation(.easeOut(duration: 0.3)) {
-                    scrollProxy.scrollTo("articleContent", anchor: interpolatedAnchor)
+                    scrollProxy.scrollTo("readPosition", anchor: .bottom)
                 }
                 hasRestoredPosition = true
                 restorationTask = nil

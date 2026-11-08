@@ -23,6 +23,8 @@ struct BenchmarkApp: App {
             Group {
                 if ProcessInfo.processInfo.arguments.contains("--benchmark-animation-calibration") {
                     AnimationCalibration()
+                } else if ProcessInfo.processInfo.arguments.contains("--reader-restoration-fixture") {
+                    ReaderRestorationFixture()
                 } else {
                     BenchmarkReader()
                 }
