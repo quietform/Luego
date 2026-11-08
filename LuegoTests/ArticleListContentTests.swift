@@ -35,13 +35,7 @@ struct ArticleListContentTests {
     }
 
     private func accessibilityIdentifiers(in view: some View) -> Set<String> {
-        let controller = UIHostingController(rootView: view)
-        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
-        window.rootViewController = controller
-        window.makeKeyAndVisible()
-        defer { window.isHidden = true }
-        controller.view.layoutIfNeeded()
-        return accessibilityIdentifiers(in: controller.view)
+        inspectAccessibility(of: view, accessibilityIdentifiers(in:))
     }
 
     private func accessibilityIdentifiers(in element: NSObject) -> Set<String> {
