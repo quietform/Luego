@@ -62,6 +62,8 @@
 
 - Preserve support for iOS and iPadOS. Follow the [testing policy](TESTING.md#simulator-verification): use one relevant simulator by default and check both only when the second device adds coverage.
 - Use platform guards only where behavior truly differs.
+- iPhone and iPad layouts host the same content views, such as `ArticleListContent` and `DiscoveryListView`. Pass layout differences in, such as an optional selection, and keep layout wrappers to navigation chrome and backgrounds.
+- Do not tint layout containers. Both layouts inherit the brand accent from the `AccentColor` asset; a control that needs another color sets its own tint.
 - Keep entitlements in sync with target capabilities:
   - `Luego/Luego.entitlements`
   - `LuegoShareExtension/LuegoShareExtension.entitlements`

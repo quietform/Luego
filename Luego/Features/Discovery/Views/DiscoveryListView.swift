@@ -71,7 +71,7 @@ struct DiscoveryPostList: View {
                 }
                 .buttonStyle(.plain)
                 .listRowSeparator(.hidden)
-                .listRowBackground(selectionBackground(isSelected: selection.wrappedValue == post))
+                .listRowBackground(RowSelectionBackground(isSelected: selection.wrappedValue == post))
             } else {
                 NavigationLink(value: post) {
                     DiscoveryPostRow(post: post)
@@ -82,13 +82,6 @@ struct DiscoveryPostList: View {
         .refreshable {
             await onRefresh()
         }
-    }
-
-    private func selectionBackground(isSelected: Bool) -> some View {
-        RoundedRectangle(cornerRadius: 20, style: .continuous)
-            .fill(isSelected ? Color.regularSelectionFill : Color.clear)
-            .padding(.horizontal, 4)
-            .padding(.vertical, 3)
     }
 }
 

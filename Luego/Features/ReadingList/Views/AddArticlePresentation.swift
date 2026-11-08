@@ -66,7 +66,6 @@ struct AddArticleDestination: View {
             AddArticleView(viewModel: viewModel)
                 .frame(width: preferredWidth, alignment: .topLeading)
         }
-        .tint(Color.regularSelectionInk)
         .background(Color.regularPanelBackground)
         .appNavigationChrome()
         .presentationCompactAdaptation(.popover)

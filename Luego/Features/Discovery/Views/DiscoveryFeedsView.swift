@@ -60,7 +60,6 @@ struct DiscoveryFeedsView: View {
             }
         }
         .formStyle(.grouped)
-        .tint(Color.regularSelectionInk)
         .navigationTitle("Feeds")
         .appNavigationStyle(.inlineTransparent)
         .toolbar {

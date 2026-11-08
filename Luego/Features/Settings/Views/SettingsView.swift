@@ -54,7 +54,6 @@ struct SettingsView: View {
             AppVersionSection(sdkVersionString: viewModel.sdkVersionString)
         }
         .formStyle(.grouped)
-        .tint(Color.regularSelectionInk)
         .appNavigationStyle(.inlineTransparent)
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {

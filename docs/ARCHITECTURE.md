@@ -16,7 +16,7 @@ View -> ViewModel -> Service -> ArticleStoreProtocol -> GRDB / SQLite
 GRDBArticleStore <-> SyncEngineManager <-> CloudKit private database
 ```
 
-[ContentView](../Luego/App/ContentView.swift) owns navigation and deep links, and asks `ArticleListViewModel` to refresh when active. The view model imports shared URLs independently of foreground CloudKit catch-up. Compact layouts use tabs; regular layouts use split navigation.
+[ContentView](../Luego/App/ContentView.swift) owns navigation and deep links, and asks `ArticleListViewModel` to refresh when active. The view model imports shared URLs independently of foreground CloudKit catch-up. Compact layouts use tabs; regular layouts use split navigation. Both host the same list views and pass a selection binding only in split navigation. The `AccentColor` asset mirrors `AppUIColor.regularSelectionInk` (guarded by `AccentColorTests`), so both layouts share the brand accent.
 
 ## Execution boundaries
 

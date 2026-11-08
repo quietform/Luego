@@ -88,7 +88,6 @@ struct ContentView: View {
                 }
                     .navigationSplitViewColumnWidth(min: 500, ideal: 500)
             }
-            .tint(Color.regularSelectionInk)
             .appNavigationChrome()
         } else {
             NavigationSplitView {
@@ -108,7 +107,6 @@ struct ContentView: View {
                 DetailPane(article: selectedArticle)
                     .navigationSplitViewColumnWidth(min: 500, ideal: 500)
             }
-            .tint(Color.regularSelectionInk)
             .appNavigationChrome()
         }
     }

@@ -7,8 +7,6 @@ struct ArticleListPane: View {
     let onDiscover: () -> Void
     let shouldAnimateEmptyStateOnFirstAppearance: Bool
     let onEmptyStateAnimationConsumed: () -> Void
-    @Environment(\.diContainer) private var diContainer
-    @Environment(SyncStatusObserver.self) private var syncStatusObserver
 
     private var filteredArticles: [Article] {
         viewModel.filteredArticles(for: filter)
@@ -18,25 +16,16 @@ struct ArticleListPane: View {
         filteredArticles.map(\.id)
     }
 
-    private var restoreStatusText: String? {
-        guard filter == .readingList, syncStatusObserver.state == .restoring else { return nil }
-        return "Restoring articles from iCloud."
-    }
-
     var body: some View {
-        Group {
-            if filteredArticles.isEmpty {
-                emptyState(for: viewModel)
-            } else {
-                SelectableArticleList(
-                    articles: filteredArticles,
-                    viewModel: viewModel,
-                    selection: $selectedArticle,
-                    filter: filter,
-                    onRefresh: { await viewModel.refreshArticles() }
-                )
-            }
-        }
+        ArticleListContent(
+            articles: filteredArticles,
+            viewModel: viewModel,
+            filter: filter,
+            selection: $selectedArticle,
+            onDiscover: onDiscover,
+            shouldAnimateEmptyStateOnFirstAppearance: shouldAnimateEmptyStateOnFirstAppearance,
+            onEmptyStateAnimationConsumed: onEmptyStateAnimationConsumed
+        )
         .background(Color.regularPanelBackground)
         .appNavigationStyle(.contentLargeTitle)
         .navigationTitle(filter.navigationTitle)
@@ -47,77 +36,5 @@ struct ArticleListPane: View {
                 self.selectedArticle = nil
             }
         }
-    }
-
-    @ViewBuilder
-    private func emptyState(for viewModel: ArticleListViewModel) -> some View {
-        let content = ArticleListEmptyState(
-            onDiscover: onDiscover,
-            filter: filter,
-            restoreStatusText: restoreStatusText,
-            shouldAnimateCopyOnFirstAppearance: filter == .readingList && shouldAnimateEmptyStateOnFirstAppearance,
-            onCopyAnimationConsumed: onEmptyStateAnimationConsumed
-        )
-
-        RefreshableEmptyStateContainer(onRefresh: { await viewModel.refreshArticles() }) {
-            content
-        }
-    }
-}
-
-struct SelectableArticleList: View {
-    let articles: [Article]
-    let viewModel: ArticleListViewModel
-    @Binding var selection: Article?
-    let filter: ArticleFilter
-    let onRefresh: () async -> Void
-
-    private var swipeActions: ArticleSwipeActions {
-        ArticleSwipeActions(
-            filter: filter,
-            viewModel: viewModel,
-            onDelete: { article in
-                if selection?.id == article.id {
-                    selection = nil
-                }
-            }
-        )
-    }
-
-    var body: some View {
-        List {
-            ForEach(articles) { article in
-                Button {
-                    selection = article
-                } label: {
-                    ArticleRowView(article: article, isSelected: selection?.id == article.id)
-                }
-                .accessibilityIdentifier(ReadingListAccessibilityID.open(article))
-                .buttonStyle(.plain)
-                .listRowSeparator(.hidden)
-                .listRowBackground(selectionBackground(isSelected: selection?.id == article.id))
-                .swipeActions(edge: .leading, allowsFullSwipe: true) {
-                    swipeActions.favoriteButton(for: article)
-                }
-                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                    swipeActions.archiveButton(for: article)
-                    swipeActions.deleteButton(for: article)
-                }
-            }
-        }
-        .id(filter)
-        .accessibilityIdentifier(ReadingListAccessibilityID.list(filter))
-        .scrollContentBackground(.hidden)
-        .background(Color.regularPanelBackground)
-        .refreshable {
-            await onRefresh()
-        }
-    }
-
-    private func selectionBackground(isSelected: Bool) -> some View {
-        RoundedRectangle(cornerRadius: 20, style: .continuous)
-            .fill(isSelected ? Color.regularSelectionFill : Color.clear)
-            .padding(.horizontal, 4)
-            .padding(.vertical, 3)
     }
 }
