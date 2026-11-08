@@ -75,3 +75,10 @@ private func accessibleObjects(in element: NSObject) -> [NSObject] {
     let views = (element as? UIView)?.subviews ?? []
     return (children.isEmpty ? views : children).flatMap(accessibleObjects)
 }
+
+@MainActor
+func accessibilityValues(in view: some View) -> [String: String] {
+    inspectAccessibility(of: view) { root in
+        Dictionary(accessibleObjects(in: root).map { ($0.accessibilityLabel ?? "", $0.accessibilityValue ?? "") }) { first, _ in first }
+    }
+}

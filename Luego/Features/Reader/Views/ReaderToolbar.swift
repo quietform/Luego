@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ReaderToolbar: ToolbarContent {
     let membership: ArticleListMembership
+    let progressPercent: Int?
     let articleURL: URL
     let articleTitle: String
     let onToggleFavorite: () -> Void
@@ -22,6 +23,12 @@ struct ReaderToolbar: ToolbarContent {
                 Button(action: onRefresh) {
                     Label("Refresh Content", systemImage: "arrow.clockwise")
                 }
+            }
+        }
+
+        if let progressPercent {
+            ToolbarItem(placement: .principal) {
+                ReaderProgressRing(percent: progressPercent)
             }
         }
     }

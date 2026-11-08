@@ -14,6 +14,7 @@ struct ReaderView: View {
     @State private var lastSavedPosition: Double = 0
     @State private var contentRequestID = UUID()
     @State private var refreshRequested = false
+    @State private var progressPercent = 0
 
     var body: some View {
         Group {
@@ -27,7 +28,7 @@ struct ReaderView: View {
                     scrollPosition: $scrollPosition,
                     contentHeight: $contentHeight,
                     viewHeight: $viewHeight,
-                    onUpdateReadPosition: updateReadPosition,
+                    onUpdateReadPosition: handleScroll,
                     onRestoreScrollPosition: restoreScrollPosition,
                     onDisappear: handleDisappear,
                     onPreparationChanged: { isDocumentPrepared = $0 }
@@ -46,6 +47,7 @@ struct ReaderView: View {
         .toolbar {
             ReaderToolbar(
                 membership: viewModel.article.listMembership,
+                progressPercent: isShowingArticle ? progressPercent : nil,
                 articleURL: viewModel.article.url,
                 articleTitle: viewModel.article.title,
                 onToggleFavorite: { Task { await viewModel.toggleFavorite() } },
@@ -232,6 +234,18 @@ extension ReaderView {
 
     private var formattedDate: String {
         DateFormatters.articleDate(viewModel.article.publishedDate ?? viewModel.article.savedDate)
+    }
+
+    private var isShowingArticle: Bool {
+        !viewModel.isLoading && viewModel.articleContent != nil
+    }
+
+    private func handleScroll() {
+        let percent = ReaderProgressRing.percent(scrollOffset: scrollPosition, contentHeight: contentHeight, viewportHeight: viewHeight)
+        if percent != progressPercent {
+            progressPercent = percent
+        }
+        updateReadPosition()
     }
 
     private func updateReadPosition() {
