@@ -45,6 +45,8 @@ private nonisolated final class GenericRSSParser: NSObject, XMLParserDelegate {
     private var currentLink: String = ""
     private var currentPubDate: String = ""
     private var currentSummary: String = ""
+    private var currentContent: String = ""
+    private var currentDeclaredImages: [String] = []
     private var isAtomFeed = false
     private var isInItem = false
 
@@ -76,6 +78,12 @@ private nonisolated final class GenericRSSParser: NSObject, XMLParserDelegate {
             currentLink = ""
             currentPubDate = ""
             currentSummary = ""
+            currentContent = ""
+            currentDeclaredImages = []
+        }
+
+        if isInItem, let url = attributeDict["url"], Self.declaresImage(elementName, attributes: attributeDict) {
+            currentDeclaredImages.append(url)
         }
 
         if isAtomFeed && elementName == "link" && isInItem {
@@ -98,6 +106,8 @@ private nonisolated final class GenericRSSParser: NSObject, XMLParserDelegate {
             currentPubDate += string
         case "summary", "description", "content":
             currentSummary += string
+        case "content:encoded":
+            currentContent += string
         default:
             break
         }
@@ -110,6 +120,8 @@ private nonisolated final class GenericRSSParser: NSObject, XMLParserDelegate {
             currentTitle += cdataString
         case "summary", "description", "content":
             currentSummary += cdataString
+        case "content:encoded":
+            currentContent += cdataString
         default:
             break
         }
@@ -140,8 +152,26 @@ private nonisolated final class GenericRSSParser: NSObject, XMLParserDelegate {
             postURL: postURL,
             publishedDate: date,
             excerpt: SummaryHTML.excerpt(from: currentSummary),
-            imageURL: SummaryHTML.firstImageURL(in: currentSummary)
+            imageURL: FeedThumbnail.url(
+                for: postURL,
+                summary: currentSummary,
+                declaredImages: currentDeclaredImages,
+                content: currentContent
+            )
         ))
+    }
+
+    private static func declaresImage(_ elementName: String, attributes: [String: String]) -> Bool {
+        switch elementName {
+        case "media:thumbnail":
+            return true
+        case "media:content":
+            return attributes["medium"] == "image" || attributes["type"]?.hasPrefix("image/") == true
+        case "enclosure":
+            return attributes["type"]?.hasPrefix("image/") == true
+        default:
+            return false
+        }
     }
 
     private func parsePublishedDate(_ dateString: String) -> Date? {
@@ -171,6 +201,24 @@ private nonisolated final class GenericRSSParser: NSObject, XMLParserDelegate {
     }
 }
 
+private nonisolated enum FeedThumbnail {
+    static func url(for postURL: URL, summary: String, declaredImages: [String], content: String) -> URL? {
+        firstUsable(SummaryHTML.imageSources(in: summary), relativeTo: postURL)
+            ?? firstUsable(declaredImages, relativeTo: postURL)
+            ?? firstUsable(SummaryHTML.imageSources(in: content), relativeTo: postURL)
+    }
+
+    private static func firstUsable(_ sources: [String], relativeTo postURL: URL) -> URL? {
+        sources.lazy
+            .compactMap { URL(string: $0, relativeTo: postURL)?.absoluteURL }
+            .first(where: isUsable)
+    }
+
+    private static func isUsable(_ url: URL) -> Bool {
+        (url.scheme == "https" || url.scheme == "http") && url.host()?.hasSuffix("gravatar.com") != true
+    }
+}
+
 private nonisolated enum SummaryHTML {
     private static let entities = [
         "&nbsp;": " ", "&amp;": "&", "&lt;": "<", "&gt;": ">", "&quot;": "\"", "&#39;": "'", "&apos;": "'"
@@ -187,20 +235,13 @@ private nonisolated enum SummaryHTML {
         return words.joined(separator: " ")
     }
 
-    static func firstImageURL(in html: String) -> URL? {
-        guard let imageRegex = try? NSRegularExpression(pattern: #"<img\b[^>]*>"#, options: .caseInsensitive) else { return nil }
-        for match in imageRegex.matches(in: html, range: NSRange(html.startIndex..., in: html)) {
-            guard let tagRange = Range(match.range, in: html) else { continue }
+    static func imageSources(in html: String) -> [String] {
+        guard let imageRegex = try? NSRegularExpression(pattern: #"<img\b[^>]*>"#, options: .caseInsensitive) else { return [] }
+        return imageRegex.matches(in: html, range: NSRange(html.startIndex..., in: html)).compactMap { match in
+            guard let tagRange = Range(match.range, in: html) else { return nil }
             let tag = String(html[tagRange])
-            guard !isTrackingPixel(tag),
-                  let source = attribute("src", in: tag),
-                  let url = URL(string: source),
-                  url.scheme == "https" || url.scheme == "http" else {
-                continue
-            }
-            return url
+            return isTrackingPixel(tag) ? nil : attribute("src", in: tag)
         }
-        return nil
     }
 
     private static func isTrackingPixel(_ tag: String) -> Bool {
