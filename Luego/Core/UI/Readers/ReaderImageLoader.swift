@@ -29,7 +29,10 @@ struct ReaderImageAttachment: Textual.Attachment {
 
     var body: some View {
         ReaderAnimatedImage(image: image)
+            .accessibilityElement()
             .accessibilityLabel(description)
+            .accessibilityAddTraits(.isImage)
+            .accessibilityHidden(description.isEmpty)
     }
 
     func sizeThatFits(_ proposal: ProposedViewSize, in environment: TextEnvironmentValues) -> CGSize {
