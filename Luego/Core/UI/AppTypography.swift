@@ -124,35 +124,6 @@ enum AppTypography {
         registerFont(named: nunitoFileName, extension: nunitoFileExtension)
     }
 
-    static func fontSize(for textStyle: Font.TextStyle) -> CGFloat {
-        switch textStyle {
-        case .largeTitle:
-            34
-        case .title:
-            28
-        case .title2:
-            22
-        case .title3:
-            20
-        case .headline:
-            17
-        case .subheadline:
-            15
-        case .body:
-            14
-        case .callout:
-            14
-        case .footnote:
-            13
-        case .caption:
-            12
-        case .caption2:
-            11
-        @unknown default:
-            17
-        }
-    }
-
     static func defaultPointSize(for textStyle: UIFont.TextStyle) -> CGFloat {
         UIFontDescriptor.preferredFontDescriptor(
             withTextStyle: textStyle,
@@ -231,10 +202,6 @@ extension Font {
             relativeTo: textStyle
         )
         .weight(weight)
-    }
-
-    static func nunito(_ textStyle: Font.TextStyle, weight: Font.Weight = .regular) -> Font {
-        Font(UIFont.nunito(forTextStyle: textStyle.uiTextStyle, weight: weight))
     }
 }
 

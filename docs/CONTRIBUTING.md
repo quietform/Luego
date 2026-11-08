@@ -75,6 +75,7 @@
 - No inline comments.
 - No `// MARK:` sections.
 - Prefer clear naming and small functions
+- Set app text weight and style through an `AppTextRole`. Role fonts are fixed `Font(UIFont)` values, so SwiftUI `.fontWeight`, `.bold()`, and `.italic()` do not apply to them; reader text uses `Font.lora`, which supports them.
 - Use modern Swift patterns: `@Observable`, `async/await`, `@MainActor`, `#Preview`.
 - SwiftUI organization: root view first, supporting subviews next, extensions last.
 - Prefer deep modules and deep classes.
