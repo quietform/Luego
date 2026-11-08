@@ -132,6 +132,7 @@
 				"Core/UI/Readers/ReaderBlocksView.swift",
 				"Core/UI/Readers/ReaderImageDecoder.swift",
 				"Core/UI/Readers/ReaderImageLoader.swift",
+				"Core/UI/Readers/ReaderMoreMenu.swift",
 				"Core/UI/Readers/ReaderStyle.swift",
 				"Features/Discovery/DataSources/DiscoveryFeedStore.swift",
 				"Features/Discovery/DataSources/DiscoveryLegacyStorage.swift",

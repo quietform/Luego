@@ -18,20 +18,10 @@ struct ReaderToolbar: ToolbarContent {
         ToolbarSpacer(.fixed, placement: .primaryAction)
 
         ToolbarItem(placement: .primaryAction) {
-            Menu {
+            ReaderMoreMenu(articleURL: articleURL, articleTitle: articleTitle, onOpenInBrowser: onOpenInBrowser) {
                 Button(action: onRefresh) {
                     Label("Refresh Content", systemImage: "arrow.clockwise")
                 }
-
-                Button(action: onOpenInBrowser) {
-                    Label("Open in Browser", systemImage: "safari")
-                }
-
-                ShareLink(item: articleURL, subject: Text(articleTitle)) {
-                    Label("Share", systemImage: "square.and.arrow.up")
-                }
-            } label: {
-                Label("More", systemImage: "ellipsis")
             }
         }
     }

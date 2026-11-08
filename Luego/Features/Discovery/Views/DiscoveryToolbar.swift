@@ -24,17 +24,7 @@ struct DiscoveryToolbar: ToolbarContent {
         ToolbarSpacer(.fixed, placement: .primaryAction)
 
         ToolbarItem(placement: .primaryAction) {
-            Menu {
-                ShareLink(item: articleURL, subject: Text(articleTitle)) {
-                    Label("Share", systemImage: "square.and.arrow.up")
-                }
-
-                Button(action: onOpenInBrowser) {
-                    Label("Open in Browser", systemImage: "safari")
-                }
-            } label: {
-                Label("More", systemImage: "ellipsis")
-            }
+            ReaderMoreMenu(articleURL: articleURL, articleTitle: articleTitle, onOpenInBrowser: onOpenInBrowser)
         }
     }
 }
