@@ -13,38 +13,18 @@ struct ReaderArticleHeader: View {
                 .font(.lora(.title))
                 .foregroundStyle(.primary)
 
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: 6) {
-                    sourceLink
-                    if let details {
-                        Text("·")
-                            .foregroundStyle(.secondary)
-                            .accessibilityHidden(true)
-                        detailsText(details)
-                    }
-                }
-                .fixedSize()
+            VStack(alignment: .leading, spacing: 4) {
+                Link(source, destination: url)
+                    .foregroundStyle(.primary)
 
-                VStack(alignment: .leading, spacing: 4) {
-                    sourceLink
-                    if let details {
-                        detailsText(details)
-                    }
-                }
+                Text(details ?? " ")
+                    .foregroundStyle(.secondary)
+                    .accessibilityHidden(details == nil)
             }
             .font(.lora(.subheadline))
         }
         .padding(.bottom, 12)
-    }
-
-    private var sourceLink: some View {
-        Link(source, destination: url)
-            .foregroundStyle(.primary)
-    }
-
-    private func detailsText(_ details: String) -> some View {
-        Text(details)
-            .foregroundStyle(.secondary)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var details: String? {
