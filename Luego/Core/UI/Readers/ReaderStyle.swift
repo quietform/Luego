@@ -19,7 +19,7 @@ extension StructuredText {
         let inlineStyle: InlineStyle = .gitHub
         let headingStyle = ReaderHeadingStyle()
         let paragraphStyle: GitHubParagraphStyle = .gitHub
-        let blockQuoteStyle: GitHubBlockQuoteStyle = .gitHub
+        let blockQuoteStyle = ReaderBlockQuoteStyle()
         let codeBlockStyle: GitHubCodeBlockStyle = .gitHub
         let listItemStyle: DefaultListItemStyle = .default
         let unorderedListMarker: HierarchicalSymbolListMarker = .hierarchical(.disc, .circle, .square)
@@ -45,6 +45,19 @@ extension StructuredText {
             case 3: 1.15
             case 4: 1.05
             default: 1
+            }
+        }
+    }
+
+    struct ReaderBlockQuoteStyle: BlockQuoteStyle {
+        func makeBody(configuration: Configuration) -> some View {
+            HStack(spacing: 0) {
+                Capsule()
+                    .fill(Color.secondary.opacity(0.35))
+                    .textual.frame(width: .fontScaled(0.12))
+                configuration.label
+                    .foregroundStyle(Color.primary.opacity(0.72))
+                    .textual.padding(.horizontal, .fontScaled(1))
             }
         }
     }
