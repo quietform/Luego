@@ -1,7 +1,7 @@
 struct ArticleListMembership: Equatable, Sendable {
-    static let readingList = ArticleListMembership(isFavorite: false, isArchived: false)
-    static let favorites = ArticleListMembership(isFavorite: true, isArchived: false)
-    static let archived = ArticleListMembership(isFavorite: false, isArchived: true)
+    nonisolated static let readingList = ArticleListMembership(isFavorite: false, isArchived: false)
+    nonisolated static let favorites = ArticleListMembership(isFavorite: true, isArchived: false)
+    nonisolated static let archived = ArticleListMembership(isFavorite: false, isArchived: true)
 
     let isFavorite: Bool
     let isArchived: Bool

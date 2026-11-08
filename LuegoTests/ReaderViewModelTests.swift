@@ -96,7 +96,58 @@ struct ReaderViewModelTests {
         #expect(service.requestedRefreshes == [false, true])
     }
 
+    @Test(arguments: [
+        (MembershipToggle.favorite, ArticleListMembership.readingList, ArticleListMembership.favorites),
+        (.archive, .favorites, .archived),
+        (.favorite, .readingList, .readingList)
+    ])
+    func togglingShowsTheMembershipThatWasSaved(
+        toggle: MembershipToggle,
+        shown: ArticleListMembership,
+        saved: ArticleListMembership
+    ) async {
+        let article = Article(url: URL(string: "https://example.com/article")!, title: "Article", content: "Body")
+        article.applyListMembership(shown)
+        let service = SuspendedReaderService()
+        service.savedMembership = .success(saved)
+        let viewModel = ReaderViewModel(article: article, readerService: service)
 
+        switch toggle {
+        case .favorite: await viewModel.toggleFavorite()
+        case .archive: await viewModel.toggleArchive()
+        }
+
+        #expect(service.membershipToggles == [MembershipToggleRequest(toggle: toggle, articleID: article.id)])
+        #expect(viewModel.article.listMembership == saved)
+    }
+
+    @Test(arguments: [
+        (MembershipToggle.favorite, "Failed to toggle favorite:"),
+        (.archive, "Failed to toggle archive:")
+    ])
+    func failedToggleKeepsTheMembershipAndReportsTheError(toggle: MembershipToggle, errorPrefix: String) async {
+        let article = Article(url: URL(string: "https://example.com/article")!, title: "Article", content: "Body", isFavorite: true)
+        let service = SuspendedReaderService()
+        service.savedMembership = .failure(ReaderServiceError.articleNotFound)
+        let viewModel = ReaderViewModel(article: article, readerService: service)
+
+        switch toggle {
+        case .favorite: await viewModel.toggleFavorite()
+        case .archive: await viewModel.toggleArchive()
+        }
+
+        #expect(viewModel.article.listMembership == .favorites)
+        #expect(viewModel.errorMessage?.hasPrefix(errorPrefix) == true)
+    }
+}
+
+enum MembershipToggle: Sendable {
+    case favorite, archive
+}
+
+struct MembershipToggleRequest: Equatable {
+    let toggle: MembershipToggle
+    let articleID: UUID
 }
 
 @MainActor
@@ -130,5 +181,18 @@ private final class SuspendedReaderService: ReaderServiceProtocol {
     func updateReadPosition(articleId: UUID, position: Double) async throws {
         savedPositions.append(position)
         if let positionError { throw positionError }
+    }
+
+    var savedMembership: Result<ArticleListMembership, Error> = .success(.readingList)
+    private(set) var membershipToggles: [MembershipToggleRequest] = []
+
+    func toggleFavorite(articleId: UUID) async throws -> ArticleListMembership {
+        membershipToggles.append(MembershipToggleRequest(toggle: .favorite, articleID: articleId))
+        return try savedMembership.get()
+    }
+
+    func toggleArchive(articleId: UUID) async throws -> ArticleListMembership {
+        membershipToggles.append(MembershipToggleRequest(toggle: .archive, articleID: articleId))
+        return try savedMembership.get()
     }
 }

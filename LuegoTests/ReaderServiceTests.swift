@@ -26,6 +26,50 @@ struct ReaderServiceTests {
         #expect(savedArticle?.wordCount == nil)
         #expect(savedArticle?.thumbnailURL == nil)
     }
+
+    @Test
+    func favoritingFromTheReaderIsSavedAndReported() async throws {
+        let store = GRDBArticleStore(database: try AppDatabase(DatabaseQueue()))
+        let article = Article(url: URL(string: "https://example.com/article")!, title: "Article")
+        _ = try await store.saveArticle(article)
+        let service = ReaderService(articleStore: store, contentDataSource: TestContentDataSource())
+
+        let membership = try await service.toggleFavorite(articleId: article.id)
+
+        let savedArticle = try await store.fetchArticle(id: article.id)
+        #expect(membership == .favorites)
+        #expect(savedArticle?.listMembership == .favorites)
+    }
+
+    @Test
+    func archivingFromTheReaderIsSavedAndReportedWithoutFavorite() async throws {
+        let store = GRDBArticleStore(database: try AppDatabase(DatabaseQueue()))
+        let article = Article(url: URL(string: "https://example.com/article")!, title: "Article", isFavorite: true)
+        _ = try await store.saveArticle(article)
+        let service = ReaderService(articleStore: store, contentDataSource: TestContentDataSource())
+
+        let membership = try await service.toggleArchive(articleId: article.id)
+
+        let savedArticle = try await store.fetchArticle(id: article.id)
+        #expect(membership == .archived)
+        #expect(savedArticle?.listMembership == .archived)
+    }
+
+    @Test
+    func togglingADeletedArticleReportsThatItIsMissing() async throws {
+        let store = GRDBArticleStore(database: try AppDatabase(DatabaseQueue()))
+        let article = Article(url: URL(string: "https://example.com/article")!, title: "Article")
+        _ = try await store.saveArticle(article)
+        try await store.deleteArticle(id: article.id)
+        let service = ReaderService(articleStore: store, contentDataSource: TestContentDataSource())
+
+        await #expect(throws: ReaderServiceError.articleNotFound) {
+            _ = try await service.toggleFavorite(articleId: article.id)
+        }
+        await #expect(throws: ReaderServiceError.articleNotFound) {
+            _ = try await service.toggleArchive(articleId: article.id)
+        }
+    }
 }
 
 @MainActor

@@ -74,4 +74,20 @@ final class ReaderViewModel {
             errorMessage = "Failed to save read position: \(error.localizedDescription)"
         }
     }
+
+    func toggleFavorite() async {
+        do {
+            article.applyListMembership(try await readerService.toggleFavorite(articleId: article.id))
+        } catch {
+            errorMessage = "Failed to toggle favorite: \(error.localizedDescription)"
+        }
+    }
+
+    func toggleArchive() async {
+        do {
+            article.applyListMembership(try await readerService.toggleArchive(articleId: article.id))
+        } catch {
+            errorMessage = "Failed to toggle archive: \(error.localizedDescription)"
+        }
+    }
 }

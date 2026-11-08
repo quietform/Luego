@@ -44,14 +44,15 @@ struct ReaderView: View {
             }
         }
         .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                ReaderViewToolbar(
-                    articleURL: viewModel.article.url,
-                    articleTitle: viewModel.article.title,
-                    onOpenInBrowser: openInBrowser,
-                    onRefresh: refreshContent
-                )
-            }
+            ReaderToolbar(
+                membership: viewModel.article.listMembership,
+                articleURL: viewModel.article.url,
+                articleTitle: viewModel.article.title,
+                onToggleFavorite: { Task { await viewModel.toggleFavorite() } },
+                onToggleArchive: { Task { await viewModel.toggleArchive() } },
+                onOpenInBrowser: openInBrowser,
+                onRefresh: refreshContent
+            )
         }
         #if os(iOS)
         .appNavigationChrome(.transparent)
@@ -179,31 +180,6 @@ struct ArticleErrorView: View {
 
             Button("Retry", action: onRetry)
                 .buttonStyle(.bordered)
-        }
-    }
-}
-
-struct ReaderViewToolbar: View {
-    let articleURL: URL
-    let articleTitle: String
-    let onOpenInBrowser: () -> Void
-    let onRefresh: () -> Void
-
-    var body: some View {
-        Menu {
-            Button(action: onRefresh) {
-                Label("Refresh Content", systemImage: "arrow.clockwise")
-            }
-
-            Button(action: onOpenInBrowser) {
-                Label("Open in Browser", systemImage: "safari")
-            }
-
-            ShareLink(item: articleURL, subject: Text(articleTitle)) {
-                Label("Share", systemImage: "square.and.arrow.up")
-            }
-        } label: {
-            Image(systemName: "ellipsis.circle")
         }
     }
 }

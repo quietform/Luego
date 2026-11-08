@@ -150,6 +150,7 @@
 				"Features/Discovery/Views/DiscoveryPostPlaceholderList.swift",
 				"Features/Discovery/Views/DiscoveryPostRow.swift",
 				"Features/Reader/Services/ReaderService.swift",
+				"Features/Reader/Views/ReaderToolbar.swift",
 				"Features/Reader/Views/ReaderViewModel.swift",
 				"Features/ReadingList/Services/ArticleService.swift",
 				"Features/ReadingList/Services/SavedArticleExportService.swift",

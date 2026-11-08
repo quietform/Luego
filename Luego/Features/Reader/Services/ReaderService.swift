@@ -15,6 +15,8 @@ enum ReaderServiceError: Error, LocalizedError {
 protocol ReaderServiceProtocol: Sendable {
     func fetchContent(for article: Article, forceRefresh: Bool) async throws -> Article
     func updateReadPosition(articleId: UUID, position: Double) async throws
+    func toggleFavorite(articleId: UUID) async throws -> ArticleListMembership
+    func toggleArchive(articleId: UUID) async throws -> ArticleListMembership
 }
 
 @MainActor
@@ -54,5 +56,22 @@ final class ReaderService: ReaderServiceProtocol {
 
     func updateReadPosition(articleId: UUID, position: Double) async throws {
         try await articleStore.updateReadPosition(id: articleId, position: position)
+    }
+
+    func toggleFavorite(articleId: UUID) async throws -> ArticleListMembership {
+        try await articleStore.toggleFavorite(id: articleId)
+        return try await storedMembership(of: articleId)
+    }
+
+    func toggleArchive(articleId: UUID) async throws -> ArticleListMembership {
+        try await articleStore.toggleArchive(id: articleId)
+        return try await storedMembership(of: articleId)
+    }
+
+    private func storedMembership(of articleId: UUID) async throws -> ArticleListMembership {
+        guard let article = try await articleStore.fetchArticle(id: articleId) else {
+            throw ReaderServiceError.articleNotFound
+        }
+        return article.listMembership
     }
 }
