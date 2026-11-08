@@ -30,6 +30,17 @@ struct ReaderDocumentTests {
     }
 
     @Test
+    func sectionBreakOpeningTheArticleIsDropped() throws {
+        let document = try ReaderDocument(
+            markdown: "* * *\n\nFirst section\n\n* * *\n\nSecond section",
+            baseURL: URL(string: "https://example.com")!
+        )
+
+        let kinds = document.blocks.map { $0.content.runs.first?.presentationIntent?.components.last?.kind }
+        #expect(kinds == [.paragraph, .thematicBreak, .paragraph])
+    }
+
+    @Test
     func imageParagraphsHaveIndependentLifetimes() throws {
         let document = try ReaderDocument(
             markdown: "Before\n\n![First](one.jpg)\n\nBetween\n\n![Second](two.jpg)\n\nAfter",

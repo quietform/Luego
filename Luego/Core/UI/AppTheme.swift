@@ -1,5 +1,4 @@
 import SwiftUI
-import Textual
 import UIKit
 
 extension Color {
@@ -16,10 +15,6 @@ extension Color {
     static let regularOutline = Color.primary.opacity(0.18)
     static let regularGlassTint = Color(uiColor: AppUIColor.regularGlassTint)
     static let readerBackground = Color(uiColor: AppUIColor.readerBackground)
-}
-
-extension StructuredText.Style where Self == StructuredText.GitHubStyle {
-    static var reader: StructuredText.GitHubStyle { .gitHub }
 }
 
 enum AppNavigationChromeStyle {
@@ -93,13 +88,6 @@ extension View {
             self
                 .toolbarBackground(.hidden, for: .navigationBar)
         }
-    }
-
-    func readerContentStyle() -> some View {
-        self
-            .textual.structuredTextStyle(.reader)
-            .textual.imageAttachmentLoader(ReaderImageLoader())
-            .textual.textSelection(.enabled)
     }
 }
 
