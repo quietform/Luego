@@ -92,14 +92,13 @@ struct ArticleReaderModeView: View {
             ScrollViewReader { scrollProxy in
                 ScrollView {
                     VStack(alignment: .leading, spacing: 20) {
-                        ArticleHeaderView(
+                        ReaderArticleHeader(
                             title: article.title,
-                            domain: article.domain,
+                            source: article.domain,
                             url: article.url,
-                            formattedDate: formattedDate
+                            date: formattedDate,
+                            readingMinutes: article.readingMinutes
                         )
-
-                        Divider()
 
                         ReaderMarkdownContentView(
                             markdown: content,
@@ -143,14 +142,13 @@ struct ArticleLoadingView: View {
         GeometryReader { geo in
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
-                    ArticleHeaderView(
+                    ReaderArticleHeader(
                         title: article.title,
-                        domain: article.domain,
+                        source: article.domain,
                         url: article.url,
-                        formattedDate: formattedDate
+                        date: formattedDate,
+                        readingMinutes: article.readingMinutes
                     )
-
-                    Divider()
 
                     ReaderBodyPlaceholder()
                 }
@@ -180,31 +178,6 @@ struct ArticleErrorView: View {
 
             Button("Retry", action: onRetry)
                 .buttonStyle(.bordered)
-        }
-    }
-}
-
-struct ArticleHeaderView: View {
-    let title: String
-    let domain: String
-    let url: URL
-    let formattedDate: String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(title)
-                .font(.lora(.title))
-                .foregroundColor(.primary)
-
-            HStack {
-                DomainChip(domain: domain, url: url)
-
-                Spacer()
-
-                Text(formattedDate)
-                    .font(.lora(.subheadline))
-                    .foregroundStyle(.secondary)
-            }
         }
     }
 }

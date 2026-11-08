@@ -33,16 +33,9 @@ func inspectAccessibility<Result>(of view: some View, _ inspect: (UIView) -> Res
 }
 
 private func accessibleElements(in element: NSObject) -> [AccessibleElement] {
-    if element.isAccessibilityElement {
-        return [AccessibleElement(
-            label: element.accessibilityLabel ?? "",
-            isImage: element.accessibilityTraits.contains(.image)
-        )]
+    accessibleObjects(in: element).map {
+        AccessibleElement(label: $0.accessibilityLabel ?? "", isImage: $0.accessibilityTraits.contains(.image))
     }
-    let children = (element.accessibilityElements as? [NSObject])
-        ?? (0..<max(element.accessibilityElementCount(), 0)).compactMap { element.accessibilityElement(at: $0) as? NSObject }
-    let views = (element as? UIView)?.subviews ?? []
-    return (children.isEmpty ? views : children).flatMap(accessibleElements)
 }
 
 private enum AccessibilityAutomation {
@@ -66,4 +59,19 @@ private enum AccessibilityAutomation {
         setEnabled(1)
         atexit { AccessibilityAutomation.restore?(AccessibilityAutomation.previousState) }
     }
+}
+
+@MainActor
+func accessibilityFrames(in view: some View, width: CGFloat) -> [String: CGRect] {
+    inspectAccessibility(of: view.frame(width: width)) { root in
+        Dictionary(accessibleObjects(in: root).map { ($0.accessibilityLabel ?? "", $0.accessibilityFrame) }) { first, _ in first }
+    }
+}
+
+private func accessibleObjects(in element: NSObject) -> [NSObject] {
+    if element.isAccessibilityElement { return [element] }
+    let children = (element.accessibilityElements as? [NSObject])
+        ?? (0..<max(element.accessibilityElementCount(), 0)).compactMap { element.accessibilityElement(at: $0) as? NSObject }
+    let views = (element as? UIView)?.subviews ?? []
+    return (children.isEmpty ? views : children).flatMap(accessibleObjects)
 }

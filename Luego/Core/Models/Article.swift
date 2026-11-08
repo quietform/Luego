@@ -27,24 +27,12 @@ final class Article {
         url.host() ?? url.absoluteString
     }
 
+    var readingMinutes: Int? {
+        ReadingTime.minutes(wordCount: wordCount, content: content)
+    }
+
     var estimatedReadingTime: String {
-        if let wordCount = wordCount, wordCount > 0 {
-            let wordsPerMinute = 200
-            let minutes = max(1, Int(ceil(Double(wordCount) / Double(wordsPerMinute))))
-            return "\(minutes) min"
-        }
-
-        guard let content = content, !content.isEmpty else {
-            return "0 min"
-        }
-
-        let words = content.components(separatedBy: .whitespacesAndNewlines)
-            .filter { !$0.isEmpty }
-        let calculatedWordCount = words.count
-        let wordsPerMinute = 200
-        let minutes = max(1, Int(ceil(Double(calculatedWordCount) / Double(wordsPerMinute))))
-
-        return "\(minutes) min"
+        "\(readingMinutes ?? 0) min"
     }
 
     init(id: UUID = UUID(), url: URL, title: String, content: String? = nil, savedDate: Date = Date(), thumbnailURL: URL? = nil, publishedDate: Date? = nil, readPosition: Double = 0.0, isFavorite: Bool = false, isArchived: Bool = false, wordCount: Int? = nil) {
