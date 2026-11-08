@@ -10,8 +10,22 @@ struct ReaderBodyPlaceholderTests {
     }
 }
 
+struct AccessibleElement: Equatable {
+    let label: String
+    let isImage: Bool
+
+    static func image(_ label: String) -> AccessibleElement {
+        AccessibleElement(label: label, isImage: true)
+    }
+}
+
 @MainActor
 func accessibilityLabels(in view: some View) -> [String] {
+    accessibleElements(in: view).map(\.label)
+}
+
+@MainActor
+func accessibleElements(in view: some View) -> [AccessibleElement] {
     let controller = UIHostingController(rootView: view)
     let window = UIWindow()
     window.frame = CGRect(x: 0, y: 0, width: 390, height: 844)
@@ -19,15 +33,18 @@ func accessibilityLabels(in view: some View) -> [String] {
     window.makeKeyAndVisible()
     defer { window.isHidden = true }
     controller.view.layoutIfNeeded()
-    return accessibilityLabels(in: controller.view)
+    return accessibleElements(in: controller.view)
 }
 
-private func accessibilityLabels(in element: NSObject) -> [String] {
+private func accessibleElements(in element: NSObject) -> [AccessibleElement] {
     if element.isAccessibilityElement {
-        return [element.accessibilityLabel ?? ""]
+        return [AccessibleElement(
+            label: element.accessibilityLabel ?? "",
+            isImage: element.accessibilityTraits.contains(.image)
+        )]
     }
     let children = (element.accessibilityElements as? [NSObject])
         ?? (0..<max(element.accessibilityElementCount(), 0)).compactMap { element.accessibilityElement(at: $0) as? NSObject }
     let views = (element as? UIView)?.subviews ?? []
-    return (children.isEmpty ? views : children).flatMap(accessibilityLabels)
+    return (children.isEmpty ? views : children).flatMap(accessibleElements)
 }

@@ -83,8 +83,7 @@ private struct ReaderPhotoView: View {
                 .id(image)
                 .frame(width: min(width, image.size.width), height: height)
         } else {
-            Color.secondary.opacity(0.08)
-                .accessibilityLabel(description)
+            ReaderImagePlaceholder(description: description, height: height).body
         }
     }
 }
@@ -150,12 +149,13 @@ private struct ReaderBlockParser: MarkupParser {
     }
 }
 
-private struct ReaderImagePlaceholder: Textual.Attachment {
+struct ReaderImagePlaceholder: Textual.Attachment {
     let description: String
     let height: CGFloat
 
     var body: some View {
         Color.secondary.opacity(0.08)
+            .readerImageAccessibility(description: description)
     }
 
     func sizeThatFits(_ proposal: ProposedViewSize, in environment: TextEnvironmentValues) -> CGSize {

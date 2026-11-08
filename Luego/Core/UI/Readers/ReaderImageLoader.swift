@@ -29,15 +29,21 @@ struct ReaderImageAttachment: Textual.Attachment {
 
     var body: some View {
         ReaderAnimatedImage(image: image)
-            .accessibilityElement()
-            .accessibilityLabel(description)
-            .accessibilityAddTraits(.isImage)
-            .accessibilityHidden(description.isEmpty)
+            .readerImageAccessibility(description: description)
     }
 
     func sizeThatFits(_ proposal: ProposedViewSize, in environment: TextEnvironmentValues) -> CGSize {
         let width = min(proposal.width ?? image.size.width, image.size.width)
         return CGSize(width: width, height: width * image.size.height / image.size.width)
+    }
+}
+
+extension View {
+    func readerImageAccessibility(description: String) -> some View {
+        accessibilityElement()
+            .accessibilityLabel(description)
+            .accessibilityAddTraits(.isImage)
+            .accessibilityHidden(description.isEmpty)
     }
 }
 

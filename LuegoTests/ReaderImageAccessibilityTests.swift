@@ -14,6 +14,16 @@ struct ReaderImageAccessibilityTests {
         #expect(accessibilityLabels(in: attachment.body.frame(width: 100, height: 100)) == expectedLabels)
     }
 
+    @Test(arguments: [
+        ("Photo of Ratik in his halloween costume", [AccessibleElement.image("Photo of Ratik in his halloween costume")]),
+        ("", [])
+    ])
+    func voiceOverReadsALoadingPhotoAsTheImageItWillBecome(description: String, expectedElements: [AccessibleElement]) {
+        let placeholder = ReaderImagePlaceholder(description: description, height: 100)
+
+        #expect(accessibleElements(in: placeholder.body.frame(width: 100, height: 100)) == expectedElements)
+    }
+
     private func singlePixelImage() throws -> ReaderImage {
         let context = try #require(CGContext(
             data: nil,
