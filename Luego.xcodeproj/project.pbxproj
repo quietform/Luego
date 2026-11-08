@@ -632,7 +632,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 2026.10.25;
+				MARKETING_VERSION = 2026.11.08;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -673,7 +673,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 2026.10.25;
+				MARKETING_VERSION = 2026.11.08;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -714,7 +714,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 2026.10.25;
+				MARKETING_VERSION = 2026.11.08;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -747,7 +747,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 2026.10.25;
+				MARKETING_VERSION = 2026.11.08;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				SKIP_INSTALL = YES;
@@ -780,7 +780,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 2026.10.25;
+				MARKETING_VERSION = 2026.11.08;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				SKIP_INSTALL = YES;
@@ -813,7 +813,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 2026.10.25;
+				MARKETING_VERSION = 2026.11.08;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				SKIP_INSTALL = YES;
