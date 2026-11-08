@@ -11,14 +11,14 @@ struct ReaderToolbar: ToolbarContent {
     let onRefresh: () -> Void
 
     var body: some ToolbarContent {
-        ToolbarItemGroup(placement: .primaryAction) {
+        ToolbarItemGroup(placement: .topBarTrailing) {
             ReaderListButton.favorite(for: membership).button(action: onToggleFavorite)
             ReaderListButton.archive(for: membership).button(action: onToggleArchive)
         }
 
-        ToolbarSpacer(.fixed, placement: .primaryAction)
+        ToolbarSpacer(.fixed, placement: .topBarTrailing)
 
-        ToolbarItem(placement: .primaryAction) {
+        ToolbarItem(placement: .topBarTrailing) {
             ReaderMoreMenu(articleURL: articleURL, articleTitle: articleTitle, onOpenInBrowser: onOpenInBrowser) {
                 Button(action: onRefresh) {
                     Label("Refresh Content", systemImage: "arrow.clockwise")
@@ -26,11 +26,12 @@ struct ReaderToolbar: ToolbarContent {
             }
         }
 
-        if let progressPercent {
-            ToolbarItem(placement: .principal) {
-                ReaderProgressRing(percent: progressPercent)
-            }
+        ToolbarItem(placement: .topBarLeading) {
+            ReaderProgressRing(percent: progressPercent ?? 0)
+                .opacity(progressPercent == nil ? 0 : 1)
+                .accessibilityHidden(progressPercent == nil)
         }
+        .sharedBackgroundVisibility(.hidden)
     }
 }
 

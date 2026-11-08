@@ -112,7 +112,7 @@ struct ArticleReaderModeView: View {
                             }
                         )
                     }
-                    .font(.lora(.body))
+                    .font(ReaderLayout.bodyFont(for: outerGeo.size.width))
                     .padding(.vertical)
                     .padding(.horizontal, ReaderLayout.horizontalPadding(for: outerGeo.size.width))
                     .frame(maxWidth: .infinity)
@@ -154,7 +154,7 @@ struct ArticleLoadingView: View {
 
                     ReaderBodyPlaceholder()
                 }
-                .font(.lora(.body))
+                .font(ReaderLayout.bodyFont(for: geo.size.width))
                 .padding(.vertical)
                 .padding(.horizontal, ReaderLayout.horizontalPadding(for: geo.size.width))
                 .frame(maxWidth: .infinity)

@@ -10,6 +10,28 @@ nonisolated final class ReaderRestorationTests: XCTestCase {
     }
 
     @MainActor
+    func testReadingProgressStaysAtTheLeadingEdgeOfTheReaderToolbar() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["--reader-restoration-fixture", "--reader-unread-fixture"]
+        app.launch()
+        let first = app.buttons["fixture.select.a"]
+        XCTAssertTrue(first.waitForExistence(timeout: 10))
+        let leadingEdge = UIDevice.current.userInterfaceIdiom == .pad ? first.frame.maxX : app.frame.minX
+        first.tap()
+
+        let progress = app.otherElements["Reading progress"].firstMatch
+        XCTAssertTrue(progress.waitForExistence(timeout: 5))
+        let favorite = app.buttons["Favorite"]
+        XCTAssertTrue(favorite.waitForExistence(timeout: 5))
+        XCTAssertTrue(favorite.isHittable)
+        XCTAssertTrue(app.buttons["Archive"].isHittable)
+        XCTAssertTrue(app.buttons["More"].isHittable)
+
+        XCTAssertLessThan(progress.frame.midX, leadingEdge + (app.frame.maxX - leadingEdge) * 0.25)
+        XCTAssertLessThan(progress.frame.maxX, favorite.frame.minX)
+    }
+
+    @MainActor
     func testReopeningWithoutScrollingPreservesSavedProgress() throws {
         try requireRegularLayout()
         let app = XCUIApplication()

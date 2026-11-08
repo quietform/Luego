@@ -23,7 +23,7 @@ struct DiscoveryArticleContentView: View {
                         baseURL: post.url
                     )
                 }
-                .font(.lora(.body))
+                .font(ReaderLayout.bodyFont(for: geo.size.width))
                 .padding(.vertical)
                 .padding(.horizontal, ReaderLayout.horizontalPadding(for: geo.size.width))
                 .frame(maxWidth: .infinity)

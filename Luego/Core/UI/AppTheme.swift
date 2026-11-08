@@ -93,12 +93,15 @@ extension View {
 
 enum ReaderLayout {
     static func horizontalPadding(for containerWidth: CGFloat) -> CGFloat {
-        if UIDevice.current.userInterfaceIdiom == .pad {
-            let maxContentWidth: CGFloat = 700
-            let paddingForMaxWidth = max(56, (containerWidth - maxContentWidth) / 2)
-            return paddingForMaxWidth
-        }
+        max(40, (containerWidth - 700) / 2)
+    }
 
-        return 40
+    static func bodyFont(for containerWidth: CGFloat) -> Font {
+        let additionalSize = min(2, max(0, (containerWidth - 440) / 50))
+        return .custom(
+            AppTypography.loraPostScriptName,
+            size: AppTypography.defaultPointSize(for: .body) + additionalSize,
+            relativeTo: .body
+        )
     }
 }
