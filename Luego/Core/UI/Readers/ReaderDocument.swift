@@ -4,6 +4,7 @@ nonisolated struct ReaderDocument: Sendable {
     struct Block: Identifiable, Sendable {
         let id: Int
         let content: AttributedString
+        let isCaption: Bool
 
         var standaloneImage: (url: URL, description: String, link: URL?)? {
             guard content.runs.count == 1,
@@ -47,8 +48,21 @@ nonisolated struct ReaderDocument: Sendable {
     }
 
     private static func append(_ content: AttributedString, to blocks: inout [Block]) {
-        let block = Block(id: blocks.count, content: content)
+        let isCaption = blocks.last?.standaloneImage != nil && isEmphasizedParagraph(content)
+        let block = Block(id: blocks.count, content: content, isCaption: isCaption)
         guard !(blocks.isEmpty && block.isSectionBreak) else { return }
         blocks.append(block)
+    }
+
+    private static func isEmphasizedParagraph(_ content: AttributedString) -> Bool {
+        guard content.runs.first?[AttributeScopes.FoundationAttributes.PresentationIntentAttribute.self]?.components.last?.kind == .paragraph else {
+            return false
+        }
+        let textRuns = content.runs.filter { run in
+            !content[run.range].characters.allSatisfy(\.isWhitespace)
+        }
+        return !textRuns.isEmpty && textRuns.allSatisfy { run in
+            run[AttributeScopes.FoundationAttributes.InlinePresentationIntentAttribute.self]?.contains(.emphasized) == true
+        }
     }
 }

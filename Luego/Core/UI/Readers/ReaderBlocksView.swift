@@ -11,6 +11,13 @@ struct ReaderBlocksView: View {
                 Group {
                     if let photo = block.standaloneImage {
                         ReaderPhotoView(url: photo.url, description: photo.description, link: photo.link, loader: imageLoader)
+                    } else if block.isCaption {
+                        ReaderBlockView(block: block)
+                            .font(.lora(.subheadline))
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                            .frame(maxWidth: .infinity)
+                            .padding(.top, -8)
                     } else {
                         ReaderBlockView(block: block)
                     }

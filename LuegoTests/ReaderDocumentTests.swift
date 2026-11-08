@@ -40,6 +40,32 @@ struct ReaderDocumentTests {
         #expect(kinds == [.paragraph, .thematicBreak, .paragraph])
     }
 
+    @Test(arguments: [
+        "*Happy Halloween + Diwali!*",
+        "*Photo by [Jane](https://example.com/jane)*",
+        "*Shot on **film***"
+    ])
+    func emphasizedParagraphRightAfterAPhotoIsItsCaption(caption: String) throws {
+        let document = try ReaderDocument(
+            markdown: "![Ratik in a chef's apron](costume.jpg)\n\n\(caption)",
+            baseURL: URL(string: "https://example.com")!
+        )
+
+        #expect(document.blocks.map(\.isCaption) == [false, true])
+    }
+
+    @Test(arguments: [
+        ("Intro\n\n*Just emphasis*", [false, false]),
+        ("![Photo](photo.jpg)\n\n*Happy* Halloween", [false, false]),
+        ("![Photo](photo.jpg)\n\nPlain paragraph", [false, false]),
+        ("![Photo](photo.jpg)\n\n*Caption*\n\n*Still emphasis*", [false, true, false])
+    ])
+    func onlyAFullyEmphasizedParagraphRightAfterAPhotoIsACaption(markdown: String, expected: [Bool]) throws {
+        let document = try ReaderDocument(markdown: markdown, baseURL: URL(string: "https://example.com")!)
+
+        #expect(document.blocks.map(\.isCaption) == expected)
+    }
+
     @Test
     func imageParagraphsHaveIndependentLifetimes() throws {
         let document = try ReaderDocument(
