@@ -149,6 +149,7 @@
 				"Features/Discovery/Views/DiscoveryListViewModel.swift",
 				"Features/Discovery/Views/DiscoveryPostPlaceholderList.swift",
 				"Features/Discovery/Views/DiscoveryPostRow.swift",
+				"Features/Discovery/Views/DiscoveryToolbar.swift",
 				"Features/Reader/Services/ReaderService.swift",
 				"Features/Reader/Views/ReaderToolbar.swift",
 				"Features/Reader/Views/ReaderViewModel.swift",
