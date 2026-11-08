@@ -129,6 +129,7 @@ extension String {
     )
 
     private static let markdownPatterns: [(regex: NSRegularExpression, replacement: String)] = [
+        (try! NSRegularExpression(pattern: #"^ {0,3}([-*_])(?:[ \t]*\1){2,}[ \t]*$"#, options: [.anchorsMatchLines]), ""),
         (try! NSRegularExpression(pattern: #"!\[([^\]]*)\]\([^)]+\)"#, options: [.anchorsMatchLines]), ""),
         (try! NSRegularExpression(pattern: #"\[([^\]]+)\]\([^)]+\)"#, options: [.anchorsMatchLines]), "$1"),
         (try! NSRegularExpression(pattern: #"^#{1,6}\s+"#, options: [.anchorsMatchLines]), ""),
@@ -141,8 +142,6 @@ extension String {
         (try! NSRegularExpression(pattern: #"^>\s+"#, options: [.anchorsMatchLines]), ""),
         (try! NSRegularExpression(pattern: #"^[-*+]\s+"#, options: [.anchorsMatchLines]), ""),
         (try! NSRegularExpression(pattern: #"^\d+\.\s+"#, options: [.anchorsMatchLines]), ""),
-        (try! NSRegularExpression(pattern: #"^---+$"#, options: [.anchorsMatchLines]), ""),
-        (try! NSRegularExpression(pattern: #"^___+$"#, options: [.anchorsMatchLines]), ""),
     ]
 
     func strippingMarkdown() -> String {
