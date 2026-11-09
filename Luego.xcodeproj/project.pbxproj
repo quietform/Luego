@@ -160,6 +160,7 @@
 				"Core/UI/Readers/ReaderProgressRing.swift",
 				"Core/UI/Readers/ReaderChrome.swift",
 				"Features/Reader/Views/ReaderListButton.swift",
+				"Features/Reader/Views/ReadingPositionSession.swift",
 				"Features/Reader/Views/ReaderViewModel.swift",
 				"Features/ReadingList/Services/ArticleService.swift",
 				"Features/ReadingList/Services/SavedArticleExportService.swift",

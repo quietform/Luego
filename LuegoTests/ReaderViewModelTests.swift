@@ -11,7 +11,7 @@ struct ReaderViewModelTests {
         let viewModel = ReaderViewModel(article: article, readerService: service)
         let save = Task {
             if cancelled { withUnsafeCurrentTask { $0?.cancel() } }
-            await viewModel.updateReadPosition(0.5, documentPrepared: true)
+            await viewModel.updateReadPosition(0.5)
         }
         await save.value
 
@@ -24,17 +24,12 @@ struct ReaderViewModelTests {
     }
 
     @Test
-    func readPositionIsNotSavedBeforeDocumentIsPrepared() async {
+    func savingAPositionRecordsItOnTheArticle() async {
         let article = Article(url: URL(string: "https://example.com/article")!, title: "Article", content: "Body")
         let service = SuspendedReaderService()
         let viewModel = ReaderViewModel(article: article, readerService: service)
 
-        await viewModel.updateReadPosition(1, documentPrepared: false)
-
-        #expect(article.readPosition == 0)
-        #expect(service.savedPositions.isEmpty)
-
-        await viewModel.updateReadPosition(0.5, documentPrepared: true)
+        await viewModel.updateReadPosition(0.5)
 
         #expect(article.readPosition == 0.5)
         #expect(service.savedPositions == [0.5])

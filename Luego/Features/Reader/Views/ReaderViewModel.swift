@@ -62,8 +62,7 @@ final class ReaderViewModel {
         }
     }
 
-    func updateReadPosition(_ position: Double, documentPrepared: Bool) async {
-        guard documentPrepared else { return }
+    func updateReadPosition(_ position: Double) async {
         let clampedPosition = max(0.0, min(1.0, position))
         article.readPosition = clampedPosition
 
