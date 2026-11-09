@@ -14,6 +14,8 @@ struct ReaderRestorationFixture: View {
     @State private var path: [Article] = []
     @State private var switchDuringRestoration = false
     @State private var didSwitchDuringRestoration = false
+    @State private var discoveryListViewModel: DiscoveryListViewModel?
+    @State private var selectedDiscoveryPost: DiscoveryPost?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -30,6 +32,25 @@ struct ReaderRestorationFixture: View {
                                     )
                                 }
                         }
+                    } else if ProcessInfo.processInfo.arguments.contains("--discovery-reader-fixture"), let discoveryListViewModel {
+                        NavigationSplitView(columnVisibility: .constant(.all)) {
+                            SidebarView(selection: .constant(.discovery))
+                                .navigationSplitViewColumnWidth(min: 200, ideal: 220, max: 260)
+                        } content: {
+                            DiscoveryListPane(viewModel: discoveryListViewModel, selectedPost: $selectedDiscoveryPost) {
+                                selectedDiscoveryPost = discoveryListViewModel.posts.last
+                            }
+                            .navigationSplitViewColumnWidth(min: 300, ideal: 320, max: 400)
+                        } detail: {
+                            DiscoveryDetailPane(
+                                post: selectedDiscoveryPost,
+                                canShuffle: true,
+                                onShuffle: { selectedDiscoveryPost = discoveryListViewModel.posts.last }
+                            )
+                            .navigationSplitViewColumnWidth(min: 500, ideal: 500)
+                        }
+                        .appNavigationChrome()
+                        .environment(container.syncObserver)
                     } else {
                         NavigationSplitView {
                             articleList
@@ -93,6 +114,10 @@ struct ReaderRestorationFixture: View {
                 for article in fixtures {
                     articles.append(try await container.articleStore.saveArticle(article).article)
                 }
+                if arguments.contains("--discovery-reader-fixture") {
+                    let posts = fixtures.map { DiscoveryPost(url: $0.url, title: $0.title, publishedDate: nil) }
+                    discoveryListViewModel = DiscoveryListViewModel(discoveryService: FixtureDiscoveryService(posts: posts))
+                }
                 self.content = content
                 self.container = container
             } catch {
@@ -142,6 +167,22 @@ struct ReaderRestorationFixture: View {
             }
         }
     }
+}
+
+@MainActor
+private final class FixtureDiscoveryService: DiscoveryServiceProtocol {
+    let posts: [DiscoveryPost]
+
+    init(posts: [DiscoveryPost]) { self.posts = posts }
+
+    func cachedPosts() async -> [DiscoveryPost]? { posts }
+    func refreshPosts(force: Bool) async throws -> DiscoveryRefresh { .posts(posts) }
+    func feeds() -> [DiscoveryFeed] { [] }
+    func addFeed(from text: String) async throws -> DiscoveryFeed { throw DiscoveryFeedError.invalidURL }
+    func addFeed(_ feed: DiscoveryFeed) throws {}
+    func removeFeed(_ feed: DiscoveryFeed) {}
+    func setFeed(_ feed: DiscoveryFeed, isEnabled: Bool) {}
+    func feedChanges() -> AsyncStream<Void> { AsyncStream { $0.finish() } }
 }
 
 @MainActor

@@ -10,6 +10,50 @@ nonisolated final class ReaderRestorationTests: XCTestCase {
     }
 
     @MainActor
+    func testDiscoveryReaderShowsProgressAfterLoadingInTheIPadDetailPane() throws {
+        try requireRegularLayout()
+        XCUIDevice.shared.orientation = .portrait
+        try assertDiscoveryProgressIsVisibleAndAdvances()
+    }
+
+    @MainActor
+    private func assertDiscoveryProgressIsVisibleAndAdvances() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["--reader-restoration-fixture", "--discovery-reader-fixture"]
+        app.launch()
+        let first = app.buttons.containing(.staticText, identifier: "Saved article A").firstMatch
+        XCTAssertTrue(first.waitForExistence(timeout: 10))
+        first.tap()
+        XCTAssertTrue(app.staticTexts["Passage a-1"].waitForExistence(timeout: 10))
+
+        let progress = app.otherElements["Reading progress"].firstMatch
+        XCTAssertTrue(progress.waitForExistence(timeout: 5))
+        XCTAssertEqual(progress.value as? String, "0%")
+        XCTAssertGreaterThan(progress.frame.width, 0)
+        XCTAssertTrue(progress.isHittable, "Progress frame: \(progress.frame); app frame: \(app.frame)")
+        XCTAssertTrue(app.buttons["discovery.nextRandom"].isHittable)
+        XCTAssertTrue(app.buttons["discovery.save"].exists)
+        XCTAssertTrue(app.buttons["More"].isHittable)
+        XCTAssertLessThan(progress.frame.maxX, app.buttons["discovery.nextRandom"].frame.minX)
+
+        app.scrollViews.firstMatch.swipeUp(velocity: .slow)
+        let advanced = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            let value = progress.value as? String ?? "0%"
+            return (Int(value.replacingOccurrences(of: "%", with: "")) ?? 0) > 0
+        }, object: progress)
+        XCTAssertEqual(XCTWaiter.wait(for: [advanced], timeout: 5), .completed)
+    }
+
+    @MainActor
+    func testDiscoveryReaderShowsProgressWithAllIPadColumnsVisible() throws {
+        try requireRegularLayout()
+        XCUIDevice.shared.orientation = .landscapeLeft
+        defer { XCUIDevice.shared.orientation = .portrait }
+
+        try assertDiscoveryProgressIsVisibleAndAdvances()
+    }
+
+    @MainActor
     func testReadingProgressStaysAtTheLeadingEdgeOfTheReaderToolbar() throws {
         let app = XCUIApplication()
         app.launchArguments = ["--reader-restoration-fixture", "--reader-unread-fixture"]
