@@ -2,7 +2,7 @@ import SwiftUI
 import Testing
 
 @MainActor
-struct ReaderToolbarTests {
+struct ReaderListButtonTests {
     @Test(arguments: [
         (
             ArticleListMembership.readingList,

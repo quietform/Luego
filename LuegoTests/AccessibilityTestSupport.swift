@@ -21,10 +21,10 @@ func accessibleElements(in view: some View) -> [AccessibleElement] {
 }
 
 @MainActor
-func inspectAccessibility<Result>(of view: some View, _ inspect: (UIView) -> Result) -> Result {
+func inspectAccessibility<Result>(of view: some View, width: CGFloat = 390, _ inspect: (UIView) -> Result) -> Result {
     AccessibilityAutomation.enable()
     let controller = UIHostingController(rootView: view)
-    let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
+    let window = UIWindow(frame: CGRect(x: 0, y: 0, width: width, height: 844))
     window.rootViewController = controller
     window.makeKeyAndVisible()
     defer { window.isHidden = true }
@@ -63,7 +63,7 @@ private enum AccessibilityAutomation {
 
 @MainActor
 func accessibilityFrames(in view: some View, width: CGFloat) -> [String: CGRect] {
-    inspectAccessibility(of: view.frame(width: width)) { root in
+    inspectAccessibility(of: view.frame(width: width), width: width) { root in
         Dictionary(accessibleObjects(in: root).map { ($0.accessibilityLabel ?? "", $0.accessibilityFrame) }) { first, _ in first }
     }
 }

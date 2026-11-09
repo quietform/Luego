@@ -1,7 +1,7 @@
 import Testing
 
 @MainActor
-struct DiscoveryToolbarTests {
+struct DiscoverySaveButtonTests {
     @Test(arguments: [
         (false, false, DiscoverySaveButton(title: "Save to Reading List", systemImage: "plus", isEnabled: false)),
         (false, true, DiscoverySaveButton(title: "Save to Reading List", systemImage: "plus", isEnabled: true)),

@@ -3,7 +3,6 @@ import SwiftUI
 struct ReaderView: View {
     @Bindable var viewModel: ReaderViewModel
     @Environment(\.openURL) private var openURL
-    @Environment(\.iPhoneTabBarVisibilityController) private var iPhoneTabBarVisibilityController
     @State private var scrollPosition: CGFloat = 0
     @State private var contentHeight: CGFloat = 0
     @State private var viewHeight: CGFloat = 0
@@ -14,25 +13,24 @@ struct ReaderView: View {
     @State private var lastSavedPosition: Double = 0
     @State private var contentRequestID = UUID()
     @State private var refreshRequested = false
-    @State private var progressPercent = 0
 
     var body: some View {
         Group {
             if viewModel.isLoading {
-                ArticleLoadingView(article: viewModel.article, formattedDate: formattedDate)
+                ReaderPage(header: header, markdown: nil)
             } else if let content = viewModel.articleContent {
-                ArticleReaderModeView(
-                    article: viewModel.article,
-                    content: content,
-                    formattedDate: formattedDate,
-                    scrollPosition: $scrollPosition,
-                    contentHeight: $contentHeight,
-                    viewHeight: $viewHeight,
-                    onUpdateReadPosition: handleScroll,
-                    onRestoreScrollPosition: restoreScrollPosition,
-                    onDisappear: handleDisappear,
-                    onPreparationChanged: { isDocumentPrepared = $0 }
-                )
+                ReaderPage(header: header, markdown: content, onPreparationChanged: handlePreparationChanged) { scroll in
+                    ScrollPositionTracker(
+                        contentHeight: $contentHeight,
+                        viewHeight: $viewHeight,
+                        scrollPosition: $scrollPosition,
+                        viewportHeight: scroll.viewportHeight,
+                        readPosition: viewModel.article.readPosition,
+                        onPositionChange: updateReadPosition,
+                        onAppear: { restoreScrollPosition(scrollProxy: scroll.proxy) }
+                    )
+                }
+                .onDisappear(perform: handleDisappear)
             } else if let error = viewModel.errorMessage {
                 ArticleErrorView(
                     message: error,
@@ -44,21 +42,22 @@ struct ReaderView: View {
                 )
             }
         }
-        .toolbar {
-            ReaderToolbar(
-                membership: viewModel.article.listMembership,
-                progressPercent: isShowingArticle ? progressPercent : nil,
-                articleURL: viewModel.article.url,
-                articleTitle: viewModel.article.title,
-                onToggleFavorite: { Task { await viewModel.toggleFavorite() } },
-                onToggleArchive: { Task { await viewModel.toggleArchive() } },
-                onOpenInBrowser: openInBrowser,
-                onRefresh: refreshContent
-            )
+        .readerChrome(
+            articleURL: viewModel.article.url,
+            articleTitle: viewModel.article.title,
+            onOpenInBrowser: openInBrowser
+        ) {
+            ReaderListButton.favorite(for: viewModel.article.listMembership).button {
+                Task { await viewModel.toggleFavorite() }
+            }
+            ReaderListButton.archive(for: viewModel.article.listMembership).button {
+                Task { await viewModel.toggleArchive() }
+            }
+        } menuActions: {
+            Button(action: refreshContent) {
+                Label("Refresh Content", systemImage: "arrow.clockwise")
+            }
         }
-        #if os(iOS)
-        .appNavigationChrome(.transparent)
-        #endif
         .task(id: [viewModel.article.id, contentRequestID]) {
             let shouldRefresh = refreshRequested
             refreshRequested = false
@@ -67,99 +66,6 @@ struct ReaderView: View {
             } else {
                 await viewModel.loadContent()
             }
-        }
-        .onAppear {
-            iPhoneTabBarVisibilityController?.hide()
-        }
-        .onDisappear {
-            iPhoneTabBarVisibilityController?.show()
-        }
-    }
-}
-
-struct ArticleReaderModeView: View {
-    let article: Article
-    let content: String
-    let formattedDate: String
-    @Binding var scrollPosition: CGFloat
-    @Binding var contentHeight: CGFloat
-    @Binding var viewHeight: CGFloat
-    let onUpdateReadPosition: () -> Void
-    let onRestoreScrollPosition: (ScrollViewProxy) -> Void
-    let onDisappear: () -> Void
-    let onPreparationChanged: (Bool) -> Void
-
-    var body: some View {
-        GeometryReader { outerGeo in
-            ScrollViewReader { scrollProxy in
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 20) {
-                        ReaderArticleHeader(
-                            title: article.title,
-                            source: article.domain,
-                            url: article.url,
-                            date: formattedDate,
-                            readingMinutes: article.readingMinutes
-                        )
-
-                        ReaderMarkdownContentView(
-                            markdown: content,
-                            title: article.title,
-                            baseURL: article.url,
-                            onPreparationChanged: { prepared in
-                                onPreparationChanged(prepared)
-                                if prepared { onRestoreScrollPosition(scrollProxy) }
-                            }
-                        )
-                    }
-                    .font(ReaderLayout.bodyFont(for: outerGeo.size.width))
-                    .padding(.vertical)
-                    .padding(.horizontal, ReaderLayout.horizontalPadding(for: outerGeo.size.width))
-                    .frame(maxWidth: .infinity)
-                    .background(
-                        ScrollPositionTracker(
-                            contentHeight: $contentHeight,
-                            viewHeight: $viewHeight,
-                            scrollPosition: $scrollPosition,
-                            outerGeometry: outerGeo,
-                            readPosition: article.readPosition,
-                            onPositionChange: onUpdateReadPosition,
-                            onAppear: { onRestoreScrollPosition(scrollProxy) }
-                        )
-                    )
-                }
-                .coordinateSpace(name: "scrollView")
-                .background(Color.readerBackground)
-                .onDisappear(perform: onDisappear)
-            }
-        }
-    }
-}
-
-struct ArticleLoadingView: View {
-    let article: Article
-    let formattedDate: String
-
-    var body: some View {
-        GeometryReader { geo in
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    ReaderArticleHeader(
-                        title: article.title,
-                        source: article.domain,
-                        url: article.url,
-                        date: formattedDate,
-                        readingMinutes: article.readingMinutes
-                    )
-
-                    ReaderBodyPlaceholder()
-                }
-                .font(ReaderLayout.bodyFont(for: geo.size.width))
-                .padding(.vertical)
-                .padding(.horizontal, ReaderLayout.horizontalPadding(for: geo.size.width))
-                .frame(maxWidth: .infinity)
-            }
-            .background(Color.readerBackground)
         }
     }
 }
@@ -188,7 +94,7 @@ struct ScrollPositionTracker: View {
     @Binding var contentHeight: CGFloat
     @Binding var viewHeight: CGFloat
     @Binding var scrollPosition: CGFloat
-    let outerGeometry: GeometryProxy
+    let viewportHeight: CGFloat
     let readPosition: Double
     let onPositionChange: () -> Void
     let onAppear: () -> Void
@@ -196,9 +102,9 @@ struct ScrollPositionTracker: View {
     var body: some View {
         GeometryReader { geo in
             Color.clear
-                .onChange(of: geo.frame(in: .named("scrollView")).minY) { oldValue, newValue in
+                .onChange(of: geo.frame(in: ReaderPageScroll.coordinateSpace).minY) { oldValue, newValue in
                     contentHeight = geo.size.height
-                    viewHeight = outerGeometry.size.height
+                    viewHeight = viewportHeight
                     scrollPosition = max(0, -newValue)
                     onPositionChange()
                 }
@@ -207,14 +113,14 @@ struct ScrollPositionTracker: View {
                     onAppear()
                     onPositionChange()
                 }
-                .onChange(of: outerGeometry.size.height) { _, height in
+                .onChange(of: viewportHeight) { _, height in
                     viewHeight = height
                     onAppear()
                     onPositionChange()
                 }
                 .onAppear {
                     contentHeight = geo.size.height
-                    viewHeight = outerGeometry.size.height
+                    viewHeight = viewportHeight
                     onAppear()
                 }
                 .overlay(alignment: .top) {
@@ -232,20 +138,19 @@ extension ReaderView {
         openURL(viewModel.article.url)
     }
 
-    private var formattedDate: String {
-        DateFormatters.articleDate(viewModel.article.publishedDate ?? viewModel.article.savedDate)
+    private var header: ReaderArticleHeader {
+        ReaderArticleHeader(
+            title: viewModel.article.title,
+            source: viewModel.article.domain,
+            url: viewModel.article.url,
+            date: DateFormatters.articleDate(viewModel.article.publishedDate ?? viewModel.article.savedDate),
+            readingMinutes: viewModel.article.readingMinutes
+        )
     }
 
-    private var isShowingArticle: Bool {
-        !viewModel.isLoading && viewModel.articleContent != nil
-    }
-
-    private func handleScroll() {
-        let percent = ReaderProgressRing.percent(scrollOffset: scrollPosition, contentHeight: contentHeight, viewportHeight: viewHeight)
-        if percent != progressPercent {
-            progressPercent = percent
-        }
-        updateReadPosition()
+    private func handlePreparationChanged(_ prepared: Bool, scroll: ReaderPageScroll) {
+        isDocumentPrepared = prepared
+        if prepared { restoreScrollPosition(scrollProxy: scroll.proxy) }
     }
 
     private func updateReadPosition() {

@@ -5,7 +5,6 @@ struct DiscoveryArticleView: View {
     let canShuffle: Bool
     let onShuffle: () -> Void
     @Environment(\.openURL) private var openURL
-    @Environment(\.iPhoneTabBarVisibilityController) private var iPhoneTabBarVisibilityController
 
     var body: some View {
         Group {
@@ -18,41 +17,41 @@ struct DiscoveryArticleView: View {
                     onOpenInBrowser: openInBrowser
                 )
             } else {
-                DiscoveryArticleContentView(
-                    post: viewModel.post,
-                    publishedDate: viewModel.publishedDate,
-                    markdown: viewModel.article?.content
-                )
+                ReaderPage(header: header, markdown: viewModel.article?.content)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.regularPanelBackground)
-        .toolbar {
-            DiscoveryToolbar(
-                isSaved: viewModel.isSaved,
-                canSave: viewModel.article != nil,
-                canShuffle: canShuffle,
-                articleURL: viewModel.post.url,
-                articleTitle: viewModel.post.title,
-                onShuffle: onShuffle,
-                onSave: { Task { await viewModel.save() } },
-                onOpenInBrowser: openInBrowser
-            )
+        .readerChrome(
+            articleURL: viewModel.post.url,
+            articleTitle: viewModel.post.title,
+            onOpenInBrowser: openInBrowser
+        ) {
+            Button(action: onShuffle) {
+                Label("Next Random Article", systemImage: "die.face.5")
+            }
+            .disabled(!canShuffle)
+            .accessibilityIdentifier("discovery.nextRandom")
+
+            DiscoverySaveButton(isSaved: viewModel.isSaved, canSave: viewModel.article != nil).button {
+                Task { await viewModel.save() }
+            }
         }
-        #if os(iOS)
-        .appNavigationChrome(.transparent)
-        #endif
         .task {
             if viewModel.article == nil {
                 await viewModel.load()
             }
         }
-        .onAppear {
-            iPhoneTabBarVisibilityController?.hide()
-        }
-        .onDisappear {
-            iPhoneTabBarVisibilityController?.show()
-        }
+    }
+
+    private var header: ReaderArticleHeader {
+        ReaderArticleHeader(
+            title: viewModel.post.title,
+            source: viewModel.post.domain,
+            url: viewModel.post.url,
+            date: viewModel.publishedDate.map { DateFormatters.articleDate($0) },
+            readingMinutes: ReadingTime.minutes(wordCount: nil, content: viewModel.article?.content)
+        )
     }
 
     private func openInBrowser() {
