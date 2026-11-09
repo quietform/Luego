@@ -97,6 +97,40 @@ nonisolated final class ReaderRestorationTests: XCTestCase {
     }
 
     @MainActor
+    func testRefreshingReturnsToWhereYouWereReading() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["--reader-restoration-fixture"]
+        app.launch()
+        let first = app.buttons["fixture.select.a"]
+        XCTAssertTrue(first.waitForExistence(timeout: 10))
+        first.tap()
+        waitForRestoration(in: app, article: "a", minimumProgress: 0.3)
+        waitForIdle(in: app)
+        app.scrollViews.firstMatch.swipeUp(velocity: .slow)
+        waitForIdle(in: app)
+        let viewport = app.staticTexts["fixture.viewport"]
+        let geometry = viewport.label.split(separator: "|").dropFirst().compactMap { Double($0) }
+        XCTAssertEqual(geometry.count, 3)
+        let reading = (geometry[0] + geometry[2]) / geometry[1]
+
+        app.buttons["More"].tap()
+        let refresh = app.buttons["Refresh Content"]
+        XCTAssertTrue(refresh.waitForExistence(timeout: 5))
+        refresh.tap()
+        let refreshed = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "label == %@", "1"),
+            object: app.staticTexts["fixture.contentFetches"]
+        )
+        XCTAssertEqual(XCTWaiter.wait(for: [refreshed], timeout: 8), .completed)
+
+        let returned = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            let fields = viewport.label.split(separator: "|").dropFirst().compactMap { Double($0) }
+            return fields.count == 3 && abs((fields[0] + fields[2]) / fields[1] - reading) < 0.002
+        }, object: viewport)
+        XCTAssertEqual(XCTWaiter.wait(for: [returned], timeout: 8), .completed, "Expected \(reading); viewport=\(viewport.label)")
+    }
+
+    @MainActor
     func testCompletedArticleRestoresToBottom() throws {
         try requireRegularLayout()
         let app = XCUIApplication()

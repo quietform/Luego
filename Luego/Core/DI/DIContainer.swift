@@ -8,6 +8,7 @@ final class DIContainer {
     let articleStore: GRDBArticleStore
     let syncEngineManager: SyncEngineManager
     let syncObserver = SyncStatusObserver()
+    private let injectedContentDataSource: ContentDataSourceProtocol?
 
     private lazy var luegoAPIDataSource: LuegoAPIDataSourceProtocol = {
         LuegoAPIDataSource()
@@ -45,7 +46,7 @@ final class DIContainer {
     }()
 
     private lazy var contentDataSource: ContentDataSourceProtocol = {
-        ContentDataSource(
+        injectedContentDataSource ?? ContentDataSource(
             parserDataSource: luegoParserDataSource,
             parsedContentCache: parsedContentCacheDataSource,
             luegoAPIDataSource: luegoAPIDataSource,
@@ -107,8 +108,9 @@ final class DIContainer {
     var savedArticleImportService: SavedArticleImportServiceProtocol { _savedArticleImportService }
     var savedArticleExportService: SavedArticleExportServiceProtocol { _savedArticleExportService }
 
-    init(database: AppDatabase) {
+    init(database: AppDatabase, contentDataSource: ContentDataSourceProtocol? = nil) {
         self.database = database
+        self.injectedContentDataSource = contentDataSource
 
         let coreArticleStore = GRDBArticleStore(database: database)
         self.articleStore = coreArticleStore

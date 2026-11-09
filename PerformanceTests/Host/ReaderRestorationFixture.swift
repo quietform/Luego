@@ -4,6 +4,7 @@ import SwiftUI
 struct ReaderRestorationFixture: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var container: DIContainer?
+    @State private var content: FixtureContent?
     @State private var articles: [Article] = []
     @State private var selection: Article?
     @State private var viewport = ""
@@ -45,13 +46,20 @@ struct ReaderRestorationFixture: View {
                 }
                 .accessibilityIdentifier("fixture.switchDuringRestoration")
                 Text(didSwitchDuringRestoration ? "completed" : "waiting")
+                    .lineLimit(1)
                     .accessibilityIdentifier("fixture.transition")
                 Text(viewport)
+                    .lineLimit(1)
                     .accessibilityIdentifier("fixture.viewport")
                 Text(scrollPhase)
+                    .lineLimit(1)
                     .accessibilityIdentifier("fixture.scrollPhase")
                 Text(savedPositions)
+                    .lineLimit(1)
                     .accessibilityIdentifier("fixture.savedPositions")
+                Text("\(content?.completedFetches ?? 0)")
+                    .lineLimit(1)
+                    .accessibilityIdentifier("fixture.contentFetches")
             } else if let setupError {
                 Text(setupError)
             } else {
@@ -60,28 +68,32 @@ struct ReaderRestorationFixture: View {
         }
         .task {
             do {
-                let database = try AppDatabase(DatabaseQueue())
-                let container = DIContainer(database: database)
-                container.articleStore.syncEngineManager = nil
                 let arguments = ProcessInfo.processInfo.arguments
                 var firstPosition = arguments.contains("--reader-unread-fixture") ? 0.0 : 0.4
                 if let index = arguments.firstIndex(of: "--reader-initial-position"),
                    index + 1 < arguments.count, let position = Double(arguments[index + 1]) {
                     firstPosition = position
                 }
-                for (name, position) in [("a", firstPosition), ("b", 0.7)] {
-                    let paragraph = String(repeating: "A fixed paragraph exercises wrapping and layout in the production reader. ", count: 5)
+                let paragraph = String(repeating: "A fixed paragraph exercises wrapping and layout in the production reader. ", count: 5)
+                let fixtures = [("a", firstPosition), ("b", 0.7)].map { name, position in
                     let content = name == "a" && arguments.contains("--reader-short-fixture")
                         ? "A short article."
                         : (1...60).map { "## Passage \(name)-\($0)\n\n\(paragraph)" }.joined(separator: "\n\n")
-                    let article = Article(
+                    return Article(
                         url: URL(string: "https://fixture.invalid/\(name)")!,
                         title: "Saved article \(name.uppercased())",
                         content: content,
                         readPosition: position
                     )
+                }
+                let content = FixtureContent(articles: Dictionary(uniqueKeysWithValues: fixtures.map { ($0.url, $0.content ?? "") }))
+                let database = try AppDatabase(DatabaseQueue())
+                let container = DIContainer(database: database, contentDataSource: content)
+                container.articleStore.syncEngineManager = nil
+                for article in fixtures {
                     articles.append(try await container.articleStore.saveArticle(article).article)
                 }
+                self.content = content
                 self.container = container
             } catch {
                 setupError = error.localizedDescription
@@ -129,5 +141,29 @@ struct ReaderRestorationFixture: View {
                 selection = articles[0]
             }
         }
+    }
+}
+
+@MainActor
+@Observable
+final class FixtureContent: ContentDataSourceProtocol {
+    let articles: [URL: String]
+    var completedFetches = 0
+
+    init(articles: [URL: String]) {
+        self.articles = articles
+    }
+
+    func validateURL(_ url: URL) async throws -> URL { url }
+
+    func fetchMetadata(for url: URL, timeout: TimeInterval?) async throws -> ArticleMetadata {
+        throw URLError(.notConnectedToInternet)
+    }
+
+    func fetchContent(for url: URL, timeout: TimeInterval?, forceRefresh: Bool, skipCache: Bool) async throws -> ArticleContent {
+        try await Task.sleep(for: .seconds(1))
+        guard let content = articles[url] else { throw URLError(.fileDoesNotExist) }
+        completedFetches += 1
+        return ArticleContent(title: url.lastPathComponent, content: content)
     }
 }

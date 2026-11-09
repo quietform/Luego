@@ -16,10 +16,8 @@ struct ReaderView: View {
 
     var body: some View {
         Group {
-            if viewModel.isLoading {
-                ReaderPage(header: header, markdown: nil)
-            } else if let content = viewModel.articleContent {
-                ReaderPage(header: header, markdown: content, onPreparationChanged: handlePreparationChanged) { scroll in
+            if viewModel.isLoading || viewModel.articleContent != nil {
+                ReaderPage(header: header, markdown: pageMarkdown, onPreparationChanged: handlePreparationChanged) { scroll in
                     ScrollPositionTracker(
                         contentHeight: $contentHeight,
                         viewHeight: $viewHeight,
@@ -30,7 +28,7 @@ struct ReaderView: View {
                         onAppear: { restoreScrollPosition(scrollProxy: scroll.proxy) }
                     )
                 }
-                .onDisappear(perform: handleDisappear)
+                .onDisappear(perform: saveCurrentPosition)
             } else if let error = viewModel.errorMessage {
                 ArticleErrorView(
                     message: error,
@@ -138,6 +136,10 @@ extension ReaderView {
         openURL(viewModel.article.url)
     }
 
+    private var pageMarkdown: String? {
+        viewModel.isLoading ? nil : viewModel.articleContent
+    }
+
     private var header: ReaderArticleHeader {
         ReaderArticleHeader(
             title: viewModel.article.title,
@@ -194,7 +196,7 @@ extension ReaderView {
         }
     }
 
-    private func handleDisappear() {
+    private func saveCurrentPosition() {
         saveTask?.cancel()
         if let restorationTask {
             restorationTask.cancel()
@@ -218,6 +220,8 @@ extension ReaderView {
     }
 
     private func refreshContent() {
+        saveCurrentPosition()
+        hasRestoredPosition = false
         refreshRequested = true
         contentRequestID = UUID()
     }
