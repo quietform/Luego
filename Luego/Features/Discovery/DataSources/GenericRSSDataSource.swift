@@ -220,16 +220,9 @@ private nonisolated enum FeedThumbnail {
 }
 
 private nonisolated enum SummaryHTML {
-    private static let entities = [
-        "&nbsp;": " ", "&amp;": "&", "&lt;": "<", "&gt;": ">", "&quot;": "\"", "&#39;": "'", "&apos;": "'"
-    ]
-
     static func excerpt(from html: String) -> String? {
         var text = html.replacingOccurrences(of: #"<[^>]*>"#, with: " ", options: .regularExpression)
-        text = decodingNumericEntities(in: text)
-        for (entity, replacement) in entities {
-            text = text.replacingOccurrences(of: entity, with: replacement)
-        }
+        text = decodingEntities(in: text)
         let words = text.split { $0.isWhitespace }.prefix(60)
         guard !words.isEmpty else { return nil }
         return words.joined(separator: " ")
@@ -257,19 +250,53 @@ private nonisolated enum SummaryHTML {
         return String(tag[range])
     }
 
-    private static func decodingNumericEntities(in text: String) -> String {
-        guard let regex = try? NSRegularExpression(pattern: #"&#(x?)([0-9a-fA-F]+);"#) else { return text }
+    private static func decodingEntities(in text: String) -> String {
+        guard let regex = try? NSRegularExpression(pattern: #"&(?:#([xX]?)([0-9a-fA-F]+)|([a-zA-Z][a-zA-Z0-9]*));"#) else { return text }
         var result = text
         for match in regex.matches(in: text, range: NSRange(text.startIndex..., in: text)).reversed() {
             guard let range = Range(match.range, in: result),
-                  let hexRange = Range(match.range(at: 1), in: text),
-                  let digitsRange = Range(match.range(at: 2), in: text),
-                  let value = UInt32(text[digitsRange], radix: text[hexRange].isEmpty ? 10 : 16),
-                  let scalar = Unicode.Scalar(value) else {
+                  let replacement = replacement(for: match, in: text) else {
                 continue
             }
-            result.replaceSubrange(range, with: String(Character(scalar)))
+            result.replaceSubrange(range, with: replacement)
         }
         return result
     }
+
+    private static func replacement(for match: NSTextCheckingResult, in text: String) -> String? {
+        if let nameRange = Range(match.range(at: 3), in: text) {
+            return HTMLEntity.named[String(text[nameRange])]
+        }
+        guard let radixRange = Range(match.range(at: 1), in: text),
+              let digitsRange = Range(match.range(at: 2), in: text),
+              let value = UInt32(text[digitsRange], radix: text[radixRange].isEmpty ? 10 : 16),
+              let scalar = Unicode.Scalar(value) else {
+            return nil
+        }
+        return String(Character(scalar))
+    }
+}
+
+private nonisolated enum HTMLEntity {
+    static let named: [String: String] = [
+        "nbsp": "\u{A0}", "amp": "&", "lt": "<", "gt": ">", "quot": "\"", "apos": "'", "lsquo": "‘",
+        "rsquo": "’", "sbquo": "‚", "ldquo": "“", "rdquo": "”", "bdquo": "„", "laquo": "«", "raquo": "»",
+        "lsaquo": "‹", "rsaquo": "›", "hellip": "…", "mdash": "—", "ndash": "–", "bull": "•", "middot": "·",
+        "prime": "′", "Prime": "″", "ensp": "\u{2002}", "emsp": "\u{2003}", "thinsp": "\u{2009}",
+        "shy": "\u{AD}", "iexcl": "¡", "iquest": "¿",
+        "copy": "©", "reg": "®", "trade": "™", "deg": "°", "times": "×", "divide": "÷", "plusmn": "±",
+        "frac14": "¼", "frac12": "½", "frac34": "¾", "sup1": "¹", "sup2": "²", "sup3": "³", "micro": "µ",
+        "euro": "€", "pound": "£", "yen": "¥", "cent": "¢", "curren": "¤", "sect": "§", "para": "¶",
+        "dagger": "†", "Dagger": "‡", "permil": "‰", "larr": "←", "rarr": "→", "uarr": "↑", "darr": "↓",
+        "Agrave": "À", "Aacute": "Á", "Acirc": "Â", "Atilde": "Ã", "Auml": "Ä", "Aring": "Å", "AElig": "Æ",
+        "Ccedil": "Ç", "Egrave": "È", "Eacute": "É", "Ecirc": "Ê", "Euml": "Ë", "Igrave": "Ì", "Iacute": "Í",
+        "Icirc": "Î", "Iuml": "Ï", "ETH": "Ð", "Ntilde": "Ñ", "Ograve": "Ò", "Oacute": "Ó", "Ocirc": "Ô",
+        "Otilde": "Õ", "Ouml": "Ö", "Oslash": "Ø", "Ugrave": "Ù", "Uacute": "Ú", "Ucirc": "Û", "Uuml": "Ü",
+        "Yacute": "Ý", "THORN": "Þ", "szlig": "ß", "agrave": "à", "aacute": "á", "acirc": "â", "atilde": "ã",
+        "auml": "ä", "aring": "å", "aelig": "æ", "ccedil": "ç", "egrave": "è", "eacute": "é", "ecirc": "ê",
+        "euml": "ë", "igrave": "ì", "iacute": "í", "icirc": "î", "iuml": "ï", "eth": "ð", "ntilde": "ñ",
+        "ograve": "ò", "oacute": "ó", "ocirc": "ô", "otilde": "õ", "ouml": "ö", "oslash": "ø", "ugrave": "ù",
+        "uacute": "ú", "ucirc": "û", "uuml": "ü", "yacute": "ý", "thorn": "þ", "yuml": "ÿ", "OElig": "Œ",
+        "oelig": "œ", "Scaron": "Š", "scaron": "š", "Yuml": "Ÿ", "fnof": "ƒ"
+    ]
 }
