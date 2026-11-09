@@ -1,12 +1,13 @@
 import SwiftUI
 
 private let restorationAnchor = "ReaderPage.restoration"
+private let restorationScroll: Duration = .milliseconds(300)
 
 struct ReaderPage: View {
     let header: ReaderArticleHeader
     let markdown: String?
     var restoringTo: Double? = nil
-    var onRestored: () -> Void = {}
+    var onRestored: (Double?) -> Void = { _ in }
     var onReadingPositionChange: (Double?) -> Void = { _ in }
     @State private var isPrepared = false
     @State private var visibleBottom: Double?
@@ -62,10 +63,12 @@ struct ReaderPage: View {
         guard restoringTo != nil, isPrepared else { return }
         try? await Task.sleep(for: .milliseconds(100))
         guard !Task.isCancelled else { return }
-        withAnimation(.easeOut(duration: 0.3)) {
+        withAnimation(.easeOut(duration: restorationScroll / .seconds(1))) {
             proxy.scrollTo(restorationAnchor, anchor: .bottom)
         }
-        onRestored()
+        try? await Task.sleep(for: restorationScroll)
+        guard !Task.isCancelled else { return }
+        onRestored(readingPosition)
     }
 
     private static func visibleBottom(in geometry: ScrollGeometry) -> Double? {

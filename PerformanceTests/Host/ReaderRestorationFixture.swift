@@ -96,18 +96,22 @@ struct ReaderRestorationFixture: View {
                     firstPosition = position
                 }
                 let paragraph = String(repeating: "A fixed paragraph exercises wrapping and layout in the production reader. ", count: 5)
+                var texts: [URL: String] = [:]
                 let fixtures = [("a", firstPosition), ("b", 0.7)].map { name, position in
-                    let content = name == "a" && arguments.contains("--reader-short-fixture")
+                    let url = URL(string: "https://fixture.invalid/\(name)")!
+                    let text = name == "a" && arguments.contains("--reader-short-fixture")
                         ? "A short article."
                         : (1...60).map { "## Passage \(name)-\($0)\n\n\(paragraph)" }.joined(separator: "\n\n")
+                    texts[url] = text
+                    let isStored = !(name == "a" && arguments.contains("--reader-uncached-fixture"))
                     return Article(
-                        url: URL(string: "https://fixture.invalid/\(name)")!,
+                        url: url,
                         title: "Saved article \(name.uppercased())",
-                        content: content,
+                        content: isStored ? text : nil,
                         readPosition: position
                     )
                 }
-                let content = FixtureContent(articles: Dictionary(uniqueKeysWithValues: fixtures.map { ($0.url, $0.content ?? "") }))
+                let content = FixtureContent(articles: texts)
                 let database = try AppDatabase(DatabaseQueue())
                 let container = DIContainer(database: database, contentDataSource: content)
                 container.articleStore.syncEngineManager = nil
@@ -143,9 +147,23 @@ struct ReaderRestorationFixture: View {
         List(articles) { article in
             Button(article.title) {
                 selection = article
-                if horizontalSizeClass == .compact { path.append(article) }
+                if horizontalSizeClass == .compact {
+                    path.append(article)
+                    if ProcessInfo.processInfo.arguments.contains("--reader-reopen-while-loading") {
+                        reopenAsDeepLinksDo(article)
+                    }
+                }
             }
             .accessibilityIdentifier("fixture.select.\(article.url.lastPathComponent)")
+        }
+    }
+
+    private func reopenAsDeepLinksDo(_ article: Article) {
+        Task {
+            try? await Task.sleep(for: .milliseconds(300))
+            let sameArticle = Article(id: article.id, url: article.url, title: article.title, readPosition: article.readPosition)
+            path.removeAll()
+            path.append(sameArticle)
         }
     }
 

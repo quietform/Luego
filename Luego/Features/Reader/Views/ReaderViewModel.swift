@@ -62,15 +62,18 @@ final class ReaderViewModel {
         }
     }
 
-    func updateReadPosition(_ position: Double) async {
+    @discardableResult
+    func updateReadPosition(_ position: Double) async -> Bool {
         let clampedPosition = max(0.0, min(1.0, position))
         article.readPosition = clampedPosition
 
         do {
             try await readerService.updateReadPosition(articleId: article.id, position: clampedPosition)
+            return true
         } catch {
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled else { return false }
             errorMessage = "Failed to save read position: \(error.localizedDescription)"
+            return false
         }
     }
 

@@ -284,6 +284,31 @@ nonisolated final class ReaderRestorationTests: XCTestCase {
     }
 
     @MainActor
+    func testCompactNavigationKeepsLoadingAnArticleReopenedWhileItLoads() throws {
+        guard UIDevice.current.userInterfaceIdiom == .phone else {
+            throw XCTSkip("Exercises the iPhone reader destination")
+        }
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "--reader-restoration-fixture",
+            "--reader-uncached-fixture",
+            "--reader-unread-fixture",
+            "--reader-reopen-while-loading"
+        ]
+        app.launch()
+        let first = app.buttons["fixture.select.a"]
+        XCTAssertTrue(first.waitForExistence(timeout: 10))
+        first.tap()
+
+        let fetched = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "label == %@", "1"),
+            object: app.staticTexts["fixture.contentFetches"]
+        )
+        XCTAssertEqual(XCTWaiter.wait(for: [fetched], timeout: 8), .completed)
+        XCTAssertTrue(app.staticTexts["Passage a-1"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
     func testCompactNavigationRestoresPositionAfterReturningToList() throws {
         guard UIDevice.current.userInterfaceIdiom == .phone else {
             throw XCTSkip("Exercises iPhone push/pop navigation")

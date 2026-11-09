@@ -21,7 +21,7 @@ struct ReaderView: View {
                     header: header,
                     markdown: pageMarkdown,
                     restoringTo: readingPosition.restoringTo,
-                    onRestored: readingPosition.pageRestored,
+                    onRestored: readingPosition.pageRestored(at:),
                     onReadingPositionChange: readingPosition.pageReported
                 )
                 .onDisappear(perform: readingPosition.leave)

@@ -23,6 +23,18 @@ struct ReaderViewModelTests {
         }
     }
 
+    @Test(arguments: [false, true])
+    func savingAPositionSaysWhetherItWasSaved(fails: Bool) async {
+        let article = Article(url: URL(string: "https://example.com/article")!, title: "Article", content: "Body")
+        let service = SuspendedReaderService()
+        if fails { service.positionError = URLError(.notConnectedToInternet) }
+        let viewModel = ReaderViewModel(article: article, readerService: service)
+
+        let saved = await viewModel.updateReadPosition(0.5)
+
+        #expect(saved == !fails)
+    }
+
     @Test
     func savingAPositionRecordsItOnTheArticle() async {
         let article = Article(url: URL(string: "https://example.com/article")!, title: "Article", content: "Body")

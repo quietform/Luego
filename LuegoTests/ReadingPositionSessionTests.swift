@@ -27,6 +27,18 @@ struct ReadingPositionSessionTests {
     }
 
     @Test
+    func aPlaceThatFailedToSaveIsTriedAgainAfterASmallMove() async {
+        let saves = SaveRecorder(failing: [0.5])
+        let session = ReadingPositionSession(savedPosition: 0, save: saves.record, settle: {})
+        session.pageReported(0.5)
+        #expect(await saves.next() == 0.5)
+
+        session.pageReported(0.505)
+
+        #expect(await saves.next() == 0.505)
+    }
+
+    @Test
     func movingLessThanOnePercentFromTheSavedPlaceSavesNothing() async {
         let saves = SaveRecorder()
         let session = ReadingPositionSession(savedPosition: 0.5, save: saves.record, settle: {})
@@ -48,7 +60,7 @@ struct ReadingPositionSessionTests {
 
     @Test
     func openingAnArticleWithASavedPlaceAsksThePageToBringItBack() {
-        let session = ReadingPositionSession(savedPosition: 0.4, save: { _ in }, settle: {})
+        let session = ReadingPositionSession(savedPosition: 0.4, save: { _ in true }, settle: {})
 
         session.pageReported(0.05)
 
@@ -72,7 +84,7 @@ struct ReadingPositionSessionTests {
         let session = ReadingPositionSession(savedPosition: 0.4, save: saves.record, settle: {})
         session.pageReported(0.05)
 
-        session.pageRestored()
+        session.pageRestored(at: 0.4)
         session.pageReported(0.6)
 
         #expect(session.restoringTo == nil)
@@ -114,7 +126,7 @@ struct ReadingPositionSessionTests {
 
     @Test
     func afterRefreshingThePageIsAskedToBringTheReaderBack() {
-        let session = ReadingPositionSession(savedPosition: 0, save: { _ in }, settle: SettleGate().wait)
+        let session = ReadingPositionSession(savedPosition: 0, save: { _ in true }, settle: SettleGate().wait)
         session.pageReported(0.5)
 
         session.refresh()
@@ -125,14 +137,128 @@ struct ReadingPositionSessionTests {
     }
 
     @Test
+    func aPlaceThatFailedToSaveOnRefreshIsSavedOnceTheReaderIsBack() async {
+        let saves = SaveRecorder(failing: [0.5])
+        let settling = SettleGate()
+        let session = ReadingPositionSession(savedPosition: 0, save: saves.record, settle: settling.wait)
+        session.pageReported(0.5)
+        session.refresh()
+        #expect(await saves.next() == 0.5)
+        session.pageReported(nil)
+        session.pageReported(0.02)
+        #expect(session.restoringTo == 0.5)
+
+        session.pageRestored(at: 0.5)
+        settling.release()
+
+        #expect(await saves.next() == 0.5)
+    }
+
+    @Test
+    func aPlaceSavedOnRefreshIsNotSavedAgainOnceTheReaderIsBack() async {
+        let saves = SaveRecorder()
+        let settling = SettleGate()
+        let session = ReadingPositionSession(savedPosition: 0, save: saves.record, settle: settling.wait)
+        session.pageReported(0.5)
+        session.refresh()
+        #expect(await saves.next() == 0.5)
+        session.pageReported(nil)
+        session.pageReported(0.02)
+
+        session.pageRestored(at: 0.5)
+        settling.release()
+
+        #expect(await saves.noFurtherSaves())
+    }
+
+    @Test
     func theOldTextStillOnScreenAfterRefreshingDoesNotUseUpTheRestore() {
-        let session = ReadingPositionSession(savedPosition: 0, save: { _ in }, settle: SettleGate().wait)
+        let session = ReadingPositionSession(savedPosition: 0, save: { _ in true }, settle: SettleGate().wait)
         session.pageReported(0.5)
 
         session.refresh()
         session.pageReported(0.5)
 
         #expect(session.restoringTo == nil)
+    }
+
+    @Test
+    func refreshingWhileTheArticleIsStillLoadingStillBringsTheReaderBack() {
+        let session = ReadingPositionSession(savedPosition: 0.4, save: { _ in true }, settle: {})
+        session.pageReported(nil)
+
+        session.refresh()
+        session.pageReported(0.02)
+
+        #expect(session.restoringTo == 0.4)
+    }
+
+    @Test
+    func refreshingWhileTheArticleIsStillLoadingKeepsSavingPlaces() async {
+        let saves = SaveRecorder()
+        let session = ReadingPositionSession(savedPosition: 0, save: saves.record, settle: {})
+        session.pageReported(nil)
+
+        session.refresh()
+        session.pageReported(0.5)
+
+        #expect(await saves.next() == 0.5)
+    }
+
+    @Test
+    func anOlderSaveFinishingAfterRefreshDoesNotChangeWhereTheReaderReturns() async {
+        let saves = SaveRecorder()
+        let slowSave = SaveGate()
+        let session = ReadingPositionSession(savedPosition: 0, save: { position in
+            if position == 0.5 { await slowSave.hold() }
+            return await saves.record(position)
+        }, settle: {})
+        session.pageReported(0.5)
+        await slowSave.arrival()
+
+        session.pageReported(0.6)
+        session.refresh()
+        slowSave.release()
+        while let saved = await saves.next(), saved != 0.5 {}
+        await Task.yield()
+        session.pageReported(nil)
+        session.pageReported(0.02)
+
+        #expect(session.restoringTo == 0.6)
+    }
+
+    @Test
+    func wherePageSaysItRestoredToCountsAsWhereTheReaderIs() async {
+        let saves = SaveRecorder()
+        let session = ReadingPositionSession(savedPosition: 0.4, save: saves.record, settle: SettleGate().wait)
+        session.pageReported(0.05)
+
+        session.pageRestored(at: 1)
+        session.leave()
+
+        #expect(await saves.next() == 1)
+    }
+}
+
+@MainActor
+private final class SaveGate {
+    private var held: CheckedContinuation<Void, Never>?
+    private var arrived: CheckedContinuation<Void, Never>?
+
+    func hold() async {
+        arrived?.resume()
+        arrived = nil
+        await withCheckedContinuation { held = $0 }
+    }
+
+    func arrival() async {
+        guard held == nil else { return }
+        await withCheckedContinuation { arrived = $0 }
+    }
+
+    func release() {
+        held?.resume()
+        held = nil
     }
 }
 
@@ -155,19 +281,17 @@ private final class SettleGate {
 
 @MainActor
 private final class SaveRecorder {
-    private let continuation: AsyncStream<Double>.Continuation
-    private var iterator: AsyncStream<Double>.Iterator
+    private let failing: Set<Double>
     private var saved: [Double] = []
+    private var delivered = 0
 
-    init() {
-        let (stream, continuation) = AsyncStream.makeStream(of: Double.self)
-        self.continuation = continuation
-        self.iterator = stream.makeAsyncIterator()
+    init(failing: Set<Double> = []) {
+        self.failing = failing
     }
 
-    func record(_ position: Double) async {
+    func record(_ position: Double) async -> Bool {
         saved.append(position)
-        continuation.yield(position)
+        return !failing.contains(position)
     }
 
     func nothingSaved() async -> Bool {
@@ -175,10 +299,18 @@ private final class SaveRecorder {
         return saved.isEmpty
     }
 
+    func noFurtherSaves() async -> Bool {
+        try? await Task.sleep(for: .milliseconds(200))
+        return saved.count == delivered
+    }
+
     func next() async -> Double? {
-        var iterator = self.iterator
-        let position = await iterator.next()
-        self.iterator = iterator
-        return position
+        let deadline = ContinuousClock.now + .seconds(2)
+        while saved.count <= delivered, ContinuousClock.now < deadline {
+            try? await Task.sleep(for: .milliseconds(10))
+        }
+        guard saved.count > delivered else { return nil }
+        defer { delivered += 1 }
+        return saved[delivered]
     }
 }

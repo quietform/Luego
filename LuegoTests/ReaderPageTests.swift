@@ -72,6 +72,55 @@ struct ReaderPageTests {
     }
 
     @Test
+    func aRestoreThatCannotMoveThePageStillReportsWhereTheReaderIs() async throws {
+        let restoration = RestorationRecorder()
+        let host = PageHost(ReaderPage(header: header, markdown: "A short note.", restoringTo: 0.5, onRestored: restoration.finish))
+        defer { host.close() }
+
+        await host.settle { restoration.isFinished }
+
+        #expect(try #require(restoration.position) >= 1)
+    }
+
+    @Test
+    func aRestoreInterruptedBeforeItsScrollFinishesIsNotReportedAsRestored() async {
+        let restoration = RestorationRecorder()
+        let positions = PositionRecorder()
+        let text = ArticleText(markdown: longArticle)
+        let host = PageHost(ChangingPage(
+            header: header,
+            text: text,
+            restoringTo: 0.5,
+            onRestored: restoration.finish,
+            onReadingPositionChange: positions.record
+        ))
+        defer { host.close() }
+        await host.settle { positions.latest != nil }
+
+        try? await Task.sleep(for: .milliseconds(150))
+        text.markdown = nil
+        await host.settle { restoration.isFinished }
+
+        #expect(!restoration.isFinished)
+    }
+
+    @Test
+    func replacingTheArticleTextReportsNoPositionUntilTheNewTextIsLaidOut() async {
+        let positions = PositionRecorder()
+        let text = ArticleText(markdown: longArticle)
+        let host = PageHost(ChangingPage(header: header, text: text, onReadingPositionChange: positions.record))
+        defer { host.close() }
+        await host.settle { positions.latest != nil }
+
+        text.markdown = nil
+        await host.settle { positions.lastReportIsNoPosition }
+        text.markdown = longArticle + "\n\nA refreshed closing paragraph."
+        await host.settle { positions.latest != nil }
+
+        #expect(positions.readiness.suffix(3) == [true, false, true])
+    }
+
+    @Test
     func whileTheArticleLoadsThePageDoesNotRestore() async {
         let restoration = RestorationRecorder()
         let host = PageHost(ReaderPage(header: header, markdown: nil, restoringTo: 0.5, onRestored: restoration.finish))
@@ -84,10 +133,49 @@ struct ReaderPageTests {
 }
 
 @MainActor
+@Observable
+private final class ArticleText {
+    var markdown: String?
+
+    init(markdown: String?) {
+        self.markdown = markdown
+    }
+}
+
+private struct ChangingPage: View {
+    let header: ReaderArticleHeader
+    let text: ArticleText
+    var restoringTo: Double? = nil
+    var onRestored: (Double?) -> Void = { _ in }
+    var onReadingPositionChange: (Double?) -> Void = { _ in }
+
+    var body: some View {
+        ReaderPage(
+            header: header,
+            markdown: text.markdown,
+            restoringTo: restoringTo,
+            onRestored: onRestored,
+            onReadingPositionChange: onReadingPositionChange
+        )
+    }
+}
+
+@MainActor
 private final class PositionRecorder {
     private(set) var reports: [Double?] = []
 
     var latest: Double? { reports.last ?? nil }
+
+    var lastReportIsNoPosition: Bool {
+        if case .some(.none) = reports.last { return true }
+        return false
+    }
+
+    var readiness: [Bool] {
+        reports.map { $0 != nil }.reduce(into: []) { changes, isReady in
+            if changes.last != isReady { changes.append(isReady) }
+        }
+    }
 
     func record(_ position: Double?) {
         reports.append(position)
@@ -97,9 +185,11 @@ private final class PositionRecorder {
 @MainActor
 private final class RestorationRecorder {
     private(set) var isFinished = false
+    private(set) var position: Double?
 
-    func finish() {
+    func finish(at position: Double?) {
         isFinished = true
+        self.position = position
     }
 }
 
