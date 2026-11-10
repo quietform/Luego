@@ -92,6 +92,9 @@ extension View {
 }
 
 enum ReaderLayout {
+    /// The gap between an article's blocks, including around headings and section breaks in running text.
+    static let blockSpacing: CGFloat = 16
+
     static func horizontalPadding(for containerWidth: CGFloat) -> CGFloat {
         max(40, (containerWidth - 700) / 2)
     }

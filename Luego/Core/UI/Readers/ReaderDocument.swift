@@ -5,6 +5,7 @@ nonisolated struct ReaderDocument: Sendable {
         let id: Int
         let content: AttributedString
         let isCaption: Bool
+        let containsImages: Bool
 
         var standaloneImage: (url: URL, description: String, link: URL?)? {
             guard content.runs.count == 1,
@@ -49,8 +50,14 @@ nonisolated struct ReaderDocument: Sendable {
 
     private static func append(_ content: AttributedString, to blocks: inout [Block]) {
         let isCaption = blocks.last?.standaloneImage != nil && isEmphasizedParagraph(content)
-        let block = Block(id: blocks.count, content: content, isCaption: isCaption)
+        let containsImages = content.runs.contains { $0[AttributeScopes.FoundationAttributes.ImageURLAttribute.self] != nil }
+        let block = Block(id: blocks.count, content: content, isCaption: isCaption, containsImages: containsImages)
         guard !(blocks.isEmpty && block.isSectionBreak) else { return }
+        if let last = blocks.last, !last.isCaption, !last.containsImages, !block.containsImages {
+            // Only image-free text joins, so the joined block has no images either.
+            blocks[blocks.count - 1] = Block(id: last.id, content: last.content + content, isCaption: false, containsImages: false)
+            return
+        }
         blocks.append(block)
     }
 

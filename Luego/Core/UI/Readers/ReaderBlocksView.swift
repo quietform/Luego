@@ -6,7 +6,7 @@ struct ReaderBlocksView: View {
     var imageLoader: any ReaderImageLoading = ReaderImageLoader()
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: ReaderLayout.blockSpacing) {
             ForEach(document.blocks) { block in
                 Group {
                     if let photo = block.standaloneImage {
@@ -93,13 +93,9 @@ private struct ReaderBlockView: View {
     @State private var isActive = false
     @State private var height: CGFloat = 300
 
-    private var hasImages: Bool {
-        block.content.runs.contains { $0[AttributeScopes.FoundationAttributes.ImageURLAttribute.self] != nil }
-    }
-
     var body: some View {
         Group {
-            if isActive || !hasImages {
+            if isActive || !block.containsImages {
                 StructuredText("", parser: ReaderBlockParser(content: block.content, placeholderHeight: height))
                     .fixedSize(horizontal: false, vertical: true)
                     .onGeometryChange(for: CGFloat.self) { $0.size.height } action: {
@@ -110,8 +106,8 @@ private struct ReaderBlockView: View {
                 Color.clear.frame(height: height)
             }
         }
-        .onGeometryChange(for: BufferedVisibility.self) { [hasImages] geometry in
-            guard hasImages else { return .retain }
+        .onGeometryChange(for: BufferedVisibility.self) { [containsImages = block.containsImages] geometry in
+            guard containsImages else { return .retain }
             return BufferedVisibility(geometry: geometry)
         } action: { visibility in
             switch visibility {

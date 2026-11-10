@@ -25,8 +25,26 @@ struct ReaderDocumentTests {
 
         #expect(mainActorRan)
         await heartbeat.value
-        #expect(document.blocks.count == 500)
+        #expect(document.blocks.map { String($0.content.characters) } == [String(repeating: "Paragraph with emphasis and a link.", count: 500)])
         #expect(document.blocks.first?.content.runs.contains { $0[AttributeScopes.FoundationAttributes.LinkAttribute.self]?.absoluteString == "https://example.com/target" } == true)
+    }
+
+    @Test
+    func preparationTimeGrowsInProportionToArticleLength() throws {
+        func preparationTime(paragraphs: Int) throws -> Duration {
+            let markdown = String(repeating: "Paragraph with *emphasis* and [a link](/target).\n\n", count: paragraphs)
+            return try ContinuousClock().measure {
+                _ = try ReaderDocument(markdown: markdown, baseURL: URL(string: "https://example.com")!)
+            }
+        }
+
+        _ = try preparationTime(paragraphs: 100)
+        let short = try preparationTime(paragraphs: 300)
+        let long = try preparationTime(paragraphs: 1_200)
+
+        // Four times the text should take about four times as long; sixteen times means each
+        // paragraph rescans the ones before it.
+        #expect(long < short * 8, "300 paragraphs: \(short), 1,200 paragraphs: \(long)")
     }
 
     @Test
@@ -36,8 +54,7 @@ struct ReaderDocumentTests {
             baseURL: URL(string: "https://example.com")!
         )
 
-        let kinds = document.blocks.map { $0.content.runs.first?.presentationIntent?.components.last?.kind }
-        #expect(kinds == [.paragraph, .thematicBreak, .paragraph])
+        #expect(topLevelKinds(of: document) == [.paragraph, .thematicBreak, .paragraph])
     }
 
     @Test(arguments: [
@@ -55,7 +72,7 @@ struct ReaderDocumentTests {
     }
 
     @Test(arguments: [
-        ("Intro\n\n*Just emphasis*", [false, false]),
+        ("Intro\n\n*Just emphasis*", [false]),
         ("![Photo](photo.jpg)\n\n*Happy* Halloween", [false, false]),
         ("![Photo](photo.jpg)\n\nPlain paragraph", [false, false]),
         ("![Photo](photo.jpg)\n\n*Caption*\n\n*Still emphasis*", [false, true, false])
@@ -78,6 +95,16 @@ struct ReaderDocumentTests {
         let imageURL = document.blocks[1].content.runs.first?[AttributeScopes.FoundationAttributes.ImageURLAttribute.self]
         #expect(imageURL?.absoluteString == "https://example.com/articles/one.jpg")
     }
+    @Test
+    func paragraphWithAnInlineImageIsNotJoinedToTheTextAroundIt() throws {
+        let document = try ReaderDocument(
+            markdown: "Before\n\nMore before\n\nText with ![an icon](icon.png) inline\n\nAfter",
+            baseURL: URL(string: "https://example.com")!
+        )
+
+        #expect(document.blocks.map { String($0.content.characters) } == ["BeforeMore before", "Text with an icon inline", "After"])
+    }
+
     @Test
     func nestedMarkupStaysTogetherAndResolvesReferences() throws {
         let document = try ReaderDocument(markdown: """
@@ -102,11 +129,35 @@ struct ReaderDocumentTests {
         [target]: /destination
         """, baseURL: URL(string: "https://example.com/articles/post")!)
 
-        #expect(document.blocks.count == 6)
+        #expect(document.blocks.count == 1)
         let list = try #require(document.blocks.first { String($0.content.characters).contains("Nested") })
         #expect(String(list.content.characters).contains("Second"))
-        let link = try #require(document.blocks.last?.content.runs.first?[AttributeScopes.FoundationAttributes.LinkAttribute.self])
-        #expect(link.absoluteString == "https://example.com/destination")
+        let links = document.blocks.flatMap { $0.content.runs.compactMap { $0[AttributeScopes.FoundationAttributes.LinkAttribute.self] } }
+        #expect(links.map(\.absoluteString) == ["https://example.com/destination"])
+    }
+
+    @Test
+    func aNestedListOrQuoteWithAnImageStaysOneBlock() throws {
+        let document = try ReaderDocument(markdown: """
+        Intro
+
+        - First with ![an icon](icon.png)
+          - Nested
+        - Second
+
+        > Quote with ![a mark](mark.png)
+        >
+        > Second quoted paragraph
+
+        Outro
+        """, baseURL: URL(string: "https://example.com")!)
+
+        #expect(document.blocks.map { String($0.content.characters) } == [
+            "Intro",
+            "First with an iconNestedSecond",
+            "Quote with a markSecond quoted paragraph",
+            "Outro"
+        ])
     }
 
     @Test
@@ -115,4 +166,16 @@ struct ReaderDocumentTests {
         #expect(document.blocks.isEmpty)
     }
 
+    private func topLevelKinds(of document: ReaderDocument) -> [PresentationIntent.Kind] {
+        var kinds: [PresentationIntent.Kind] = []
+        var previousIdentity: Int?
+        for block in document.blocks {
+            for run in block.content.runs {
+                guard let component = run.presentationIntent?.components.last, component.identity != previousIdentity else { continue }
+                kinds.append(component.kind)
+                previousIdentity = component.identity
+            }
+        }
+        return kinds
+    }
 }

@@ -35,7 +35,7 @@ extension StructuredText {
                 .textual.fontScale(fontScale(forLevel: configuration.headingLevel))
                 .textual.lineSpacing(.fontScaled(0.125))
                 .fontWeight(configuration.headingLevel <= 2 ? .regular : .semibold)
-                .textual.blockSpacing(.init(top: 32, bottom: 8))
+                .textual.blockSpacing(.init(top: ReaderLayout.blockSpacing, bottom: ReaderLayout.blockSpacing))
         }
 
         private func fontScale(forLevel level: Int) -> CGFloat {
@@ -69,7 +69,7 @@ extension StructuredText {
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity)
                 .accessibilityHidden(true)
-                .textual.blockSpacing(.init(top: 12, bottom: 12))
+                .textual.blockSpacing(.init(top: ReaderLayout.blockSpacing, bottom: ReaderLayout.blockSpacing))
         }
     }
 }

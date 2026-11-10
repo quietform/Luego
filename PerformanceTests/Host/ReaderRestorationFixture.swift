@@ -1,5 +1,6 @@
 import GRDB
 import SwiftUI
+import UIKit
 
 struct ReaderRestorationFixture: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -171,18 +172,98 @@ struct ReaderRestorationFixture: View {
         content.onScrollPhaseChange { _, phase in
             scrollPhase = phase == .idle ? "idle" : "moving"
         }
-        .onScrollGeometryChange(for: String.self) { geometry in
-            let offset = geometry.contentOffset.y + geometry.contentInsets.top
-            return "\(offset)|\(geometry.contentSize.height)|\(geometry.containerSize.height)"
-        } action: { _, geometry in
-            viewport = "\(article?.url.lastPathComponent ?? "none")|\(geometry)"
-            let fields = geometry.split(separator: "|").compactMap { Double($0) }
-            if switchDuringRestoration, article?.url.lastPathComponent == "b",
-               fields.count == 3, fields[0] == 0, fields[1] > 5000 {
-                switchDuringRestoration = false
-                didSwitchDuringRestoration = true
-                selection = articles[0]
+        // Read from UIKit: onScrollGeometryChange can miss the last content-size change when the
+        // reader's text finishes growing without scrolling, which would leave this probe stale.
+        .background {
+            let name = article?.url.lastPathComponent ?? "none"
+            ScrollViewProbe(article: name) { offset, contentHeight, visibleHeight in
+                viewport = "\(name)|\(offset)|\(contentHeight)|\(visibleHeight)"
+                if switchDuringRestoration, name == "b", offset == 0, contentHeight > 5000 {
+                    switchDuringRestoration = false
+                    didSwitchDuringRestoration = true
+                    selection = articles[0]
+                }
             }
+        }
+    }
+}
+
+/// Once per frame, samples the visible scroll view covering most of this view on its own screen and
+/// reports its offset beneath the bars, content height, and visible height whenever they, the
+/// article, or the sampled scroll view change.
+private struct ScrollViewProbe: UIViewRepresentable {
+    let article: String
+    let onChange: (_ offset: CGFloat, _ contentHeight: CGFloat, _ visibleHeight: CGFloat) -> Void
+
+    func makeUIView(context: Context) -> ProbeView { ProbeView() }
+
+    func updateUIView(_ view: ProbeView, context: Context) {
+        view.article = article
+        view.onChange = onChange
+    }
+
+    final class ProbeView: UIView {
+        var article = ""
+        var onChange: (CGFloat, CGFloat, CGFloat) -> Void = { _, _, _ in }
+        private var displayLink: CADisplayLink?
+        private var reported: Sample?
+
+        private struct Sample: Equatable {
+            let article: String
+            let scrollView: ObjectIdentifier
+            let values: [CGFloat]
+        }
+
+        override init(frame: CGRect) {
+            super.init(frame: frame)
+            isUserInteractionEnabled = false
+        }
+
+        required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+        override func didMoveToWindow() {
+            super.didMoveToWindow()
+            displayLink?.invalidate()
+            displayLink = nil
+            guard window != nil else { return }
+            let link = CADisplayLink(target: self, selector: #selector(sample))
+            link.add(to: .main, forMode: .common)
+            displayLink = link
+        }
+
+        @objc private func sample() {
+            // Search only this screen: an outgoing reader or the list sits in another view controller.
+            guard let screen = owningViewController?.view,
+                  let scrollView = Self.scrollView(in: screen, covering: convert(bounds, to: screen)) else { return }
+            let insets = scrollView.adjustedContentInset
+            // The same measures as ScrollGeometry: offset and visible height exclude the bars' insets.
+            let values = [
+                scrollView.contentOffset.y + insets.top,
+                scrollView.contentSize.height,
+                scrollView.bounds.height - insets.top - insets.bottom
+            ]
+            let sample = Sample(article: article, scrollView: ObjectIdentifier(scrollView), values: values)
+            guard sample != reported else { return }
+            reported = sample
+            onChange(values[0], values[1], values[2])
+        }
+
+        private var owningViewController: UIViewController? {
+            sequence(first: self as UIResponder, next: \.next).lazy.compactMap { $0 as? UIViewController }.first
+        }
+
+        private static func scrollView(in root: UIView, covering area: CGRect) -> UIScrollView? {
+            var best: (view: UIScrollView, overlap: CGFloat)?
+            var pending = [root]
+            while let view = pending.popLast() {
+                guard !view.isHidden, view.alpha > 0 else { continue }
+                pending.append(contentsOf: view.subviews)
+                guard let scrollView = view as? UIScrollView else { continue }
+                let overlap = scrollView.convert(scrollView.bounds, to: root).intersection(area)
+                let size = overlap.isNull ? 0 : overlap.width * overlap.height
+                if size > (best?.overlap ?? 0) { best = (scrollView, size) }
+            }
+            return best?.view
         }
     }
 }
