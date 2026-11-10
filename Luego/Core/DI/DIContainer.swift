@@ -1,5 +1,6 @@
 import CloudKit
 import Foundation
+import SwiftUI
 
 @MainActor
 final class DIContainer {
@@ -165,5 +166,17 @@ final class DIContainer {
             savedArticleImportService: savedArticleImportService,
             savedArticleExportService: savedArticleExportService
         )
+    }
+}
+
+private struct DIContainerKey: EnvironmentKey {
+    @MainActor
+    static let defaultValue: DIContainer? = nil
+}
+
+extension EnvironmentValues {
+    var diContainer: DIContainer? {
+        get { self[DIContainerKey.self] }
+        set { self[DIContainerKey.self] = newValue }
     }
 }

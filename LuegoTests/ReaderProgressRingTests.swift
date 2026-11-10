@@ -16,22 +16,6 @@ struct ReaderProgressRingTests {
         #expect(ReaderProgressRing.percent(scrollOffset: scrollOffset, contentHeight: contentHeight, viewportHeight: viewportHeight) == percent)
     }
 
-    @Test(arguments: [
-        (CGFloat(-122), 0),
-        (1000, 50),
-        (2122, 100)
-    ])
-    func percentMeasuresTheScrollViewBeneathTheBars(contentOffset: CGFloat, percent: Int) {
-        let geometry = ScrollGeometry(
-            contentOffset: CGPoint(x: 0, y: contentOffset),
-            contentSize: CGSize(width: 420, height: 3000),
-            contentInsets: EdgeInsets(top: 122, leading: 0, bottom: 34, trailing: 0),
-            containerSize: CGSize(width: 420, height: 756)
-        )
-
-        #expect(ReaderProgressRing.percent(for: geometry) == percent)
-    }
-
     @Test
     func voiceOverHearsTheReadingProgress() {
         let ring = ReaderProgressRing(percent: 40)

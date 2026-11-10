@@ -49,6 +49,25 @@ struct ReaderPageTests {
     }
 
     @Test
+    func theReadingProgressFollowsHowFarThePageHasScrolled() async throws {
+        let positions = PositionRecorder()
+        let progress = ProgressRecorder()
+        let page = ReaderPage(header: header, markdown: longArticle, onReadingPositionChange: positions.record)
+            .onReadingProgressChange(perform: progress.record)
+        let host = PageHost(page)
+        defer { host.close() }
+        await host.settle { positions.latest != nil }
+
+        let scroll = try #require(host.scrollView)
+        let insets = scroll.adjustedContentInset
+        let scrollable = scroll.contentSize.height - (scroll.bounds.height - insets.top - insets.bottom)
+        scroll.setContentOffset(CGPoint(x: 0, y: scrollable / 2 - insets.top), animated: false)
+        await host.settle { progress.latest == 50 }
+
+        #expect(progress.latest == 50, "reported \(String(describing: progress.latest))")
+    }
+
+    @Test
     func whileTheArticleLoadsThePageReportsNoPosition() async {
         let positions = PositionRecorder()
         let host = PageHost(ReaderPage(header: header, markdown: nil, onReadingPositionChange: positions.record))
@@ -179,6 +198,15 @@ private final class PositionRecorder {
 
     func record(_ position: Double?) {
         reports.append(position)
+    }
+}
+
+@MainActor
+private final class ProgressRecorder {
+    private(set) var latest: Int?
+
+    func record(_ percent: Int?) {
+        latest = percent
     }
 }
 

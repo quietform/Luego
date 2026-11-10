@@ -41,7 +41,7 @@ struct ReaderBlockSpacingTests {
     }
 }
 
-private struct UnavailableImageLoader: ReaderImageLoading {
+struct UnavailableImageLoader: ReaderImageLoading {
     func image(for url: URL) async throws -> ReaderImage {
         throw URLError(.fileDoesNotExist)
     }

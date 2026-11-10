@@ -137,15 +137,3 @@ extension LuegoApp {
     }
 
 }
-
-private struct DIContainerKey: EnvironmentKey {
-    @MainActor
-    static let defaultValue: DIContainer? = nil
-}
-
-extension EnvironmentValues {
-    var diContainer: DIContainer? {
-        get { self[DIContainerKey.self] }
-        set { self[DIContainerKey.self] = newValue }
-    }
-}

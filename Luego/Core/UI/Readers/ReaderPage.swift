@@ -28,7 +28,8 @@ struct ReaderPage: View {
                         update { $0.contentHeight = height }
                     }
                 }
-                .readingProgress(isReported: markdown != nil)
+                .gesture(ReaderSelectionDismissal())
+                .readingProgress(markdown == nil ? nil : geometry.progressPercent)
                 .onScrollGeometryChange(for: ScrollViewport.self, of: ScrollViewport.init) { _, newViewport in
                     update { $0.viewport = newViewport }
                 }
@@ -85,7 +86,7 @@ struct ReaderPage: View {
 }
 
 /// What the page knows about its layout. The reading position is the visible bottom as a fraction
-/// of the content height, once the article is prepared.
+/// of the content height, once the article is prepared; the progress ring uses the same measures.
 private struct PageGeometry {
     var isPrepared = false
     var contentHeight: CGFloat = 0
@@ -94,6 +95,12 @@ private struct PageGeometry {
     var readingPosition: Double? {
         guard isPrepared, let viewport, contentHeight > 0 else { return nil }
         return (viewport.top + viewport.height) / contentHeight
+    }
+
+    /// How far through the scrollable text the reader is, for the progress ring.
+    var progressPercent: Int {
+        guard let viewport else { return 0 }
+        return ReaderProgressRing.percent(scrollOffset: viewport.top, contentHeight: contentHeight, viewportHeight: viewport.height)
     }
 }
 

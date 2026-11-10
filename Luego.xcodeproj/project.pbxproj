@@ -83,101 +83,12 @@
 			);
 			target = 6075988E2EC1FC8D00BEE86E /* Luego */;
 		};
-		C0DEC000000000000000000B /* Luego sources in LuegoTests */ = {
-            isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-            membershipExceptions = (
-				"App/AppLaunchView.swift",
-				"Core/Configuration/AppConfiguration.swift",
-				"Core/Configuration/Secrets.swift",
-				"Core/DataSources/ContentDataSource.swift",
-				"Core/DataSources/FileCache.swift",
-				"Core/DataSources/LegacySwiftDataArticleDataSource.swift",
-				"Core/DataSources/LuegoAPIDataSource.swift",
-				"Core/DataSources/LuegoParserDataSource.swift",
-				"Core/DataSources/LuegoSDKCacheDataSource.swift",
-				"Core/DataSources/LuegoSDKDataSource.swift",
-				"Core/DataSources/LuegoSDKManager.swift",
-				"Core/DataSources/WebPageDataSource.swift",
-				"Core/DataSources/ParsedContentCacheDataSource.swift",
-				"Core/DataSources/XMLSanitizer.swift",
-				"Core/Database/AppDatabase.swift",
-				"Core/Database/ArticleRecord.swift",
-				"Core/Database/SyncEngineStatePayload.swift",
-				"Core/Extensions/URL+Identifiable.swift",
-				"Core/Logging/LogStream.swift",
-				"Core/Logging/Logger.swift",
-				"Core/Models/Article.swift",
-				"Core/Models/ArticleContent.swift",
-				"Core/Models/ArticleListMembership.swift",
-				"Core/Models/ArticleMetadata.swift",
-				"Core/Models/LuegoSDKModels.swift",
-				"Core/Models/ReadingTime.swift",
-				"Core/Services/CloudKitRuntimeDiagnostics.swift",
-				"Core/Services/LegacySwiftDataArticleMigration.swift",
-				"Core/Services/SyncEngineManager.swift",
-				"Core/Services/SyncEngineManagerProtocol.swift",
-				"Core/Services/SyncStatusObserver.swift",
-				"Core/Stores/ArticleStoreProtocol.swift",
-				"Core/Stores/GRDBArticleStore.swift",
-				"Core/Utilities/DateFormatters.swift",
-				"Core/UI/AppTheme.swift",
-				"Core/UI/IPhoneTabBarVisibility.swift",
-				"Core/UI/AppUIColor.swift",
-				"Core/UI/ArticleRowLayout.swift",
-				"Core/UI/MascotBadge.swift",
-				"Core/UI/RowSelectionBackground.swift",
-				"Core/UI/ShimmerModifier.swift",
-				"Core/UI/AppTypography.swift",
-				"Core/UI/Readers/ReaderArticleHeader.swift",
-				"Core/UI/Readers/ReaderDocument.swift",
-				"Core/UI/Readers/ReaderBodyPlaceholder.swift",
-				"Core/UI/Readers/MarkdownUtilities.swift",
-				"Core/UI/Readers/ReaderBlocksView.swift",
-				"Core/UI/Readers/ReaderImageDecoder.swift",
-				"Core/UI/Readers/ReaderImageLoader.swift",
-				"Core/UI/Readers/ReaderMoreMenu.swift",
-				"Core/UI/Readers/ReaderMarkdownContentView.swift",
-				"Core/UI/Readers/ReaderPage.swift",
-				"Core/UI/Readers/ReaderStyle.swift",
-				"Features/Discovery/DataSources/DiscoveryFeedStore.swift",
-				"Features/Discovery/DataSources/DiscoveryLegacyStorage.swift",
-				"Features/Discovery/DataSources/DiscoveryPostCache.swift",
-				"Features/Discovery/DataSources/GenericRSSDataSource.swift",
-				"Features/Discovery/DataSources/DiscoveryPostSource.swift",
-				"Features/Discovery/DataSources/FeedPostsDataSource.swift",
-				"Features/Discovery/Models/DiscoveryFeed.swift",
-				"Features/Discovery/Models/DiscoveryPost.swift",
-				"Features/Discovery/Models/EphemeralArticle.swift",
-				"Features/Discovery/Services/DiscoveryService.swift",
-				"Features/Discovery/Services/DiscoveryArticleService.swift",
-				"Features/Discovery/Views/DiscoveryArticleViewModel.swift",
-				"Features/Discovery/Views/DiscoveryFeedsViewModel.swift",
-				"Features/Discovery/Views/DiscoveryListViewModel.swift",
-				"Features/Discovery/Views/DiscoveryPostPlaceholderList.swift",
-				"Features/Discovery/Views/DiscoveryPostRow.swift",
-				"Features/Discovery/Views/DiscoverySaveButton.swift",
-				"Features/Reader/Services/ReaderService.swift",
-				"Core/UI/Readers/ReaderProgressRing.swift",
-				"Core/UI/Readers/ReaderChrome.swift",
-				"Features/Reader/Views/ReaderListButton.swift",
-				"Features/Reader/Views/ReadingPositionSession.swift",
-				"Features/Reader/Views/ReaderViewModel.swift",
-				"Features/ReadingList/Services/ArticleService.swift",
-				"Features/ReadingList/Services/SavedArticleExportService.swift",
-				"Features/ReadingList/Services/SavedArticleImportService.swift",
-				"Features/ReadingList/Services/ArticleTransferFile.swift",
-				"Features/ReadingList/Views/ArticleFilter.swift",
-				"Features/ReadingList/Views/ArticleListContent.swift",
-				"Features/ReadingList/Views/ArticleListEmptyState.swift",
-				"Features/ReadingList/Views/ArticleListViewModel.swift",
-				"Features/ReadingList/Views/ArticleRowView.swift",
-				"Features/ReadingList/Views/ArticleSwipeActions.swift",
-				"Features/ReadingList/Views/ReadingListAccessibilityID.swift",
-				"Features/Sharing/DataSources/SharedStorage.swift",
-				"Features/Sharing/Services/ArticleDeepLinkBuilder.swift",
-				"Features/Sharing/Services/SharedTextURLExtractor.swift",
-				"Features/Sharing/Services/SharingService.swift",
-            );
+		C0DEC000000000000000000B /* Exceptions for "Luego" folder in "LuegoTests" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				App/LuegoApp.swift,
+				"Info-iOS.plist",
+			);
             target = C0DEC0000000000000000001 /* LuegoTests */;
         };
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -197,7 +108,7 @@
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				6094439C2F2CD929001F4AD5 /* Exceptions for "Luego" folder in "Luego" target */,
-                C0DEC000000000000000000B /* Luego sources in LuegoTests */,
+                C0DEC000000000000000000B /* Exceptions for "Luego" folder in "LuegoTests" target */,
 				601506582EC4660200CADAFB /* Exceptions for "Luego" folder in "LuegoShareExtension" target */,
 			);
 			path = Luego;
@@ -338,7 +249,7 @@
             buildPhases = (C0DEC0000000000000000004, C0DEC0000000000000000005, C0DEC0000000000000000006);
             buildRules = ();
             dependencies = ();
-            fileSystemSynchronizedGroups = (C0DEC0000000000000000003);
+            fileSystemSynchronizedGroups = (C0DEC0000000000000000003, 607598912EC1FC8D00BEE86E /* Luego */);
             name = LuegoTests;
             packageProductDependencies = (70D100042F70000000D10001 /* GRDB */, 607598D02EC2300000BEE86E /* Textual */);
             productName = LuegoTests;
