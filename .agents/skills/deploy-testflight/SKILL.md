@@ -1,11 +1,12 @@
 ---
 name: deploy-testflight
 description: iOS TestFlight deployment workflow for Luego using Xcode-managed signing, simulator verification, archive/export upload, tester-group distribution, and CalVer build coordination. Use when archiving and uploading Luego iOS builds to TestFlight, troubleshooting Apple account or provisioning issues, or fixing duplicate build-number rejections by updating `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION`.
+compatibility: Requires macOS with Xcode signed in to Luego's Apple Developer team, the asc CLI with an authenticated profile for app 6755436648, xcodebuildmcp, and network access to App Store Connect.
 ---
 
 # deploy-testflight
 
-Ship Luego iOS builds to TestFlight with Xcode-managed signing and Xcode-authenticated upload.
+Ship Luego iOS builds to TestFlight with Xcode-managed signing and Xcode-authenticated upload. Run every command from the Luego repository root.
 
 ## Workflow
 
@@ -17,13 +18,13 @@ Ship Luego iOS builds to TestFlight with Xcode-managed signing and Xcode-authent
      ```bash
      grep -E "MARKETING_VERSION|CURRENT_PROJECT_VERSION|CODE_SIGN_STYLE|DEVELOPMENT_TEAM" Luego.xcodeproj/project.pbxproj | head -12
      ```
-   - Verify the app on the simulator before archiving:
+   - Verify the app on one simulator before archiving, as `docs/TESTING.md` describes. Pick an available simulator's UDID rather than a name:
      ```bash
-     xcodebuildmcp simulator build --use-latest-os
-     xcodebuildmcp simulator build-and-run --use-latest-os
+     xcodebuildmcp simulator list
+     xcodebuildmcp simulator build-and-run --simulator-id <uuid>
      ```
 2. Update version metadata before archiving.
-   - Follow the `$bump-version` policy.
+   - Follow the `bump-version` skill (`../bump-version/SKILL.md`).
    - For same-day reuploads, increment only `CURRENT_PROJECT_VERSION`.
    - When the version date changes, set `MARKETING_VERSION` to `YYYY.MM.DD` and reset `CURRENT_PROJECT_VERSION` to `1`.
    - Keep `Luego`, `LuegoShareExtension`, and `LuegoTests` in sync in `Luego.xcodeproj/project.pbxproj`.
@@ -42,25 +43,7 @@ Ship Luego iOS builds to TestFlight with Xcode-managed signing and Xcode-authent
      -configuration Release \
      -allowProvisioningUpdates
    ```
-4. Write `build/ExportOptions.plist`.
-   ```xml
-   <?xml version="1.0" encoding="UTF-8"?>
-   <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-   <plist version="1.0">
-   <dict>
-       <key>destination</key>
-       <string>upload</string>
-       <key>method</key>
-       <string>app-store-connect</string>
-       <key>signingStyle</key>
-       <string>automatic</string>
-       <key>uploadSymbols</key>
-       <true/>
-       <key>manageAppVersionAndBuildNumber</key>
-       <false/>
-   </dict>
-   </plist>
-   ```
+4. Copy this skill's [export options template](assets/ExportOptions.plist) to `build/ExportOptions.plist`. It uploads to App Store Connect with automatic signing and symbols, and keeps the version and build number set in step 2.
 5. Export and upload with the Xcode-authenticated session.
    ```bash
    xcodebuild -exportArchive \
@@ -70,9 +53,9 @@ Ship Luego iOS builds to TestFlight with Xcode-managed signing and Xcode-authent
      -allowProvisioningUpdates
    ```
 6. Distribute the build to testers.
-   - Wait until the new build's processing state is `VALID`:
+   - Wait until the new build's processing state is `VALID`. Filter by this upload's version and build number: an earlier build can share the build number, and a new upload takes a few minutes to appear.
      ```bash
-     asc builds list --platform IOS --limit 3 --sort -uploadedDate --output table
+     asc builds list --platform IOS --version "MARKETING_VERSION" --build-number "CURRENT_PROJECT_VERSION" --processing-state all --output table
      ```
    - `Friends-Internal` receives every build automatically. Add `External-Testers` and submit for beta app review:
      ```bash
@@ -85,10 +68,12 @@ Ship Luego iOS builds to TestFlight with Xcode-managed signing and Xcode-authent
    - Return the final `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION`.
    - Return the tester groups on the build and the beta review state.
    - Return any actionable error output when archive, upload, or distribution fails.
-8. Optionally clean local artifacts.
+8. Clean local artifacts after every deploy, without asking.
    ```bash
    rm -rf build/Luego.xcarchive build/Export build/ExportOptions.plist
    ```
+   - Also delete logs written for this deploy, such as `build/archive.log` and `build/export.log`.
+   - Remove only this deploy's artifacts. Leave older archives and other folders in `build/` alone.
 
 ## Troubleshooting checklist
 
