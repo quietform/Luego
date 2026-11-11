@@ -51,7 +51,7 @@ private struct ReaderPhotoView: View {
                 photo
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
         .frame(height: height)
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
         .onGeometryChange(for: BufferedVisibility.self) { BufferedVisibility(geometry: $0) } action: { visibility in
