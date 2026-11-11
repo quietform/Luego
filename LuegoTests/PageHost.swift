@@ -31,6 +31,12 @@ final class PageHost {
         }
     }
 
+    func resize(width: CGFloat) {
+        window.frame.size.width = width
+        controller.view.setNeedsLayout()
+        controller.view.layoutIfNeeded()
+    }
+
     func close() {
         window.isHidden = true
     }

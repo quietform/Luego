@@ -284,7 +284,7 @@
 			mainGroup = 607598862EC1FC8D00BEE86E;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				607598CF2EC2300000BEE86E /* XCRemoteSwiftPackageReference "textual" */,
+				607598CF2EC2300000BEE86E /* XCLocalSwiftPackageReference "Vendor/Textual" */,
 				70D100052F70000000D10001 /* XCRemoteSwiftPackageReference "GRDB.swift" */,
 			);
 			preferredProjectObjectVersion = 77;
@@ -838,15 +838,14 @@
 		C0DEC0000000000000000007 = {isa = XCConfigurationList; buildConfigurations = (C0DEC0000000000000000008, C0DEC0000000000000000009, C0DEC000000000000000000A); defaultConfigurationIsVisible = 0; defaultConfigurationName = Debug; };
 /* End XCConfigurationList section */
 
-/* Begin XCRemoteSwiftPackageReference section */
-		607598CF2EC2300000BEE86E /* XCRemoteSwiftPackageReference "textual" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/gonzalezreal/textual.git";
-			requirement = {
-				kind = upToNextMinorVersion;
-				minimumVersion = 0.5.0;
-			};
+/* Begin XCLocalSwiftPackageReference section */
+		607598CF2EC2300000BEE86E /* XCLocalSwiftPackageReference "Vendor/Textual" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Vendor/Textual;
 		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCRemoteSwiftPackageReference section */
 		70D100052F70000000D10001 /* XCRemoteSwiftPackageReference "GRDB.swift" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/groue/GRDB.swift.git";
@@ -860,7 +859,7 @@
 /* Begin XCSwiftPackageProductDependency section */
 		607598D02EC2300000BEE86E /* Textual */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 607598CF2EC2300000BEE86E /* XCRemoteSwiftPackageReference "textual" */;
+			package = 607598CF2EC2300000BEE86E /* XCLocalSwiftPackageReference "Vendor/Textual" */;
 			productName = Textual;
 		};
 		70D100042F70000000D10001 /* GRDB */ = {

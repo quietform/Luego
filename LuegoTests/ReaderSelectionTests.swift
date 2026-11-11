@@ -41,6 +41,29 @@ struct ReaderSelectionTests {
         #expect(passages[1].selectedTextRange == nil)
     }
 
+    @Test
+    func aRangeUIKitKeptFromBeforeAReflowMeasuresAsEmpty() async throws {
+        let paragraphs = (1...6)
+            .map { "Paragraph \($0) wraps across several lines at a phone's width, so a wider window needs fewer of them." }
+        let document = try ReaderDocument(markdown: paragraphs.joined(separator: "\n\n"), baseURL: URL(string: "https://example.com")!)
+        let host = PageHost(ReaderBlocksView(document: document).readerContentStyle())
+        defer { host.close() }
+        await host.settle { selectableTexts(in: host.view) == [paragraphs.joined()] }
+        let passage = try #require(textInputs(in: host.view).first)
+        let passageView = try #require(passage as? UIView)
+        let everything = try #require(passage.textRange(from: passage.beginningOfDocument, to: passage.endOfDocument))
+        try #require(passage.offset(from: everything.start, to: everything.end) > 0)
+        passage.selectedTextRange = everything
+
+        host.resize(width: 1_000)
+        await host.settle {
+            passageView.bounds.width > 900 && passage.compare(passage.endOfDocument, to: everything.end) != .orderedSame
+        }
+        try #require(passage.compare(passage.endOfDocument, to: everything.end) != .orderedSame)
+
+        #expect(passage.offset(from: everything.start, to: everything.end) == 0)
+    }
+
     /// Hosts the article and selects all the text in each of its passages.
     private func selectAllText(in markdown: String) async throws -> (PageHost, [UITextInput]) {
         let document = try ReaderDocument(markdown: markdown, baseURL: URL(string: "https://example.com")!)

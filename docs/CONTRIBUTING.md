@@ -22,6 +22,7 @@
 - `Luego/Features/`: vertical feature slices (`ReadingList`, `Reader`, `Discovery`, `Sharing`, `Settings`).
 - `LuegoShareExtension/`: iOS/iPadOS share extension target.
 - `Configuration/`: build-configuration-specific bundle identifiers and display names.
+- `Vendor/Textual/`: patched copy of the Textual Markdown renderer. Read its [README](../Vendor/Textual/README.md) before changing or upgrading it.
 - `docs/`: project documentation, public website, privacy page, and screenshots.
 - [ARCHITECTURE.md](ARCHITECTURE.md): runtime composition and data flows.
 - [ASC.md](ASC.md): App Store Connect CLI setup and commands.

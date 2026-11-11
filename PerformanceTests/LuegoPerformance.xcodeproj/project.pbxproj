@@ -80,12 +80,8 @@
 			};
 		};
 		"C0DECC00000000000000000E" = {
-			"isa" = "XCRemoteSwiftPackageReference";
-			"repositoryURL" = "https://github.com/gonzalezreal/textual.git";
-			"requirement" = {
-				"kind" = "exactVersion";
-				"version" = "0.5.0";
-			};
+			"isa" = "XCLocalSwiftPackageReference";
+			"relativePath" = "../Vendor/Textual";
 		};
 		"C0DECC00000000000000000F" = {
 			"isa" = "XCSwiftPackageProductDependency";
