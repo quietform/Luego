@@ -20,7 +20,7 @@ struct ArticleListContentTests {
         )
         .environment(SyncStatusObserver())
 
-        #expect(accessibilityIdentifiers(in: content).contains(ReadingListAccessibilityID.open(article)))
+        #expect(inspectAccessibility(of: content, accessibilityIdentifiers(in:)).contains(ReadingListAccessibilityID.open(article)))
     }
 
     private func makeArticleListViewModel(sharedStorage: SharedStorage) throws -> ArticleListViewModel {
@@ -32,19 +32,5 @@ struct ArticleListContentTests {
             sharingService: SharingService(articleService: articles, sharedStorage: sharedStorage),
             syncEngineManager: sync
         )
-    }
-
-    private func accessibilityIdentifiers(in view: some View) -> Set<String> {
-        inspectAccessibility(of: view, accessibilityIdentifiers(in:))
-    }
-
-    private func accessibilityIdentifiers(in element: NSObject) -> Set<String> {
-        let identifierKey = "accessibilityIdentifier"
-        let identifier = element.responds(to: NSSelectorFromString(identifierKey)) ? element.value(forKey: identifierKey) as? String : nil
-        let own = identifier.map { Set([$0]) } ?? []
-        let children = (element.accessibilityElements as? [NSObject])
-            ?? (0..<max(element.accessibilityElementCount(), 0)).compactMap { element.accessibilityElement(at: $0) as? NSObject }
-        let views = (element as? UIView)?.subviews ?? []
-        return (children + views).reduce(own) { $0.union(accessibilityIdentifiers(in: $1)) }
     }
 }

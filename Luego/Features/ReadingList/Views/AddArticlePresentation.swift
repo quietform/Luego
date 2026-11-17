@@ -13,6 +13,7 @@ struct AddArticlePresenter<Content: View>: View {
                 destination: addArticleDestination
             )
         )
+        .environment(\.addArticle, AddArticleAction { showingAddArticle = true })
     }
 
     private var addArticleDestination: AddArticleDestination {
@@ -21,6 +22,24 @@ struct AddArticlePresenter<Content: View>: View {
             preferredWidth: horizontalSizeClass == .compact ? 360 : 420
         )
     }
+}
+
+/// Opens the add-article form from anywhere inside an `AddArticlePresenter`,
+/// anchored to the toolbar's add button so every entry point shows the same form.
+struct AddArticleAction {
+    private let present: () -> Void
+
+    init(_ present: @escaping () -> Void) {
+        self.present = present
+    }
+
+    func callAsFunction() {
+        present()
+    }
+}
+
+extension EnvironmentValues {
+    @Entry var addArticle: AddArticleAction?
 }
 
 struct AddArticleToolbarButton: View {

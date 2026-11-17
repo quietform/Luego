@@ -6,7 +6,7 @@ struct MascotBadge: View {
     var body: some View {
         ZStack {
             Circle()
-                .fill(Color.paperCream)
+                .fill(Color.mascotBackdrop)
 
             Image("Kike")
                 .resizable()

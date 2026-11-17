@@ -7,8 +7,10 @@ struct ArticleListEmptyState: View {
     let onCopyAnimationConsumed: () -> Void
 
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.addArticle) private var addArticle
     @State private var shouldAnimateCopy: Bool
     @State private var hasConsumedLaunchAnimation = false
+    @State private var revealedStepCount = 0
 
     init(
         onDiscover: @escaping () -> Void,
@@ -24,14 +26,96 @@ struct ArticleListEmptyState: View {
         _shouldAnimateCopy = State(initialValue: shouldAnimateCopyOnFirstAppearance)
     }
 
+    var body: some View {
+        VStack(spacing: 0) {
+            if let restoreStatusText {
+                RestoreStatusBanner(text: restoreStatusText)
+                    .padding(.bottom, 18)
+            }
+
+            artwork
+                .accessibilityHidden(true)
+                .padding(.bottom, 8)
+
+            VStack(spacing: 12) {
+                Text(filter.emptyStateTitle)
+                    .font(.app(.emptyStateTitle))
+                    .revealed(isRevealed(step: 0))
+
+                VStack(spacing: 6) {
+                    ForEach(Array(filter.emptyStateLines.enumerated()), id: \.offset) { index, line in
+                        Text(line)
+                            .font(.app(.emptyStateBody))
+                            .frame(maxWidth: .infinity)
+                            .revealed(isRevealed(step: index + 1))
+                    }
+                }
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+            }
+            .accessibilityElement(children: .combine)
+
+            if filter == .readingList {
+                actions
+                    .padding(.top, 24)
+                    .revealed(isRevealed(step: actionsStep))
+            }
+        }
+        .frame(maxWidth: 320)
+        .padding(.horizontal, 24)
+        .task {
+            guard shouldAnimateCopy, !hasConsumedLaunchAnimation else { return }
+            hasConsumedLaunchAnimation = true
+            onCopyAnimationConsumed()
+            await revealInSequence()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+        .offset(y: verticalOffset)
+        .background(Color.appBackground)
+        .onDisappear {
+            shouldAnimateCopy = false
+        }
+    }
+
     @ViewBuilder
     private var artwork: some View {
         if filter == .readingList {
-            MascotBadge(size: 180)
+            MascotBadge(size: 140)
         } else {
             Image(systemName: filter.emptyStateIcon)
                 .font(.system(size: 64))
                 .foregroundStyle(filter.emptyStateIconColor)
+        }
+    }
+
+    private var actions: some View {
+        VStack(spacing: 4) {
+            if let addArticle {
+                Button("Add Article", systemImage: "plus") {
+                    addArticle()
+                }
+                .font(.app(.actionLabel))
+                .foregroundStyle(.primary)
+                #if os(iOS)
+                .buttonStyle(.glassProminent)
+                #else
+                .buttonStyle(.borderedProminent)
+                #endif
+                .buttonBorderShape(.capsule)
+                .controlSize(.large)
+                .tint(.mascotPurple)
+            }
+
+            Button {
+                onDiscover()
+            } label: {
+                Text("Inspire Me")
+                    .frame(minWidth: 88, minHeight: 44)
+                    .contentShape(.rect)
+            }
+            .font(.app(.actionLabel))
+            .buttonStyle(.borderless)
+            .tint(.mascotPurpleInk)
         }
     }
 
@@ -43,62 +127,48 @@ struct ArticleListEmptyState: View {
         #endif
     }
 
-    var body: some View {
-        VStack(spacing: 0) {
-            VStack(spacing: 0) {
-                if let restoreStatusText {
-                    RestoreStatusBanner(text: restoreStatusText)
-                        .padding(.bottom, 18)
-                }
+    // The launch reveal shows the title (step 0), then each line, then the actions,
+    // so nothing invites a tap before the copy has explained it.
+    private var actionsStep: Int {
+        filter.emptyStateLines.count + 1
+    }
 
-                VStack(spacing: 8) {
-                    artwork
-                    AnimatedEmptyStateTitle(
-                        text: filter.emptyStateTitle,
-                        animateOnAppear: shouldAnimateCopy
-                    )
-                }
-                .padding(.bottom, 12)
+    private var revealStepCount: Int {
+        actionsStep + 1
+    }
 
-                AnimatedNarrativeText(
-                    lines: filter.emptyStateLines,
-                    animateOnAppear: shouldAnimateCopy
-                )
+    private func isRevealed(step: Int) -> Bool {
+        !shouldAnimateCopy || step < revealedStepCount
+    }
 
-                if filter == .readingList {
-                    Button("Inspire Me") {
-                        onDiscover()
-                    }
-                    .font(.app(.actionLabel))
-                    .foregroundStyle(.primary)
-                    #if os(iOS)
-                    .buttonStyle(.glassProminent)
-                    #else
-                    .buttonStyle(.borderedProminent)
-                    #endif
-                    .buttonBorderShape(.capsule)
-                    .tint(.mascotPurple)
-                    .overlay {
-                        Capsule()
-                            .stroke(Color.primary.opacity(0.18), lineWidth: 1)
-                    }
-                    .padding(.top, 24)
-                }
+    private func revealInSequence() async {
+        for step in 0..<revealStepCount {
+            try? await Task.sleep(for: .milliseconds(300))
+            withAnimation(.easeOut(duration: 0.7)) {
+                revealedStepCount = step + 1
             }
-            .frame(maxWidth: 320)
-            .padding(.horizontal, 24)
         }
-        .task {
-            guard shouldAnimateCopy, !hasConsumedLaunchAnimation else { return }
-            hasConsumedLaunchAnimation = true
-            onCopyAnimationConsumed()
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-        .offset(y: verticalOffset)
-        .background(Color.appBackground)
-        .onDisappear {
-            shouldAnimateCopy = false
-        }
+    }
+}
+
+private extension View {
+    func revealed(_ isRevealed: Bool) -> some View {
+        modifier(Reveal(isRevealed: isRevealed))
+    }
+}
+
+/// Fades content in from slightly below, or in place when Reduce Motion is on.
+/// Hidden content is also hidden from VoiceOver, so it can't be focused before it appears.
+private struct Reveal: ViewModifier {
+    let isRevealed: Bool
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func body(content: Content) -> some View {
+        content
+            .opacity(isRevealed ? 1 : 0)
+            .offset(y: isRevealed || reduceMotion ? 0 : 8)
+            .accessibilityHidden(!isRevealed)
     }
 }
 
@@ -141,69 +211,6 @@ struct RestoreStatusBanner: View {
         .overlay {
             Capsule()
                 .stroke(Color.primary.opacity(0.08), lineWidth: 1)
-        }
-    }
-}
-
-struct AnimatedEmptyStateTitle: View {
-    let text: String
-    let animateOnAppear: Bool
-
-    @State private var isTitleVisible = false
-
-    var body: some View {
-        Text(text)
-            .font(.app(.emptyStateTitle))
-            .opacity(animateOnAppear ? (isTitleVisible ? 1 : 0) : 1)
-            .offset(y: animateOnAppear ? (isTitleVisible ? 0 : 8) : 0)
-            .animation(animateOnAppear ? .easeOut(duration: 0.7) : nil, value: isTitleVisible)
-            .task(id: text) {
-                guard animateOnAppear else {
-                    isTitleVisible = true
-                    return
-                }
-                isTitleVisible = false
-                try? await Task.sleep(for: .milliseconds(300))
-                isTitleVisible = true
-            }
-    }
-}
-
-struct AnimatedNarrativeText: View {
-    let lines: [String]
-    let animateOnAppear: Bool
-
-    @State private var visibleLineIndices: Set<Int> = []
-
-    var body: some View {
-        VStack(spacing: 6) {
-            ForEach(Array(lines.enumerated()), id: \.offset) { index, line in
-                Text(line)
-                    .font(.app(.emptyStateBody))
-                    .opacity(animateOnAppear ? (visibleLineIndices.contains(index) ? 1 : 0) : 1)
-                    .offset(y: animateOnAppear ? (visibleLineIndices.contains(index) ? 0 : 8) : 0)
-                    .animation(
-                        animateOnAppear ? .easeOut(duration: 0.7).delay(Double(index) * 0.35) : nil,
-                        value: visibleLineIndices
-                    )
-                    .frame(maxWidth: .infinity)
-            }
-        }
-        .foregroundStyle(.secondary)
-        .multilineTextAlignment(.center)
-        .task(id: lines) {
-            guard animateOnAppear else {
-                visibleLineIndices = Set(lines.indices)
-                return
-            }
-            visibleLineIndices = []
-
-            try? await Task.sleep(for: .milliseconds(620))
-
-            for index in lines.indices {
-                visibleLineIndices.insert(index)
-                try? await Task.sleep(for: .milliseconds(300))
-            }
         }
     }
 }

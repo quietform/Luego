@@ -56,9 +56,8 @@ enum ArticleFilter: CaseIterable, Hashable {
         switch self {
         case .readingList:
             [
-                "Kike's looking for something good.",
-                "Add your first article.",
-                "He'll watch over your reading list."
+                "Save what you want to read later.",
+                "In Safari, tap Share, then Luego."
             ]
         case .favorites:
             ["Articles you favorite will appear here"]

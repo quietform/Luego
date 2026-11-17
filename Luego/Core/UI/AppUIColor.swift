@@ -18,6 +18,8 @@ enum AppUIColor {
     )
     static let mascotPurple = adaptive(light: brandPurple, dark: duskPurple)
     static let mascotPurpleInk = adaptive(light: brandPurpleInk, dark: duskPurpleInk)
+    // The mascot's line art needs a light backing; in dark mode a muted lavender keeps it from glaring.
+    static let mascotBackdrop = adaptive(light: paperCream, dark: duskPurpleInk)
     static let barAccentFill = adaptive(
         light: brandPurple.withAlphaComponent(0.72),
         dark: duskPurple.withAlphaComponent(0.56)

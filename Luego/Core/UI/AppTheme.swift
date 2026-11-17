@@ -6,6 +6,7 @@ extension Color {
     static let appBackground = Color(uiColor: AppUIColor.appBackground)
     static let mascotPurple = Color(uiColor: AppUIColor.mascotPurple)
     static let mascotPurpleInk = Color(uiColor: AppUIColor.mascotPurpleInk)
+    static let mascotBackdrop = Color(uiColor: AppUIColor.mascotBackdrop)
     static let regularPanelBackground = Color(uiColor: AppUIColor.regularPanelBackground)
     static let elevatedPanelBackground = Color(uiColor: AppUIColor.elevatedPanelBackground)
     static let barAccentFill = Color(uiColor: AppUIColor.barAccentFill)

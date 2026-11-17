@@ -68,6 +68,12 @@ func accessibilityFrames(in view: some View, width: CGFloat) -> [String: CGRect]
     }
 }
 
+/// Finds the element VoiceOver would announce with `label` inside an `inspectAccessibility` root,
+/// so tests can activate it like a user.
+func accessibleObject(labeled label: String, in root: UIView) -> NSObject? {
+    accessibleObjects(in: root).first { $0.accessibilityLabel == label }
+}
+
 private func accessibleObjects(in element: NSObject) -> [NSObject] {
     if element.isAccessibilityElement { return [element] }
     let children = (element.accessibilityElements as? [NSObject])
@@ -81,4 +87,15 @@ func accessibilityValues(in view: some View) -> [String: String] {
     inspectAccessibility(of: view) { root in
         Dictionary(accessibleObjects(in: root).map { ($0.accessibilityLabel ?? "", $0.accessibilityValue ?? "") }) { first, _ in first }
     }
+}
+
+/// Every accessibility identifier reachable from `element`, through both accessibility children and subviews.
+func accessibilityIdentifiers(in element: NSObject) -> Set<String> {
+    let identifierKey = "accessibilityIdentifier"
+    let identifier = element.responds(to: NSSelectorFromString(identifierKey)) ? element.value(forKey: identifierKey) as? String : nil
+    let own = identifier.map { Set([$0]) } ?? []
+    let children = (element.accessibilityElements as? [NSObject])
+        ?? (0..<max(element.accessibilityElementCount(), 0)).compactMap { element.accessibilityElement(at: $0) as? NSObject }
+    let views = (element as? UIView)?.subviews ?? []
+    return (children + views).reduce(own) { $0.union(accessibilityIdentifiers(in: $1)) }
 }
